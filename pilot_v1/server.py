@@ -27,6 +27,15 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _download(self, media_type: str, filename: str, value: str) -> None:
+        body = value.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", media_type)
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _same_loopback_origin(self) -> bool:
         host = urlsplit(f"//{self.headers.get('Host', '')}")
         origin = urlsplit(self.headers.get("Origin", ""))
@@ -55,6 +64,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, self.service.state)
         elif self.path == "/api/backlog":
             self._json(200, self.service.backlog())
+        elif self.path == "/api/export.csv":
+            self._download("text/csv; charset=utf-8", "pilot-v1.1-action-plan.csv", self.service.export_csv())
+        elif self.path == "/api/export.md":
+            self._download("text/markdown; charset=utf-8", "pilot-v1.1-action-plan.md", self.service.export_markdown())
         else:
             self._json(404, {"error": "not found"})
 

@@ -79,3 +79,19 @@ Block Public Access, default encryption, TLS-only policy, and owner-enforced
 object ownership; it intentionally leaves versioning not enabled, producing
 one safe backlog exception. The Lambda IAM policy names only the two bucket
 resources. Private names and raw responses remain in the evidence directory.
+
+## M5 — Remediation plan and management export: PASS
+
+The backlog now produces CSV and Markdown action plans from the same bounded
+open finding objects shown in the UI. Each row contains the finding, priority,
+recommended fix, optional owner, approval requirement, current status, and
+optional target. No second store or reporting framework was added.
+
+The single-user page exposes two read-only downloads:
+
+- `/api/export.csv`
+- `/api/export.md`
+
+The live API smoke verifies both exports contain the provider-backed S3
+versioning exception. The existing exact Security Group remediation remains
+the only AWS write action in the Pilot.

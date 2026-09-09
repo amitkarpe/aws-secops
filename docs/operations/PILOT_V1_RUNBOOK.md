@@ -49,6 +49,14 @@ curl --fail --silent http://localhost:3340/api/state | jq '{stage,message}'
 ./scripts/check.sh
 ```
 
+The proportional live regression is one command. It starts its own ephemeral
+loopback server, performs the governed SG and S3/API sequence, validates the
+backlog and both exports, stops the server, and restores the dedicated SG:
+
+```bash
+AWS_PROFILE=amit AWS_REGION=ap-southeast-1 ./scripts/pilot-v1.sh smoke
+```
+
 ## Expected visible flow
 
 1. **Check real SG** -> `FINDING`, provider `NON_COMPLIANT`, change `false`.
@@ -58,6 +66,8 @@ curl --fail --silent http://localhost:3340/api/state | jq '{stage,message}'
    changed AWS `true`.
 5. **Read S3 assessment** -> two allowlisted buckets, ten controls, nine
    `PASS`, one versioning `FAIL`, Policy `ALLOW`, changed AWS `false`.
+6. Review the management backlog, then download **action plan CSV** or
+   **summary Markdown** from the same open findings.
 
 If the exact Security Group is already compliant, rerun `rearm-sg` before the
 demo. Do not manually replace resource IDs or broaden the tools.

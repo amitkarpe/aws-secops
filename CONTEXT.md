@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1.1 / Issue #7 — M1–M4 PASS; M5 in progress
+Status: Pilot v1.1 / Issue #7 — M1–M5 PASS; final validation in progress
 
 ## Current Truth
 
@@ -19,7 +19,9 @@ Status: Pilot v1.1 / Issue #7 — M1–M4 PASS; M5 in progress
 - M4 expanded the exact S3 read tool to two server-owned buckets, proved 10
   provider controls (9 PASS / 1 safe versioning exception), and made zero S3
   mutations; the caller/model cannot select buckets.
+- M5 added CSV and Markdown reduction-plan exports from the same bounded open
+  findings used by the UI; no second reporting store or AWS write was added.
 
 ## Next Action
 
-- Implement the M5 management remediation export, then run final acceptance.
+- Run final checks, one browser smoke, public-safety review, and PR handoff.

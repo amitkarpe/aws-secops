@@ -18,8 +18,8 @@
     .card { background:color-mix(in srgb,var(--panel) 92%,transparent); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:0 14px 40px #0004; }
     .status { font-size:24px; font-weight:850; margin:5px 0 6px; }
     .muted { color:var(--muted); }
-    button { border:0; border-radius:10px; padding:12px 17px; font-weight:800; cursor:pointer; color:#06101d; background:var(--cyan); }
-    button.secondary { background:#b9c8d8; }
+    button,.button { border:0; border-radius:10px; padding:12px 17px; font-weight:800; cursor:pointer; color:#06101d; background:var(--cyan); text-decoration:none; display:inline-block; }
+    button.secondary,.button.secondary { background:#b9c8d8; }
     button.approve { background:var(--green); }
     button.deny { background:var(--amber); }
     button:disabled { opacity:.45; cursor:wait; }
@@ -90,6 +90,10 @@
       <thead><tr><th>Priority</th><th>Resource</th><th>Control</th><th>Observed</th></tr></thead>
       <tbody id="priority-findings"></tbody>
     </table>
+    <div class="actions">
+      <a class="button" href="/api/export.csv">Download action plan CSV</a>
+      <a class="button secondary" href="/api/export.md">Download summary Markdown</a>
+    </div>
   </section>
   <section class="card audit">
     <h2>Compact audit</h2>

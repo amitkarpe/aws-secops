@@ -29,6 +29,11 @@ def _request(url: str, path: str, payload: dict[str, Any] | None = None) -> dict
         return json.load(response)
 
 
+def _download(url: str, path: str) -> str:
+    with urllib.request.urlopen(f"{url}{path}", timeout=30) as response:
+        return response.read().decode()
+
+
 def _expect(value: bool, message: str) -> None:
     if not value:
         raise RuntimeError(message)
@@ -83,8 +88,22 @@ def run() -> None:
             and s3.get("finding", {}).get("mutation") == "none",
             "S3 baseline was not read-only",
         )
+        backlog = _request(url, "/api/backlog")
+        _expect(backlog.get("total_open", 0) >= 1, "backlog contains no open exception")
+        csv_export = _download(url, "/api/export.csv")
+        markdown_export = _download(url, "/api/export.md")
+        _expect(
+            csv_export.startswith("finding,priority,recommended_fix")
+            and "Versioning" in csv_export,
+            "CSV action plan did not contain the S3 exception",
+        )
+        _expect(
+            markdown_export.startswith("# Pilot v1.1 compliance reduction plan")
+            and "Versioning" in markdown_export,
+            "Markdown action plan did not contain the S3 exception",
+        )
         print("PILOT_V1_1_API_SMOKE=PASS")
-        print("PILOT_V1_1_SEQUENCE=SG_FINDING,REJECT,DENY,APPROVE,S3")
+        print("PILOT_V1_1_SEQUENCE=SG_FINDING,REJECT,DENY,APPROVE,S3,BACKLOG,EXPORT")
     finally:
         server.shutdown()
         server.server_close()

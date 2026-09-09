@@ -1,6 +1,6 @@
 # Pilot v1.1 implementation plan
 
-Status: active — M1–M4 PASS; M5 in progress
+Status: complete — M1–M5 PASS; ready for review
 
 Authority: Issue #7
 

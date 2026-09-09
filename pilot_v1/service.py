@@ -8,6 +8,7 @@ from typing import Any, Callable
 from .backlog import FindingBacklog
 from .config import PilotConfig
 from .findings import normalize_s3, normalize_sg
+from .export import to_csv, to_markdown
 from .gateway import call_tool, result_text
 from .harness import invoke
 from .workflow import approve_remediation, reject_remediation
@@ -46,6 +47,12 @@ class PilotService:
 
     def backlog(self) -> dict[str, Any]:
         return self.findings.summary()
+
+    def export_csv(self) -> str:
+        return to_csv(self.findings.open_findings())
+
+    def export_markdown(self) -> str:
+        return to_markdown(self.findings.open_findings())
 
     def _call_gateway(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return self.gateway_call(

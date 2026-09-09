@@ -32,7 +32,7 @@ class FindingBacklog:
             if len(self._findings) > MAX_FINDINGS:
                 raise ValueError(f"backlog cannot exceed {MAX_FINDINGS} findings")
 
-    def summary(self) -> dict[str, Any]:
+    def open_findings(self) -> list[dict[str, str]]:
         open_findings = [
             finding
             for finding in self._findings.values()
@@ -46,6 +46,10 @@ class FindingBacklog:
                 item["control"],
             )
         )
+        return open_findings
+
+    def summary(self) -> dict[str, Any]:
+        open_findings = self.open_findings()
 
         def grouped(field: str) -> list[dict[str, Any]]:
             return [
@@ -70,5 +74,6 @@ class FindingBacklog:
             "by_source": grouped("source"),
             "by_resource_type": grouped("resource_type"),
             "priority_findings": open_findings[:10],
+            "open_findings": open_findings,
             "recommended_focus": focus,
         }
