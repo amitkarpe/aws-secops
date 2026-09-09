@@ -98,6 +98,36 @@ class ServiceTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Security Group"):
             service.approve("dev")
 
+    def test_s3_allowlist_aggregate_updates_backlog_with_exceptions(self):
+        aggregate = {
+            "resource_id": "operator-allowlist",
+            "resource_name": "2 allowlisted demo buckets",
+            "control": "five-control S3 allowlist baseline",
+            "status": "NON_COMPLIANT",
+            "source": "AWS S3 control-plane APIs",
+            "recommendation": "Review only failed controls.",
+            "buckets_checked": 2,
+            "controls_checked": 10,
+            "pass_count": 9,
+            "fail_count": 1,
+            "buckets": [
+                {"resource_id": "bucket-one", "resource_name": "bucket-one", "status": "COMPLIANT", "pass_count": 5, "fail_count": 0},
+                {"resource_id": "bucket-two", "resource_name": "bucket-two", "status": "NON_COMPLIANT", "pass_count": 4, "fail_count": 1},
+            ],
+            "exceptions": [
+                {"resource_id": "bucket-two", "resource_name": "bucket-two", "control": "Versioning", "evidence": "not enabled"}
+            ],
+            "mutation": "none",
+        }
+
+        def s3_harness(config, prompt):
+            return {"response": "One exception", "tool_calls": 1, "tool_results": [aggregate]}
+
+        service = PilotService(self.config("s3_tool"), harness_call=s3_harness, gateway_call=self.gateway)
+        result = service.check_s3()
+        self.assertEqual(result["finding"]["fail_count"], 1)
+        self.assertEqual(result["backlog"]["total_open"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

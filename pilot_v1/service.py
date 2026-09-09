@@ -104,19 +104,28 @@ class PilotService:
             raise RuntimeError("the fixed S3 baseline tool is not configured")
         result = self.harness_call(
             self.config,
-            "Check the fixed dev demo S3 bucket across its five configured controls. "
-            "Summarize only the provider tool result and end with STATUS: COMPLIANT or STATUS: NON_COMPLIANT.",
+            "Check the operator-owned dev S3 bucket allowlist. Report the provider aggregate. "
+            "If there are failures, explain only the exceptions; otherwise report the passing counts. "
+            "End with STATUS: COMPLIANT or STATUS: NON_COMPLIANT.",
         )
         if result["tool_calls"] != 1 or len(result["tool_results"]) != 1:
             raise RuntimeError("Harness did not make exactly one S3 provider read")
         finding = result["tool_results"][0]
-        if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"} or len(finding.get("controls", [])) != 5:
-            raise RuntimeError("Harness S3 result did not contain five provider controls")
+        valid_single = len(finding.get("controls", [])) == 5
+        valid_batch = (
+            isinstance(finding.get("buckets"), list)
+            and 1 <= len(finding["buckets"]) <= 5
+            and finding.get("controls_checked") == len(finding["buckets"]) * 5
+            and finding.get("pass_count", 0) + finding.get("fail_count", 0)
+            == finding.get("controls_checked")
+        )
+        if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"} or not (valid_single or valid_batch):
+            raise RuntimeError("Harness S3 result did not contain a valid provider baseline")
         self.findings.upsert(normalize_s3(finding))
         self.state = {
             "stage": "S3_BASELINE",
             "workflow": "s3",
-            "message": "Read-only S3 baseline complete; no AWS change was made.",
+            "message": "Read-only allowlisted S3 assessment complete; no AWS change was made.",
             "finding": finding,
             "explanation": result["response"],
             "audit": {

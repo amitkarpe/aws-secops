@@ -105,6 +105,61 @@ S3_SEVERITY = {
 
 def normalize_s3(provider: dict[str, Any], *, observed_at: str | None = None) -> list[dict[str, str]]:
     timestamp = observed_at or _now()
+    if "buckets" in provider:
+        buckets = provider.get("buckets", [])
+        exceptions = provider.get("exceptions", [])
+        if not isinstance(buckets, list) or not 1 <= len(buckets) <= 5:
+            raise ValueError("S3 provider aggregate must contain 1 to 5 buckets")
+        exception_keys = {
+            (item.get("resource_id"), item.get("control")) for item in exceptions
+        }
+        findings = []
+        for bucket in buckets:
+            bucket_exceptions = [
+                item
+                for item in exceptions
+                if item.get("resource_id") == bucket.get("resource_id")
+            ]
+            if not bucket_exceptions:
+                findings.append(
+                    validate_finding(
+                        {
+                            "source": "AWS S3",
+                            "resource_type": "S3_BUCKET",
+                            "resource_id": bucket.get("resource_id"),
+                            "resource_name": bucket.get("resource_name"),
+                            "environment": "dev",
+                            "control": "five-control S3 baseline",
+                            "severity": "INFO",
+                            "status": "COMPLIANT",
+                            "evidence": "5 of 5 provider controls passed.",
+                            "recommendation": "No action required.",
+                            "observed_at": timestamp,
+                        }
+                    )
+                )
+            for item in bucket_exceptions:
+                findings.append(
+                    validate_finding(
+                        {
+                            "source": "AWS S3",
+                            "resource_type": "S3_BUCKET",
+                            "resource_id": bucket.get("resource_id"),
+                            "resource_name": bucket.get("resource_name"),
+                            "environment": "dev",
+                            "control": item.get("control"),
+                            "severity": S3_SEVERITY.get(item.get("control"), "MEDIUM"),
+                            "status": "NON_COMPLIANT",
+                            "evidence": item.get("evidence"),
+                            "recommendation": provider.get("recommendation"),
+                            "observed_at": timestamp,
+                        }
+                    )
+                )
+        if len(exception_keys) != len(exceptions):
+            raise ValueError("S3 provider aggregate contains duplicate exceptions")
+        return findings
+
     findings = []
     for control in provider.get("controls", []):
         status = "COMPLIANT" if control.get("status") == "PASS" else "NON_COMPLIANT"

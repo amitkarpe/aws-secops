@@ -1,4 +1,4 @@
-"""Read-only five-control S3 baseline for one fixed Pilot v1 bucket."""
+"""Read-only five-control S3 baseline for an operator-owned bucket allowlist."""
 
 from __future__ import annotations
 
@@ -101,14 +101,72 @@ def check_s3_baseline(s3: Any, bucket: str) -> dict[str, Any]:
     }
 
 
+def check_s3_allowlist(
+    s3: Any, buckets: list[str], *, maximum: int = 5
+) -> dict[str, Any]:
+    if not buckets or len(buckets) > maximum or len(buckets) != len(set(buckets)):
+        raise ValueError(f"S3 allowlist must contain 1 to {maximum} unique buckets")
+    if any(not isinstance(bucket, str) or not bucket.strip() for bucket in buckets):
+        raise ValueError("S3 allowlist contains an invalid bucket name")
+
+    results = [check_s3_baseline(s3, bucket) for bucket in buckets]
+    exceptions = [
+        {
+            "resource_id": result["resource_id"],
+            "resource_name": result["resource_name"],
+            "control": control["name"],
+            "evidence": control["evidence"],
+        }
+        for result in results
+        for control in result["controls"]
+        if control["status"] == "FAIL"
+    ]
+    controls_checked = len(results) * 5
+    return {
+        "resource_id": "operator-allowlist",
+        "resource_name": f"{len(results)} allowlisted demo buckets",
+        "control": "five-control S3 allowlist baseline",
+        "status": "NON_COMPLIANT" if exceptions else "COMPLIANT",
+        "source": "AWS S3 control-plane APIs",
+        "recommendation": (
+            "Review only the listed failed controls; this Pilot tool is read-only."
+            if exceptions
+            else "No action required."
+        ),
+        "buckets_checked": len(results),
+        "controls_checked": controls_checked,
+        "pass_count": controls_checked - len(exceptions),
+        "fail_count": len(exceptions),
+        "buckets": [
+            {
+                "resource_id": result["resource_id"],
+                "resource_name": result["resource_name"],
+                "status": result["status"],
+                "pass_count": sum(control["status"] == "PASS" for control in result["controls"]),
+                "fail_count": sum(control["status"] == "FAIL" for control in result["controls"]),
+            }
+            for result in results
+        ],
+        "exceptions": exceptions,
+        "mutation": "none",
+    }
+
+
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if event != {"environment": "dev"}:
         raise ValueError("check_s3_baseline accepts only the fixed dev context")
     if _tool_name(context) != "check_s3_baseline":
         raise ValueError("unknown S3 tool")
-    bucket = os.environ.get("PILOT_DEMO_BUCKET", "")
-    if not bucket:
-        raise RuntimeError("fixed Pilot v1 bucket is not configured")
+    configured = os.environ.get("PILOT_DEMO_BUCKETS", "")
+    if configured:
+        try:
+            buckets = json.loads(configured)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("Pilot S3 allowlist is invalid") from exc
+    else:
+        buckets = [os.environ.get("PILOT_DEMO_BUCKET", "")]
+    if not isinstance(buckets, list) or not all(isinstance(item, str) for item in buckets):
+        raise RuntimeError("Pilot S3 allowlist is invalid")
     import boto3
 
-    return check_s3_baseline(boto3.client("s3"), bucket)
+    return check_s3_allowlist(boto3.client("s3"), buckets)

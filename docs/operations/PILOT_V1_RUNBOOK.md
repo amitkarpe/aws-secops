@@ -56,8 +56,8 @@ curl --fail --silent http://localhost:3340/api/state | jq '{stage,message}'
 3. **Policy DENY test** -> `DENIED`, native Policy `DENY`, provider unchanged.
 4. **Approve DEV** -> `COMPLETED`, Policy `ALLOW`, provider `COMPLIANT`,
    changed AWS `true`.
-5. **Read S3 baseline** -> five visible `PASS` controls, Policy `ALLOW`,
-   changed AWS `false`.
+5. **Read S3 assessment** -> two allowlisted buckets, ten controls, nine
+   `PASS`, one versioning `FAIL`, Policy `ALLOW`, changed AWS `false`.
 
 If the exact Security Group is already compliant, rerun `rearm-sg` before the
 demo. Do not manually replace resource IDs or broaden the tools.

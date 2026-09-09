@@ -57,7 +57,7 @@
       <div id="message" class="muted">Run the provider check to begin.</div>
       <div class="actions">
         <button id="check">1. Check real SG</button>
-        <button id="check-s3">Read S3 baseline</button>
+        <button id="check-s3">Read S3 assessment</button>
         <button id="reject" class="secondary">2A. Reject</button>
         <button id="approve" class="approve">2B. Approve DEV</button>
         <button id="deny" class="deny">Policy DENY test</button>
@@ -120,7 +120,14 @@ function render(data){
   document.getElementById('finding-status').textContent=f.status||'—';
   document.getElementById('source').textContent=f.source||'—';
   const controlBox=document.getElementById('controls'); controlBox.replaceChildren();
-  (f.controls||[]).forEach(item=>{const row=document.createElement('div'); row.className='audit-row'; const name=document.createElement('b'); name.textContent=item.name; const status=document.createElement('span'); status.textContent=`${item.status} — ${item.evidence}`; row.append(name,status); controlBox.append(row);});
+  const providerRows=f.controls||(
+    f.buckets_checked===undefined?[]:[
+      {name:'Buckets',status:String(f.buckets_checked),evidence:'operator allowlist'},
+      {name:'Controls',status:`${f.pass_count} PASS / ${f.fail_count} FAIL`,evidence:`${f.controls_checked} checked`},
+      ...(f.exceptions||[]).map(item=>({name:item.resource_name,status:'FAIL',evidence:`${item.control}: ${item.evidence}`}))
+    ]
+  );
+  providerRows.forEach(item=>{const row=document.createElement('div'); row.className='audit-row'; const name=document.createElement('b'); name.textContent=item.name; const status=document.createElement('span'); status.textContent=`${item.status} — ${item.evidence}`; row.append(name,status); controlBox.append(row);});
   document.getElementById('explanation').textContent=data.explanation||'Waiting for the Harness provider check.';
   const labels={provider_finding:'Provider finding',ai_recommendation:'AI recommendation',human_decision:'Human decision',policy_decision:'Policy decision',exact_tool:'Exact tool',provider_verification:'Provider verification',changed:'Changed AWS'};
   const audit=data.audit||{};

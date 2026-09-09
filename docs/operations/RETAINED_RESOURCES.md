@@ -13,7 +13,7 @@ Private IDs, ARNs, endpoints, and the bucket name are recorded only in
 | Gateway targets / exact tools | 3 | SG read, SG remediation, S3 read | indexed-tool charge |
 | Lambda functions + IAM roles | 3 + 4 | exact providers/actions and Gateway execution | no Lambda or IAM idle compute charge |
 | Dedicated unattached Security Group | 1 | reversible public-SSH finding | no Security Group hourly charge |
-| Dedicated empty S3 bucket | 1 | five-control read-only baseline | storage and request charges only |
+| Dedicated empty S3 buckets | 2 | allowlisted five-control assessment; one safe versioning exception | storage and request charges only |
 | CloudWatch log groups | 4 Pilot-owned | short operational evidence | Lambda 1-day; Runtime 7-day retention |
 
 The reused research Gateway still has one earlier harmless target, so current
@@ -36,7 +36,7 @@ This is an inventory, not an automatic cleanup script. On explicit retirement:
 3. delete the three Pilot Gateway targets;
 4. delete the three Pilot Lambda functions, then their inline policies/roles;
 5. delete the fixed demo Security Group;
-6. empty all bucket versions/delete markers, then delete the demo bucket;
+6. empty all bucket versions/delete markers, then delete both demo buckets;
 7. remove only Pilot log groups if evidence retention is no longer required;
 8. delete the reused Harness/Gateway/Policy engine only if the Phase 0B
    research path is also retired.

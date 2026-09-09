@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from pilot_v1.s3_lambda import check_s3_baseline
+from pilot_v1.s3_lambda import check_s3_allowlist, check_s3_baseline
 
 
 class MissingConfiguration(Exception):
@@ -44,6 +44,20 @@ class S3ReadTest(unittest.TestCase):
         result = check_s3_baseline(MissingPolicyS3(), "pilot-bucket")
         self.assertEqual(result["status"], "NON_COMPLIANT")
         self.assertEqual(result["controls"][3]["status"], "FAIL")
+
+    def test_allowlist_is_bounded_and_returns_only_exception_detail(self):
+        class OneExceptionS3(FakeS3):
+            def get_bucket_versioning(self, Bucket):
+                return {} if Bucket == "pilot-two" else {"Status": "Enabled"}
+
+        result = check_s3_allowlist(OneExceptionS3(), ["pilot-one", "pilot-two"])
+        self.assertEqual(result["buckets_checked"], 2)
+        self.assertEqual((result["controls_checked"], result["pass_count"], result["fail_count"]), (10, 9, 1))
+        self.assertEqual(result["exceptions"][0]["control"], "Versioning")
+        self.assertNotIn("controls", result)
+        self.assertEqual(result["mutation"], "none")
+        with self.assertRaisesRegex(ValueError, "1 to 5"):
+            check_s3_allowlist(FakeS3(), [f"bucket-{index}" for index in range(6)])
 
 
 if __name__ == "__main__":

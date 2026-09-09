@@ -25,8 +25,10 @@ demo resources and perform only one exact, human-governed remediation.”
 4. Click **Approve DEV**.
    - Point to human `APPROVE`, Policy `ALLOW`, the exact remediation tool, and
      independent provider verification `COMPLIANT`.
-5. Click **Read S3 baseline**.
-   - Show the five provider-backed PASS controls.
+5. Click **Read S3 assessment**.
+   - Show two allowlisted buckets, ten provider checks, and the one safe
+     versioning exception.
+   - Point to the management backlog and its recommended focus.
    - Point to `NOT_REQUIRED` human decision and `changed AWS = false`.
 
 ## Close

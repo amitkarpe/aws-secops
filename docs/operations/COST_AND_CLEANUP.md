@@ -14,7 +14,7 @@ before a budget decision; the detailed formulas and official links are in
   **$0.0008/month** before billing behavior or pricing changes.
 - Lambda: no idle compute charge; the demo calls fit comfortably within the
   standard free tier if it is otherwise unused.
-- S3: the dedicated bucket is empty; only tiny request charges are expected.
+- S3: both dedicated buckets are empty; only tiny request charges are expected.
 - Security Group and IAM: no direct idle charge.
 - CloudWatch: variable ingestion/storage only; Pilot Lambda logs retain 1 day
   and Harness Runtime logs retain 7 days.
@@ -30,7 +30,7 @@ dimensions with a false fixed total.
   reads remain the source of truth.
 - Keep the Harness allowlist to the two exact read tools; remediation is called
   only by the service after a human decision.
-- Keep the bucket empty and the demo Security Group unattached.
+- Keep both buckets empty and the demo Security Group unattached.
 - Stop local UI processes and finish Runtime sessions after use.
 - Retain inexpensive control-plane resources; do not repeatedly deploy/delete
   them for every demo.

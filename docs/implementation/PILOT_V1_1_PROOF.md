@@ -54,3 +54,28 @@ record. No model calculates or changes these management values.
 Provider rechecks upsert the same SG/control record, so successful remediation
 closes the open finding instead of creating a duplicate. The summary is also
 available from `GET /api/backlog` for a small API-first check.
+
+## M4 — Allowlisted multi-bucket S3 assessment: PASS
+
+The existing S3 read Lambda now owns a fixed allowlist of two empty Pilot
+buckets and accepts no bucket input from the caller or model. The evaluator is
+sequential and capped at five unique buckets. It returns aggregate counts and
+only failed-control details to Harness, while retaining deterministic provider
+reads for all five controls per bucket.
+
+One live Harness invocation selected the exact S3 Gateway tool once and
+returned:
+
+| Measure | Result |
+| --- | ---: |
+| Allowlisted buckets checked | 2 |
+| Provider controls checked | 10 |
+| PASS | 9 |
+| FAIL | 1 |
+| S3 mutations | 0 |
+
+The original bucket remained 5/5 compliant. The second empty demo bucket has
+Block Public Access, default encryption, TLS-only policy, and owner-enforced
+object ownership; it intentionally leaves versioning not enabled, producing
+one safe backlog exception. The Lambda IAM policy names only the two bucket
+resources. Private names and raw responses remain in the evidence directory.

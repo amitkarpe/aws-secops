@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1.1 / Issue #7 — M1–M3 PASS; M4–M5 in progress
+Status: Pilot v1.1 / Issue #7 — M1–M4 PASS; M5 in progress
 
 ## Current Truth
 
@@ -16,7 +16,10 @@ Status: Pilot v1.1 / Issue #7 — M1–M3 PASS; M4–M5 in progress
   and CSV import with public-safe samples; no new live source integration.
 - M3 added a deterministic provider-backed management backlog to the existing
   single-user API/UI with totals, grouping, priority/age, and recommended focus.
+- M4 expanded the exact S3 read tool to two server-owned buckets, proved 10
+  provider controls (9 PASS / 1 safe versioning exception), and made zero S3
+  mutations; the caller/model cannot select buckets.
 
 ## Next Action
 
-- Implement the M4 operator-allowlisted multi-bucket S3 read in PR #8.
+- Implement the M5 management remediation export, then run final acceptance.

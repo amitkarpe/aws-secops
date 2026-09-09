@@ -1,7 +1,7 @@
 [
   {
     "name": "check_s3_baseline",
-    "description": "Read five deterministic controls on the fixed Pilot v1 S3 bucket in the dev lab. This tool never changes AWS.",
+    "description": "Read five deterministic controls for each bucket in the server-owned Pilot allowlist. The caller cannot select buckets and this tool never changes AWS.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -21,10 +21,15 @@
         "status": {"type": "string"},
         "source": {"type": "string"},
         "recommendation": {"type": "string"},
-        "controls": {"type": "array"},
+        "buckets_checked": {"type": "integer"},
+        "controls_checked": {"type": "integer"},
+        "pass_count": {"type": "integer"},
+        "fail_count": {"type": "integer"},
+        "buckets": {"type": "array"},
+        "exceptions": {"type": "array"},
         "mutation": {"type": "string"}
       },
-      "required": ["resource_id", "resource_name", "control", "status", "source", "recommendation", "controls", "mutation"]
+      "required": ["resource_id", "resource_name", "control", "status", "source", "recommendation", "buckets_checked", "controls_checked", "pass_count", "fail_count", "buckets", "exceptions", "mutation"]
     }
   }
 ]
