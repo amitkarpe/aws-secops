@@ -1,4 +1,4 @@
-# Pilot v1 3–5 minute demo
+# AWS SecOps Platform Phase 1 3–5 minute demo
 
 ## Setup before the audience joins
 
@@ -11,33 +11,38 @@ Open `http://localhost:3340/`.
 
 ## Story
 
-“This is a single Compliance Agent in a personal AWS lab. It can read two fixed
-demo resources and perform only one exact, human-governed remediation.”
+“This is a small AWS SecOps platform in a personal lab. It normalizes multiple
+finding sources, routes each to a specialist, and permits only one exact,
+human-governed AWS remediation.”
 
-1. Click **Check real SG**.
+1. Import `examples/cloudscape-synthetic.json` as **CloudSCAPE-style**.
+   - Show `Compliance Agent`, `PLAN_ONLY`, and `provider verification = NOT_PERFORMED`.
+2. Import `examples/vapt-synthetic.csv` as **VAPT-style**.
+   - Show `Vulnerability Agent`, `PLAN_ONLY`, and both sources in one backlog.
+3. Click **Check real SG**.
    - Point to real provider evidence: public TCP/22 and `NON_COMPLIANT`.
-   - Point to the agent explanation and `changed AWS = false`.
-2. Click **Reject**.
+   - Contrast `REMEDIATION_SUPPORTED` with the imported plan-only records.
+4. Click **Reject**.
    - Point to `Policy = NOT_CALLED`, provider unchanged, and no AWS change.
-3. Click **Policy DENY test**.
+5. Click **Policy DENY test**.
    - Explain that this is synthetic `prod` input, not an AWS production account.
    - Point to native `DENY`, provider unchanged, and no AWS change.
-4. Click **Approve DEV**.
+6. Click **Approve DEV**.
    - Point to human `APPROVE`, Policy `ALLOW`, the exact remediation tool, and
      independent provider verification `COMPLIANT`.
-5. Click **Read S3 assessment**.
+7. Click **Read S3 assessment**.
    - Show two allowlisted buckets, ten provider checks, and the one safe
      versioning exception.
    - Point to the management backlog and its recommended focus.
    - Point to `NOT_REQUIRED` human decision and `changed AWS = false`.
-6. Download the CSV or Markdown action plan and show that the same versioning
-   exception, priority, recommendation, approval requirement, and status are
-   carried into the management reduction plan.
+8. Download the CSV or Markdown action plan and show that source, specialist,
+   eligibility, priority, recommendation, and status come from the same
+   management backlog.
 
 ## Close
 
-“The model explains findings; it does not decide authorization or invent AWS
-state. Human intent, deterministic Policy, exact tools, and provider readback
-are visible as separate controls.”
+“Adapters normalize evidence; deterministic code routes specialists and action
+eligibility. The model explains but does not authorize. Human intent, Policy,
+exact tools, and provider readback remain separate controls.”
 
 Stop the local UI with `Ctrl+C`. Retain the inexpensive AWS demo resources.

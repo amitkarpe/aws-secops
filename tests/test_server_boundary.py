@@ -13,10 +13,20 @@ class FakeService:
 
     def __init__(self):
         self.approve_calls = 0
+        self.import_calls = 0
 
     def approve(self, environment):
         self.approve_calls += 1
         return {"stage": "COMPLETED", "environment": environment}
+
+    def import_source(self, content, filename, source_format):
+        self.import_calls += 1
+        return {
+            "stage": "IMPORTED",
+            "bytes": len(content),
+            "filename": filename,
+            "source_format": source_format,
+        }
 
 
 class ServerBoundaryTest(unittest.TestCase):
@@ -34,11 +44,11 @@ class ServerBoundaryTest(unittest.TestCase):
         self.server.server_close()
         self.thread.join(timeout=2)
 
-    def post(self, content_type, origin):
+    def post(self, content_type, origin, *, path="approve", body=None, headers=None):
         request = urllib.request.Request(
-            self.url,
-            data=json.dumps({"environment": "dev"}).encode(),
-            headers={"Content-Type": content_type, "Origin": origin},
+            self.url.rsplit("/", 1)[0] + f"/{path}",
+            data=body or json.dumps({"environment": "dev"}).encode(),
+            headers={"Content-Type": content_type, "Origin": origin, **(headers or {})},
             method="POST",
         )
         try:
@@ -59,6 +69,33 @@ class ServerBoundaryTest(unittest.TestCase):
             200,
         )
         self.assertEqual(self.service.approve_calls, 1)
+
+    def test_import_accepts_content_but_rejects_paths_and_wrong_origin(self):
+        body = b'{"findings": []}'
+        origin = f"http://127.0.0.1:{self.port}"
+        headers = {"X-Filename": "sample.json", "X-Source-Format": "cloudscape"}
+        self.assertEqual(
+            self.post("application/json", origin, path="import", body=body, headers=headers),
+            200,
+        )
+        self.assertEqual(self.service.import_calls, 1)
+
+        path_headers = dict(headers, **{"X-Filename": "/tmp/private.json"})
+        self.assertEqual(
+            self.post("application/json", origin, path="import", body=body, headers=path_headers),
+            400,
+        )
+        self.assertEqual(
+            self.post(
+                "application/json",
+                "https://attacker.example",
+                path="import",
+                body=body,
+                headers=headers,
+            ),
+            403,
+        )
+        self.assertEqual(self.service.import_calls, 1)
 
 
 if __name__ == "__main__":

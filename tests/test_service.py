@@ -1,14 +1,18 @@
 import json
 import unittest
+from pathlib import Path
 
 from pilot_v1.config import PilotConfig
 from pilot_v1.service import PilotService
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 FINDING = {
     "resource_id": "sg-private",
     "resource_name": "pilot-demo",
-    "control": "TCP/22",
+    "control": "TCP/22 from the public IPv4 internet",
     "status": "NON_COMPLIANT",
     "source": "0.0.0.0/0",
     "recommendation": "Remove exact rule",
@@ -127,6 +131,21 @@ class ServiceTest(unittest.TestCase):
         result = service.check_s3()
         self.assertEqual(result["finding"]["fail_count"], 1)
         self.assertEqual(result["backlog"]["total_open"], 1)
+
+    def test_import_routes_both_sources_and_exposes_no_mutation_path(self):
+        service = PilotService(self.config(), harness_call=self.harness, gateway_call=self.gateway)
+        cloudscape = ROOT.joinpath("examples/cloudscape-synthetic.json")
+        first = service.import_source(cloudscape.read_bytes(), cloudscape.name, "cloudscape")
+        self.assertEqual(first["audit"]["specialist_route"], "Compliance Agent")
+        self.assertEqual(first["audit"]["action_eligibility"], "PLAN_ONLY")
+        self.assertEqual(first["audit"]["provider_verification"], "NOT_PERFORMED")
+
+        vapt = ROOT.joinpath("examples/vapt-synthetic.csv")
+        second = service.import_source(vapt.read_bytes(), vapt.name, "vapt")
+        self.assertEqual(second["audit"]["specialist_route"], "Vulnerability Agent")
+        self.assertEqual(second["backlog"]["total_open"], 2)
+        with self.assertRaisesRegex(RuntimeError, "Security Group"):
+            service.approve("dev")
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 # Context
 
-Status: Pilot v1.1 / Issue #7 — M1–M5 PASS; ready for review
+Status: Platform Phase 1 / Issue #9 — M1–M5 PASS; ready for review
 
 ## Current Truth
 
-- PR #8 is the single implementation PR for Pilot v1.1 M1–M5.
+- PR #10 is the single implementation PR for Platform Phase 1 M1–M5.
 - The retained Pilot v1 Harness, Gateway, Policy, exact SG remediation, S3
   read, and loopback UI remain the proven base.
 - Live work uses only the approved personal `amit` profile in Singapore.
@@ -21,10 +21,24 @@ Status: Pilot v1.1 / Issue #7 — M1–M5 PASS; ready for review
   mutations; the caller/model cannot select buckets.
 - M5 added CSV and Markdown reduction-plan exports from the same bounded open
   findings used by the UI; no second reporting store or AWS write was added.
-- Final acceptance passed 26 deterministic tests, one live end-to-end API
+- The Pilot v1.1 baseline previously passed 26 deterministic tests, one live end-to-end API
   smoke, provider readback, public-safety review, and one headless browser
   smoke of the management screen.
+- Platform Phase 1 adds same-origin bounded content upload through the existing
+  loopback API/UI. The browser supplies file content plus a basename, never a
+  filesystem path.
+- Public-safe CloudSCAPE-style compliance and VAPT-style vulnerability fixtures
+  map through two explicit adapters into the existing common contract.
+- Specialist routing and action eligibility are deterministic and server-owned:
+  CloudSCAPE/AWS compliance routes to `Compliance Agent`, VAPT routes to
+  `Vulnerability Agent`, and all imported evidence is `PLAN_ONLY`.
+- The only `REMEDIATION_SUPPORTED` record remains the provider-backed exact
+  public-SSH Security Group finding; Reject, synthetic Policy DENY, DEV ALLOW,
+  exact Lambda, and provider re-read behavior remain unchanged.
+- Final Platform Phase 1 acceptance passed 29 deterministic tests, one live
+  import/routing/plan-only/SG/S3/export API-provider smoke, and one headless
+  browser-visible operations-screen smoke.
 
 ## Next Action
 
-- Review PR #8 and merge only after the actual diff/evidence is accepted.
+- Review PR #10 and merge only after the actual diff/evidence is accepted.

@@ -26,7 +26,10 @@ class ExportTest(unittest.TestCase):
         ]
         csv_rows = list(csv.DictReader(io.StringIO(to_csv(findings))))
         self.assertEqual(csv_rows[0]["finding"], "S3_BUCKET/archive-demo: Versioning")
-        self.assertEqual(csv_rows[0]["approval_required"], "YES")
+        self.assertEqual(csv_rows[0]["source"], "AWS S3")
+        self.assertEqual(csv_rows[0]["specialist_route"], "Compliance Agent")
+        self.assertEqual(csv_rows[0]["action_eligibility"], "PLAN_ONLY")
+        self.assertEqual(csv_rows[0]["approval_required"], "NO — PLAN ONLY")
         self.assertEqual(csv_rows[0]["owner"], "'=untrusted-formula")
         markdown = to_markdown(findings)
         self.assertIn("Open actions: **1**", markdown)

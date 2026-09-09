@@ -85,6 +85,7 @@ smoke() {
   rearm_sg || result=$?
   if [[ "$result" == "0" ]]; then
     echo "PILOT_V1_1_SMOKE=PASS"
+    echo "PLATFORM_PHASE1_SMOKE=PASS"
   else
     echo "PILOT_V1_1_SMOKE=BLOCKED" >&2
   fi

@@ -1,10 +1,11 @@
-# Pilot v1 operator runbook
+# AWS SecOps Platform Phase 1 operator runbook
 
 ## Purpose
 
-Run the retained single-user Compliance Agent demo without discovering or
-selecting arbitrary AWS resources. The private state file binds the app to one
-Harness, Gateway, Policy engine, demo Security Group, and demo S3 bucket.
+Run the retained single-user multi-source SecOps demo without discovering or
+selecting arbitrary AWS resources. The private state file binds the provider
+path to one Harness, Gateway, Policy engine, demo Security Group, and bounded
+S3 allowlist. Synthetic source imports remain plan-only.
 
 ## Prerequisites
 
@@ -50,7 +51,8 @@ curl --fail --silent http://localhost:3340/api/state | jq '{stage,message}'
 ```
 
 The proportional live regression is one command. It starts its own ephemeral
-loopback server, performs the governed SG and S3/API sequence, validates the
+loopback server, imports and routes both synthetic formats, proves plan-only
+cannot mutate, performs the governed SG and S3/API sequence, validates the
 backlog and both exports, stops the server, and restores the dedicated SG:
 
 ```bash
@@ -59,14 +61,20 @@ AWS_PROFILE=amit AWS_REGION=ap-southeast-1 ./scripts/pilot-v1.sh smoke
 
 ## Expected visible flow
 
-1. **Check real SG** -> `FINDING`, provider `NON_COMPLIANT`, change `false`.
-2. **Reject** -> `REJECTED`, Policy `NOT_CALLED`, provider unchanged.
-3. **Policy DENY test** -> `DENIED`, native Policy `DENY`, provider unchanged.
-4. **Approve DEV** -> `COMPLETED`, Policy `ALLOW`, provider `COMPLIANT`,
+1. Select **CloudSCAPE-style compliance**, choose
+   `examples/cloudscape-synthetic.json`, and click **Import source**. Expect
+   `Compliance Agent` and `PLAN_ONLY`.
+2. Select **VAPT-style vulnerability**, choose `examples/vapt-synthetic.csv`,
+   and click **Import source**. Expect `Vulnerability Agent` and `PLAN_ONLY`.
+3. **Check real SG** -> `FINDING`, provider `NON_COMPLIANT`, eligibility
+   `REMEDIATION_SUPPORTED`, change `false`.
+4. **Reject** -> `REJECTED`, Policy `NOT_CALLED`, provider unchanged.
+5. **Policy DENY test** -> `DENIED`, native Policy `DENY`, provider unchanged.
+6. **Approve DEV** -> `COMPLETED`, Policy `ALLOW`, provider `COMPLIANT`,
    changed AWS `true`.
-5. **Read S3 assessment** -> two allowlisted buckets, ten controls, nine
+7. **Read S3 assessment** -> two allowlisted buckets, ten controls, nine
    `PASS`, one versioning `FAIL`, Policy `ALLOW`, changed AWS `false`.
-6. Review the management backlog, then download **action plan CSV** or
+8. Review source/specialist/eligibility groupings, then download **action plan CSV** or
    **summary Markdown** from the same open findings.
 
 If the exact Security Group is already compliant, rerun `rearm-sg` before the
@@ -74,7 +82,8 @@ demo. Do not manually replace resource IDs or broaden the tools.
 
 ## Failure boundary
 
-Stop if the profile, account, or Region does not match private Pilot state; the
+Imported source evidence is never AWS provider verification and exposes no
+Approve action. Stop if the profile, account, or Region does not match private Pilot state; the
 demo Group has an attachment; Policy is not ENFORCE/ACTIVE; the exact tool is
 missing; or provider verification disagrees with the UI. A transport response
 alone is not a PASS.

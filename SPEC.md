@@ -1,17 +1,17 @@
 # Specification
 
-Status: complete — Pilot v1.1 / Issue #7 ready for review
+Status: complete — Platform Phase 1 / Issue #9 ready for review
 
 ## Problem
 
-Extend the proven Compliance Agent into a bounded operations-facing compliance
-backlog and reduction-plan workflow for a personal AWS lab.
+Extend the proven Compliance Agent into a bounded multi-source AWS SecOps
+workflow while retaining one exact governed AWS mutation.
 
 ## Scope
 
-Preserve Pilot v1 and deliver Issue #7 M1–M5: one-command smoke, common findings,
-management backlog, allowlisted multi-bucket S3 assessment, and CSV/Markdown
-action-plan export.
+Preserve Pilot v1.1 and deliver Issue #9 M1–M5: bounded source intake, two
+explicit adapters, two deterministic specialist routes, explicit action
+eligibility, and the shared operations view/export.
 
 ## MUST
 
@@ -26,6 +26,14 @@ action-plan export.
 - Keep finding import at 100 records/256 KB and S3 assessment at five
   server-owned buckets; caller/model-selected buckets are prohibited.
 - Derive management totals and exports from the same deterministic findings.
+- Accept only same-origin JSON/CSV content uploads capped at 256 KB and 100
+  records; do not accept a browser/model-supplied filesystem path.
+- Treat imported CloudSCAPE/VAPT evidence as `PLAN_ONLY`, never as AWS provider
+  verification or authorization to mutate.
+- Route specialist work deterministically on the server; do not let a model
+  select an arbitrary agent or tool.
+- Keep the provider-backed exact public-SSH Security Group finding as the only
+  `REMEDIATION_SUPPORTED` record.
 
 ## MUST NOT
 
@@ -42,10 +50,12 @@ action-plan export.
   action, and provider verification.
 - The S3 view is allowlisted, bounded, read-only, and provider-backed.
 - Backlog totals and action-plan exports use the same validated finding set.
+- Both synthetic adapters, both specialist routes, and plan-only mutation
+  rejection pass through the real loopback API before the governed SG proof.
 - `git diff --check` and the public-safety scan pass.
 
 ## Stop Gates
 
 - Stop for identity or Region mismatch, unclear/unbounded recurring cost,
   ambiguous retained-resource ownership, Policy not in ENFORCE mode, exposure
-  of private data, risk to a non-demo resource, or expansion beyond Issue #7.
+  of private data, risk to a non-demo resource, or expansion beyond Issue #9.

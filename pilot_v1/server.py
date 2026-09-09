@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .config import PilotConfig
+from .findings import MAX_IMPORT_BYTES
 from .service import PilotService
 
 
@@ -65,21 +66,41 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/backlog":
             self._json(200, self.service.backlog())
         elif self.path == "/api/export.csv":
-            self._download("text/csv; charset=utf-8", "pilot-v1.1-action-plan.csv", self.service.export_csv())
+            self._download("text/csv; charset=utf-8", "platform-phase1-action-plan.csv", self.service.export_csv())
         elif self.path == "/api/export.md":
-            self._download("text/markdown; charset=utf-8", "pilot-v1.1-action-plan.md", self.service.export_markdown())
+            self._download("text/markdown; charset=utf-8", "platform-phase1-action-plan.md", self.service.export_markdown())
         else:
             self._json(404, {"error": "not found"})
 
     def do_POST(self) -> None:
         try:
-            if self.headers.get_content_type() != "application/json":
+            if self.path != "/api/import" and self.headers.get_content_type() != "application/json":
                 self._json(415, {"error": "POST requires application/json"})
                 return
             if not self._same_loopback_origin():
                 self._json(403, {"error": "POST requires the same loopback origin"})
                 return
             length = int(self.headers.get("Content-Length", "0"))
+            if self.path == "/api/import":
+                if self.headers.get_content_type() not in {"application/json", "text/csv"}:
+                    self._json(415, {"error": "import requires JSON or CSV content"})
+                    return
+                if length < 1 or length > MAX_IMPORT_BYTES:
+                    raise ValueError("finding import must be between 1 byte and 256 KB")
+                filename = self.headers.get("X-Filename", "")
+                if (
+                    not filename
+                    or Path(filename).name != filename
+                    or "\\" in filename
+                ):
+                    raise ValueError("import filename must not contain a filesystem path")
+                result = self.service.import_source(
+                    self.rfile.read(length),
+                    filename,
+                    self.headers.get("X-Source-Format", ""),
+                )
+                self._json(200, result)
+                return
             payload = json.loads(self.rfile.read(length) or b"{}")
             if self.path == "/api/check":
                 result = self.service.check()

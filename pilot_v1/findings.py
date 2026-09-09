@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 MAX_FINDINGS = 100
+MAX_IMPORT_BYTES = 256_000
 REQUIRED_FIELDS = (
     "source",
     "resource_type",
@@ -198,26 +200,41 @@ def normalize_s3(provider: dict[str, Any], *, observed_at: str | None = None) ->
     return findings
 
 
-def _bounded(values: Iterable[dict[str, Any]], limit: int) -> list[dict[str, str]]:
+def decode_records(
+    content: bytes, filename: str, *, limit: int = MAX_FINDINGS
+) -> list[dict[str, Any]]:
+    if len(content) > MAX_IMPORT_BYTES:
+        raise ValueError("finding import exceeds 256 KB")
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("finding import must be UTF-8") from exc
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".json":
+        payload = json.loads(text)
+        values = payload.get("findings") if isinstance(payload, dict) else payload
+        if not isinstance(values, list):
+            raise ValueError("JSON finding import must contain a list")
+        raw = values
+    elif suffix == ".csv":
+        raw = list(csv.DictReader(io.StringIO(text, newline="")))
+    else:
+        raise ValueError("finding import must be .json or .csv")
     if limit < 1 or limit > MAX_FINDINGS:
         raise ValueError(f"finding import limit must be between 1 and {MAX_FINDINGS}")
-    raw = list(values)
     if not raw or len(raw) > limit:
         raise ValueError(f"finding import must contain 1 to {limit} records")
-    return [validate_finding(value) for value in raw]
+    if not all(isinstance(value, dict) for value in raw):
+        raise ValueError("each source record must be an object")
+    return raw
+
+
+def import_findings_content(
+    content: bytes, filename: str, *, limit: int = MAX_FINDINGS
+) -> list[dict[str, str]]:
+    return [validate_finding(value) for value in decode_records(content, filename, limit=limit)]
 
 
 def import_findings(path: str | Path, *, limit: int = MAX_FINDINGS) -> list[dict[str, str]]:
     source = Path(path)
-    if source.stat().st_size > 256_000:
-        raise ValueError("finding import exceeds 256 KB")
-    if source.suffix.lower() == ".json":
-        payload = json.loads(source.read_text(encoding="utf-8"))
-        values = payload.get("findings") if isinstance(payload, dict) else payload
-        if not isinstance(values, list):
-            raise ValueError("JSON finding import must contain a list")
-        return _bounded(values, limit)
-    if source.suffix.lower() == ".csv":
-        with source.open(encoding="utf-8", newline="") as handle:
-            return _bounded(csv.DictReader(handle), limit)
-    raise ValueError("finding import must be .json or .csv")
+    return import_findings_content(source.read_bytes(), source.name, limit=limit)

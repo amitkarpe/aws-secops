@@ -6,8 +6,13 @@ import csv
 import io
 from typing import Iterable
 
+from .routing import enrich_finding
+
 
 FIELDS = (
+    "source",
+    "specialist_route",
+    "action_eligibility",
     "finding",
     "priority",
     "recommended_fix",
@@ -19,19 +24,30 @@ FIELDS = (
 
 
 def action_plan(findings: Iterable[dict[str, str]]) -> list[dict[str, str]]:
-    return [
-        {
+    rows = []
+    for finding in findings:
+        item = (
+            finding
+            if "specialist_route" in finding and "action_eligibility" in finding
+            else enrich_finding(finding)
+        )
+        if item["status"] != "NON_COMPLIANT":
+            continue
+        rows.append({
+            "source": item["source"],
+            "specialist_route": item["specialist_route"],
+            "action_eligibility": item["action_eligibility"],
             "finding": f"{item['resource_type']}/{item['resource_name']}: {item['control']}",
             "priority": item["severity"],
             "recommended_fix": item["recommendation"],
             "owner": item.get("owner", ""),
-            "approval_required": "YES",
+            "approval_required": (
+                "YES" if item["action_eligibility"] == "REMEDIATION_SUPPORTED" else "NO — PLAN ONLY"
+            ),
             "status": item["status"],
             "target": item.get("target", ""),
-        }
-        for item in findings
-        if item["status"] == "NON_COMPLIANT"
-    ]
+        })
+    return rows
 
 
 def to_csv(findings: Iterable[dict[str, str]]) -> str:
@@ -55,17 +71,17 @@ def _cell(value: str) -> str:
 def to_markdown(findings: Iterable[dict[str, str]]) -> str:
     rows = action_plan(findings)
     lines = [
-        "# Pilot v1.1 compliance reduction plan",
+        "# AWS SecOps Platform Phase 1 action plan",
         "",
         f"Open actions: **{len(rows)}**",
         "",
-        "| Finding | Priority | Recommended fix | Owner | Approval required | Status | Target |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Source | Specialist | Eligibility | Finding | Priority | Recommended fix | Owner | Approval required | Status | Target |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     lines.extend(
         "| " + " | ".join(_cell(row[field]) for field in FIELDS) + " |"
         for row in rows
     )
     if not rows:
-        lines.append("| No open findings | — | No action required |  | — | COMPLIANT |  |")
+        lines.append("| — | — | — | No open findings | — | No action required |  | — | COMPLIANT |  |")
     return "\n".join(lines) + "\n"

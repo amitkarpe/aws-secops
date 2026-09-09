@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
+from .adapters import adapt_source
 from .backlog import FindingBacklog
 from .config import PilotConfig
 from .findings import normalize_s3, normalize_sg
 from .export import to_csv, to_markdown
 from .gateway import call_tool, result_text
 from .harness import invoke
+from .routing import enrich_finding
 from .workflow import approve_remediation, reject_remediation
 
 
@@ -54,6 +56,40 @@ class PilotService:
     def export_markdown(self) -> str:
         return to_markdown(self.findings.open_findings())
 
+    def import_source(
+        self, content: bytes, filename: str, source_format: str
+    ) -> dict[str, Any]:
+        imported = adapt_source(content, filename, source_format)
+        self.findings.upsert(imported, evidence_origin="IMPORTED")
+        visible = [
+            enrich_finding({**finding, "evidence_origin": "IMPORTED"})
+            for finding in imported
+        ]
+        first = visible[0]
+        self.state = {
+            "stage": "IMPORTED",
+            "workflow": "plan_only",
+            "message": (
+                f"Imported {len(visible)} {first['source']} finding(s); "
+                "source evidence is PLAN_ONLY and cannot invoke AWS mutation."
+            ),
+            "finding": first,
+            "explanation": first["grounded_explanation"],
+            "audit": {
+                "provider_finding": "SOURCE_EVIDENCE_ONLY",
+                "ai_recommendation": first["recommendation"],
+                "specialist_route": first["specialist_route"],
+                "action_eligibility": first["action_eligibility"],
+                "human_decision": "NOT_AVAILABLE",
+                "policy_decision": "NOT_CALLED",
+                "exact_tool": "NOT_AVAILABLE",
+                "provider_verification": "NOT_PERFORMED",
+                "changed": False,
+            },
+            "backlog": self.findings.summary(),
+        }
+        return self.state
+
     def _call_gateway(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return self.gateway_call(
             self.config.gateway_url,
@@ -86,7 +122,9 @@ class PilotService:
         finding = result["tool_results"][0]
         if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"}:
             raise RuntimeError("Harness tool result did not contain provider status")
-        self.findings.upsert([normalize_sg(finding)])
+        normalized = normalize_sg(finding)
+        self.findings.upsert([normalized], evidence_origin="AWS_PROVIDER")
+        enriched = enrich_finding({**normalized, "evidence_origin": "AWS_PROVIDER"})
         self.state = {
             "stage": "FINDING",
             "workflow": "sg",
@@ -96,6 +134,8 @@ class PilotService:
             "audit": {
                 "provider_finding": finding["status"],
                 "ai_recommendation": finding["recommendation"],
+                "specialist_route": enriched["specialist_route"],
+                "action_eligibility": enriched["action_eligibility"],
                 "human_decision": "PENDING",
                 "policy_decision": "NOT_CALLED",
                 "exact_tool": self.config.read_tool_name,
@@ -128,7 +168,9 @@ class PilotService:
         )
         if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"} or not (valid_single or valid_batch):
             raise RuntimeError("Harness S3 result did not contain a valid provider baseline")
-        self.findings.upsert(normalize_s3(finding))
+        normalized = normalize_s3(finding)
+        self.findings.upsert(normalized, evidence_origin="AWS_PROVIDER")
+        enriched = enrich_finding({**normalized[0], "evidence_origin": "AWS_PROVIDER"})
         self.state = {
             "stage": "S3_BASELINE",
             "workflow": "s3",
@@ -138,6 +180,8 @@ class PilotService:
             "audit": {
                 "provider_finding": finding["status"],
                 "ai_recommendation": finding["recommendation"],
+                "specialist_route": enriched["specialist_route"],
+                "action_eligibility": enriched["action_eligibility"],
                 "human_decision": "NOT_REQUIRED",
                 "policy_decision": "ALLOW",
                 "exact_tool": self.config.s3_tool_name,
@@ -166,13 +210,15 @@ class PilotService:
             provider_verification=verification["status"],
             changed=False,
         )
-        self.findings.upsert([normalize_sg(verification)])
+        self.findings.upsert([normalize_sg(verification)], evidence_origin="AWS_PROVIDER")
         self._refresh_backlog()
         return self.state
 
     def approve(self, environment: str) -> dict[str, Any]:
         if self.state.get("workflow") != "sg":
             raise RuntimeError("run the Security Group provider check first")
+        if self.state.get("audit", {}).get("action_eligibility") != "REMEDIATION_SUPPORTED":
+            raise RuntimeError("current finding is PLAN_ONLY and cannot invoke AWS mutation")
 
         def gateway(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             return self._call_gateway(tool_name, arguments)
@@ -203,6 +249,6 @@ class PilotService:
             provider_verification=verification["status"],
             changed=decision["changed"],
         )
-        self.findings.upsert([normalize_sg(verification)])
+        self.findings.upsert([normalize_sg(verification)], evidence_origin="AWS_PROVIDER")
         self._refresh_backlog()
         return self.state

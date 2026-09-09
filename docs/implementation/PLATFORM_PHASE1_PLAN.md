@@ -1,6 +1,6 @@
 # Platform Phase 1 implementation plan
 
-Status: active
+Status: complete — M1–M5 PASS; ready for review
 
 Authority: Issue #9
 
@@ -94,3 +94,16 @@ multi-source intake
 ```
 
 The existing exact SG mutation boundary must remain unchanged.
+
+## Result
+
+- M1: same-origin JSON/CSV content upload is bounded to 256 KB and 100 records;
+  the API accepts a basename, never a browser-supplied filesystem path.
+- M2: explicit CloudSCAPE-style and VAPT-style adapters accept only their
+  public-safe synthetic schemas and reject missing, extra, or unsupported data.
+- M3: server-owned routing sends compliance/configuration evidence to
+  `Compliance Agent` and VAPT evidence to `Vulnerability Agent`.
+- M4: imported evidence is always `PLAN_ONLY`; only the provider-backed exact
+  public-SSH Security Group finding is `REMEDIATION_SUPPORTED`.
+- M5: the common backlog and CSV/Markdown exports show source, specialist, and
+  eligibility. One live API/provider smoke and one browser-visible smoke pass.
