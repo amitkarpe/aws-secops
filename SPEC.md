@@ -1,45 +1,47 @@
 # Specification
 
-Status: complete — Phase 0B.3 PASS
+Status: active — Pilot v1 / Issue #5
 
 ## Problem
 
-Prove that AgentCore Policy makes the final deterministic authorization
-decision for one exact tool reached through the retained AgentCore Harness.
+Promote the proven AgentCore research path into one small, usable Compliance
+Agent pilot for a personal AWS lab.
 
 ## Scope
 
-Create one harmless Lambda tool, expose it through one AWS-IAM AgentCore
-Gateway, and attach one ENFORCE Policy engine. Reuse the retained Nova 2 Lite
-Harness from Phase 0B.2a.
+Deliver the five milestones in Issue #5: a least-tool Harness specialist, one
+real Security Group finding, one human-governed exact remediation, provider
+verification with a compact single-user UI, and a read-only S3 baseline.
 
 ## MUST
 
-- `dev` input is permitted and reaches Lambda exactly once.
-- `prod` input is denied and does not add a Lambda invocation.
-- The Harness exposes only the one Gateway tool; built-in tools remain absent.
-- The Lambda validates its bounded input and makes no external change.
-- Record sanitized live evidence, cost dimensions, and retained resources.
+- Use Nova 2 Lite through AgentCore Harness in `ap-southeast-1`.
+- Keep Harness built-ins unavailable and expose only exact Gateway tools.
+- Ground the SG and S3 results in current AWS provider reads.
+- Require a human decision before the exact SG remediation.
+- Prove Reject and Policy DENY make zero changes.
+- Re-read AWS after approval and report COMPLIANT only from provider truth.
+- Keep the UI single-user, compact, and manager-readable.
+- Record sanitized live evidence, costs, retention, and cleanup commands.
 
 ## MUST NOT
 
-- Do not add a UI, generic AWS action, real remediation, Memory, Browser, Code
-  Interpreter, Registry, WAF, or multi-agent behavior.
+- Do not add generic AWS actions, arbitrary resource selection, multi-user auth,
+  multi-account support, Registry, Temporal Policy, EKS, Supervisor, or A2A.
 - Do not use company, production, or Organizations-management resources.
 - Do not commit account IDs, ARNs, endpoints, session IDs, credentials, or raw
   private evidence.
 
 ## Verification
 
-- One Harness `dev` call returns the harmless Lambda marker and the Lambda
-  invocation delta is exactly one.
-- One Harness `prod` call returns a Policy denial and the Lambda invocation
-  delta remains zero.
-- Live readback shows Gateway `READY`, Policy `ACTIVE`/ENFORCE, the exact target,
-  and a Harness allowlist containing only that target tool.
+- M1–M5 focused checks and live proofs pass.
+- The final visual path shows real finding, decision, Policy result, exact
+  action, and provider verification.
+- The S3 view is read-only and provider-backed.
+- `git diff --check` and the public-safety scan pass.
 
 ## Stop Gates
 
 - Stop for identity or Region mismatch, unclear/unbounded recurring cost,
-  ambiguous retained-resource ownership, policy not in ENFORCE mode, or any
-  request to broaden the tool beyond the fixed synthetic input.
+  ambiguous retained-resource ownership, Policy not in ENFORCE mode, exposure
+  of private data, risk to a non-demo resource, or expansion beyond Issue #5.
