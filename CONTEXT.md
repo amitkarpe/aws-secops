@@ -1,10 +1,16 @@
 # Context
 
-Status: Platform Phase 1 / Issue #9 — M1–M5 PASS; ready for review
+Status: Platform Phase 2 / Issue #11 — M1–M5 PASS; PR #12 ready for review
 
 ## Current Truth
 
-- PR #10 is the single implementation PR for Platform Phase 1 M1–M5.
+- Phase 1 merged through PR #10. PR #12 implements Phase 2 using existing AWS
+  Config in the personal Singapore lab: read-only bounded sync, specialist
+  explanation, provenance/freshness, and export. Three live evaluations passed
+  the API smoke with zero tool calls and PLAN_ONLY approval rejection.
+- Config sync reports SUCCESS/PARTIAL/ERROR and retains its previous snapshot
+  on error. Evaluation and sync times are separate. No AWS resources, IAM or
+  service configuration changed. The following bullets record the retained base.
 - The retained Pilot v1 Harness, Gateway, Policy, exact SG remediation, S3
   read, and loopback UI remain the proven base.
 - Live work uses only the approved personal `amit` profile in Singapore.
@@ -46,4 +52,4 @@ Status: Platform Phase 1 / Issue #9 — M1–M5 PASS; ready for review
   Two live API imports passed with zero tool calls, PLAN_ONLY and approval
   rejection. The focused correction made no AWS infrastructure changes.
 
-- Review PR #10 and merge only after the actual diff/evidence is accepted.
+- Review PR #12 and `docs/implementation/PLATFORM_PHASE2_PROOF.md` before merge.

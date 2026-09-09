@@ -44,6 +44,24 @@ only this local UI. AWS resources remain retained for the next demo.
 
 ## Quick health checks
 
+Phase 2: open `http://localhost:3340/` and click **Sync AWS Config**. Expect
+`SOURCE_SYNCED`, SUCCESS (or explicitly PARTIAL), provider observation/sync
+times, Compliance Agent explanation, and PLAN_ONLY. The verified snapshot had
+three findings; live counts can change. Approve stays disabled. Download CSV
+or Markdown to inspect the same records. No agent reconfiguration is needed.
+
+With the app running, the Phase 2 read-only acceptance command is:
+
+```bash
+AWS_PROFILE=amit AWS_REGION=ap-southeast-1 ./scripts/pilot-v1.sh provider-smoke
+```
+
+Expected: `PLATFORM_PHASE2_PROVIDER_SMOKE=PASS`. It performs no SG reset or
+remediation. ERROR retains prior evidence and last-success time; resolve local
+access/Harness availability before retrying. Restarting clears the in-memory
+snapshot. Config INFO severity means unspecified; a recent sync does not make
+an old evaluation current.
+
 ```bash
 AWS_PROFILE=amit AWS_REGION=ap-southeast-1 ./scripts/pilot-v1.sh status
 curl --fail --silent http://localhost:3340/api/state | jq '{stage,message}'

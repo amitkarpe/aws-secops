@@ -177,7 +177,28 @@ def run(*, specialists_only: bool = False) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--specialists-only", action="store_true")
-    run(specialists_only=parser.parse_args().specialists_only)
+    parser.add_argument("--provider-only", action="store_true")
+    parser.add_argument("--port", type=int, default=3340)
+    args = parser.parse_args()
+    if args.provider_only:
+        url = f"http://localhost:{args.port}"
+        result = _request(url, "/api/sync-provider", {})
+        finding = result.get("finding") or {}
+        _expect(finding.get("source") == "AWS Config", "no real Config finding returned")
+        _expect(finding.get("evidence_origin") == "AWS_PROVIDER", "missing provider provenance")
+        _expect(finding.get("action_eligibility") == "PLAN_ONLY", "unexpected mutation eligibility")
+        _expect(result["audit"].get("explanation_tool_calls") == 0, "specialist attempted a tool")
+        _expect("config" in result["explanation"].lower(), "explanation omitted provider source")
+        _expect(result["source_status"].get("last_success") is not None, "missing sync time")
+        _expect_http_error(url, "/api/approve", {"environment": "dev"}, 400)
+        for path in ["/api/export.csv", "/api/export.md"]:
+            exported = _download(url, path)
+            _expect(finding["resource_id"] in exported and "AWS_PROVIDER" in exported,
+                    "export did not retain provider finding/provenance")
+        print("PLATFORM_PHASE2_PROVIDER_SMOKE=PASS")
+        print(f"SOURCE=AWS_CONFIG STATUS={result['source_status']['status']} COUNT={result['source_status']['count']} TOOLS=0 ELIGIBILITY=PLAN_ONLY")
+    else:
+        run(specialists_only=args.specialists_only)
     return 0
 
 

@@ -1,6 +1,6 @@
 # Platform Phase 2 implementation plan
 
-Status: planned — Issue #11
+Status: complete — M1–M5 PASS; PR #12 ready for review
 
 Authority: Issue #11
 
@@ -52,5 +52,10 @@ Prove one real live provider sync -> normalization -> specialist route/explanati
 - Existing exact Security Group mutation remains the only supported AWS mutation.
 
 ## Git / validation economy
+
+Delivered: Config was the first usable source in live preflight. One bounded
+read-only adapter and server-owned sync now feed Compliance Agent through the
+retained zero-tool Harness path. Provenance, timestamps and source health are
+visible in the existing UI and exports. See `PLATFORM_PHASE2_PROOF.md`.
 
 Codex completes M1-M5 as one cohesive 2-3 hour worker session. Use focused checks during implementation, then one final validation/Git batch and one push by default. Use Issue #11 / PR #12 as the durable handoff; Amit should not copy/paste worker state.

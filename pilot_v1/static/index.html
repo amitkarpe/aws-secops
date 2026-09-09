@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AWS SecOps Platform Phase 1</title>
+  <title>AWS SecOps — live Config findings</title>
   <style>
     :root { color-scheme: dark; --bg:#07111f; --panel:#101d30; --line:#29405d; --text:#eef6ff; --muted:#9bb0c8; --cyan:#4cc9f0; --green:#44d492; --amber:#ffbd59; --red:#ff6b6b; }
     * { box-sizing:border-box; }
@@ -49,7 +49,7 @@
 <body>
 <main>
   <header>
-    <div><div class="eyebrow">Amazon Bedrock AgentCore</div><h1>AWS SecOps Platform Phase 1</h1><div class="muted">Multi-source evidence. Deterministic specialist routing. Governed exact action.</div></div>
+    <div><div class="eyebrow">Amazon Bedrock AgentCore</div><h1>AWS SecOps — live Config findings</h1><div class="muted">Provider evidence, specialist explanation, and a shared action plan.</div></div>
     <div class="badge">Single-user personal lab</div>
   </header>
   <section class="grid">
@@ -60,13 +60,14 @@
       <div class="actions">
         <button id="check">1. Check real SG</button>
         <button id="check-s3">Read S3 assessment</button>
+        <button id="sync-provider">Sync AWS Config</button>
         <button id="reject" class="secondary">2A. Reject</button>
         <button id="approve" class="approve">2B. Approve DEV</button>
         <button id="deny" class="deny">Policy DENY test</button>
       </div>
     </div>
     <div class="card">
-      <div class="label">Provider finding</div>
+      <div class="label">Selected finding</div>
       <dl>
         <dt>Resource</dt><dd id="resource">—</dd>
         <dt>Control</dt><dd id="control">—</dd>
@@ -74,9 +75,17 @@
         <dt>Evidence</dt><dd id="source">—</dd>
         <dt>Specialist</dt><dd id="specialist">—</dd>
         <dt>Eligibility</dt><dd id="eligibility">—</dd>
+        <dt>Provenance</dt><dd id="provenance">—</dd>
+        <dt>Observed</dt><dd id="observed">—</dd>
       </dl>
       <div id="controls" class="audit"></div>
     </div>
+  </section>
+  <section class="card audit">
+    <h2>AWS Config source health</h2>
+    <div id="source-health">NOT_SYNCED</div>
+    <div id="source-freshness" class="muted">No sync performed in this session.</div>
+    <p class="muted">Sync reads existing noncompliant evaluations, up to 10 rules and 100 findings. Evaluation time can be older than sync time. Config does not supply severity; INFO means unspecified. Results are PLAN_ONLY.</p>
   </section>
   <section class="card audit">
     <div class="label">Bounded source intake</div>
@@ -106,7 +115,7 @@
       <div><b>By eligibility</b><div id="eligibility-groups" class="group-list"></div></div>
     </div>
     <table>
-      <thead><tr><th>Priority</th><th>Source</th><th>Specialist</th><th>Resource</th><th>Eligibility</th><th>Control</th></tr></thead>
+      <thead><tr><th>Priority / status</th><th>Source / provenance</th><th>Specialist</th><th>Resource</th><th>Eligibility</th><th>Control / observed</th></tr></thead>
       <tbody id="priority-findings"></tbody>
     </table>
     <div class="actions">
@@ -130,6 +139,7 @@ let current={stage:'READY',workflow:null};
 function controls(on){
   document.getElementById('check').disabled=on;
   document.getElementById('check-s3').disabled=on;
+  document.getElementById('sync-provider').disabled=on;
   document.getElementById('import-source').disabled=on;
   const sgReady=current.workflow==='sg' && current.stage!=='COMPLETED';
   ['reject','approve','deny'].forEach(id=>document.getElementById(id).disabled=on||!sgReady);
@@ -145,6 +155,11 @@ function render(data){
   document.getElementById('source').textContent=f.source||'—';
   document.getElementById('specialist').textContent=f.specialist_route||(data.audit||{}).specialist_route||'—';
   document.getElementById('eligibility').textContent=f.action_eligibility||(data.audit||{}).action_eligibility||'—';
+  document.getElementById('provenance').textContent=f.evidence_origin||(data.workflow==='sg'||data.workflow==='s3'?'AWS_PROVIDER':'—');
+  document.getElementById('observed').textContent=f.observed_at||'—';
+  const health=data.source_status||{};
+  document.getElementById('source-health').textContent=`${health.status||'NOT_SYNCED'}${health.count===undefined?'':` — ${health.count} findings`}${health.error?` — ${health.error}`:''}`;
+  document.getElementById('source-freshness').textContent=`Last successful sync: ${health.last_success||'never'} | Oldest evaluation: ${health.oldest_observation||'none'}`;
   const controlBox=document.getElementById('controls'); controlBox.replaceChildren();
   const providerRows=f.controls||(
     f.buckets_checked===undefined?[]:[
@@ -177,17 +192,18 @@ function render(data){
   renderGroups('specialist-groups',backlog.by_specialist);
   renderGroups('eligibility-groups',backlog.by_eligibility);
   const tbody=document.getElementById('priority-findings');tbody.replaceChildren();
-  (backlog.priority_findings||[]).forEach(finding=>{const row=document.createElement('tr');[finding.severity,finding.source,finding.specialist_route,finding.resource_name,finding.action_eligibility,finding.control].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;row.append(cell);});tbody.append(row);});
+  (backlog.priority_findings||[]).forEach(finding=>{const row=document.createElement('tr');[`${finding.severity} / ${finding.status}`,`${finding.source} / ${finding.evidence_origin}`,finding.specialist_route,finding.resource_name,finding.action_eligibility,`${finding.control} / ${finding.observed_at}`].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;row.append(cell);});tbody.append(row);});
   controls(false);
 }
 async function action(path, body={}){
   controls(true); document.getElementById('error').style.display='none';
   try { const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const data=await r.json(); if(!r.ok) throw new Error(data.error||'Request failed'); render(data); }
-  catch(e){ const box=document.getElementById('error'); box.textContent=e.message; box.style.display='block'; }
+  catch(e){ const box=document.getElementById('error'); box.textContent=e.message; box.style.display='block'; await fetch('/api/state').then(r=>r.json()).then(render); }
   finally { controls(false); }
 }
 document.getElementById('check').onclick=()=>action('/api/check');
 document.getElementById('check-s3').onclick=()=>action('/api/check-s3');
+document.getElementById('sync-provider').onclick=()=>action('/api/sync-provider');
 document.getElementById('reject').onclick=()=>action('/api/reject');
 document.getElementById('approve').onclick=()=>action('/api/approve',{environment:'dev'});
 document.getElementById('deny').onclick=()=>action('/api/approve',{environment:'prod'});
