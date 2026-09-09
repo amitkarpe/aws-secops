@@ -21,7 +21,7 @@ used for the numeric Nova baseline in the cost model.
 
 | Candidate | Model ID | Inference route | Authorization | Entitlement | Region | Agreement | Conclusion |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Amazon Nova 2 Lite | `amazon.nova-2-lite-v1:0` | `global.amazon.nova-2-lite-v1:0` | Authorized | Available | Available | Available | **LIVE Harness model call PASS; requested final text BLOCKED** |
+| Amazon Nova 2 Lite | `amazon.nova-2-lite-v1:0` | `global.amazon.nova-2-lite-v1:0` | Authorized | Available | Available | Available | **LIVE Harness text response PASS with zero tools** |
 | Amazon Nova Pro | `amazon.nova-pro-v1:0` | `apac.amazon.nova-pro-v1:0` | Authorized | Available | Available | Available | **PASS candidate** |
 | Anthropic Claude Sonnet 4.6 | `anthropic.claude-sonnet-4-6` | `global.anthropic.claude-sonnet-4-6` | Authorized | Available | Available | Not available | **BLOCKED pending one runtime probe / agreement clarification** |
 
@@ -52,9 +52,10 @@ Harness's default `file_operations` tool and the one-iteration cap then stopped
 before a final assistant message. See
 [`HARNESS_NOVA2_LITE_LIVE_PROOF.md`](HARNESS_NOVA2_LITE_LIVE_PROOF.md).
 
-This changes Nova 2 Lite from “control-plane candidate” to **live model-call
-proof**, but the requested end-to-end response remains BLOCKED pending one
-corrected tool-allowlist invocation.
+Phase 0B.2a then set `allowedTools=[]` and performed exactly one additional
+Harness invocation. Nova returned `HARNESS_TEXT_OK` with 65 input tokens, 8
+output tokens, an `end_turn` stop and zero tool calls. Nova 2 Lite now has live
+end-to-end Harness text-response proof.
 
 Read-only comparison also found a broader model catalog in Sydney than
 Singapore (70 versus 31 catalog entries at the time of checking). Nova 2 Lite

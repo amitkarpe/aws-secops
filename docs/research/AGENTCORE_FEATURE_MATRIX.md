@@ -40,6 +40,13 @@ transient failure. It is therefore a capacity/cost guard, not the hard policy
 control. Authorization remains the job of AgentCore Policy and the exact tool's
 own IAM and input validation.
 
+Harness provides the built-in `shell` and `file_operations` tools by default.
+Omitting `allowedTools` allows all available tools; a plain-text specialist
+agent must set an explicit empty allowlist. This only restricts model tool
+selection. Direct commands require the separate
+`bedrock-agentcore:InvokeAgentRuntimeCommand` permission, which should remain
+absent unless the product explicitly needs that API.
+
 ## Recommended Friday architecture
 
 ```text
@@ -77,3 +84,4 @@ AWS service API -- provider truth and verification
 - [Step Functions integration with AgentCore Harness](https://docs.aws.amazon.com/step-functions/latest/dg/connect-bedrockagentcore.html)
 - [AWS Agent Registry regional launch information](https://aws.amazon.com/about-aws/whats-new/2026/08/aws-agent-registry-generally-available/)
 - [AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/)
+- [Harness tools and tool isolation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-tools.html)

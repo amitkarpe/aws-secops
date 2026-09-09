@@ -1,7 +1,6 @@
 # Phase 0B.2 — Nova 2 Lite through AgentCore Harness
 
-Status: **BLOCKED** for the requested final text response; live Harness model
-call **PASS**
+Status: Phase 0B.2 initial call **BLOCKED**; Phase 0B.2a least-tool call **PASS**
 
 Date: 2026-09-09
 
@@ -72,6 +71,42 @@ No retry was made because the experiment contract permitted exactly one
 invocation. A successful transport response is not presented as successful
 task completion.
 
+## Phase 0B.2a — explicit zero-tool proof
+
+AWS documents that omitted `allowedTools` allows every available tool and that
+an explicitly supplied list replaces the existing value. The retained Harness
+was updated with an empty list. Readback reached `READY` and showed:
+
+```text
+configured tools: 0
+allowedTools: []
+```
+
+Exactly one additional invocation was then made with the globally installed,
+stable AgentCore CLI:
+
+```text
+CLI version: 0.28.1
+prompt: Reply with exactly: HARNESS_TEXT_OK
+response stream: HARNESS_TEXT_OK
+tool calls: 0
+stop reason: end_turn
+input tokens: 65
+output tokens: 8
+model latency: 1,888 ms
+end-to-end wall time, including cold start: 45,652 ms
+```
+
+This is a PASS. Neither `shell`, `file_operations` nor another tool appeared in
+the stream. The CLI's summary envelope contained an empty text field, but the
+native content delta contained the exact requested marker; acceptance uses the
+stream where Harness delivers its response.
+
+The retained execution role's inline policy was also read back. It does **not**
+grant `bedrock-agentcore:InvokeAgentRuntimeCommand`. This is intentionally
+separate from `allowedTools`: the allowlist controls model tool selection,
+whereas direct Runtime command execution is governed by its own IAM action.
+
 ## Proof that this used Harness
 
 - The resource was created and reached `READY` through `CreateHarness` and
@@ -88,9 +123,10 @@ task completion.
   did not expose a separate data event through Event History.
 
 AWS CLI v2.36.41 exposes the Harness control-plane commands but not an
-`invoke-harness` command. AgentCore CLI v1.0.0-preview.29 was therefore used for
-the native Harness data-plane call by ARN. It was downloaded outside the
-repository and did not add a project dependency.
+`invoke-harness` command. AgentCore CLI v1.0.0-preview.29 was used for the
+initial call. After the official stable CLI was installed globally, Phase
+0B.2a used AgentCore CLI v0.28.1. Both invoked the native Harness data plane by
+Harness ARN and added no project dependency.
 
 ## Cost and billing dimensions
 
@@ -108,6 +144,19 @@ actual CPU and peak memory per second, and CloudWatch bills telemetry ingestion
 and storage; those quantities were not present in the invocation response, so
 no unsupported total is invented. No Gateway, Policy or Lambda charge occurred.
 
+The Phase 0B.2a least-tool call cost was:
+
+```text
+input  = 65 / 1,000,000 × $0.41 = $0.00002665
+output =  8 / 1,000,000 × $3.39 = $0.00002712
+model total                     = $0.00005377
+```
+
+The explicit empty allowlist reduced input usage from 1,243 to 65 tokens for
+these tiny prompts by removing default tool definitions and the failed tool
+turn. Across both experiments, measurable model inference was approximately
+**$0.00074646**.
+
 ## AWS mutations and retained state
 
 Mutations performed:
@@ -116,15 +165,18 @@ Mutations performed:
 2. attached one dedicated inline execution policy;
 3. created one AgentCore Harness and its AWS-managed underlying Runtime;
 4. performed one Harness invocation, which created one ephemeral session file.
+5. updated the retained Harness from `allowedTools=["*"]` to `allowedTools=[]`;
+6. performed one additional zero-tool Harness invocation and explicitly stopped
+   its Runtime session after receiving the final response.
 
 Readback after the invocation:
 
 | Retained resource | State | Why retained | Idle billing |
 | --- | --- | --- | --- |
-| Harness | `READY` | Reuse for the one corrected follow-up | No separate Harness charge |
+| Harness | `READY`, `allowedTools=[]` | Reuse for Phase 0B.3 | No separate Harness charge |
 | Managed underlying Runtime | present | Owned by the retained Harness | Active session consumption only |
 | Execution role + inline policy | present | Required by the retained Harness | No IAM charge |
-| Runtime log group | present | Native audit evidence for the next check | CloudWatch storage at actual bytes |
+| Runtime log group | present, 24 streams | Native audit evidence for the next check | CloudWatch storage at actual bytes |
 | Memory | disabled / absent | Not needed | none |
 | Active invocation session | terminated | Invocation hit its terminal stop | none |
 
@@ -135,16 +187,15 @@ resource IDs and ARNs remain in private evidence rather than this public file.
 
 ## Single recommended next experiment
 
-Update only the retained Harness so readback shows an empty explicit tool
-allowlist instead of `["*"]`, then perform one new tiny invocation with the same
-prompt and verify a non-empty final assistant response. If the API cannot
-represent an empty allowlist, use the narrowest non-callable allowlist supported
-by AWS and document that product constraint. Do not add Gateway or Policy until
-the basic Harness response passes.
+Proceed to Phase 0B.3 with the retained Harness: attach one exact AgentCore
+Gateway tool backed by one harmless Lambda, then prove Policy ALLOW invokes it
+once and Policy DENY leaves the Lambda invocation count unchanged. Keep
+`shell`, `file_operations` and direct `InvokeAgentRuntimeCommand` unavailable.
 
 ## Official sources
 
 - [Harness models and invocation overrides](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-models.html)
+- [Harness tools and `allowedTools`](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-tools.html)
 - [Harness security and execution role](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-security.html)
 - [Harness observability and cost controls](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/harness-operations.html)
 - [AgentCore CLI reference](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-cli-reference.html)
