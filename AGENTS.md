@@ -4,28 +4,41 @@
 
 1. `AGENTS.md`
 2. `CONTEXT.md`
-3. `SPEC.md` when work changes a trusted contract, release, environment, or
-   external system.
+3. `SPEC.md`
+4. `docs/ARCHITECTURE.md` when architecture/AWS behavior changes.
 
-## Rules
+## Core Rules
 
-- Follow KISS: one problem, one happy path, one command, one proof, one result.
-- Preserve existing work. Do not revert unrelated changes or use destructive
-  Git commands without explicit approval.
-- Keep durable code, decisions, and reports in Git. Do not put secrets,
-  credentials, large dependencies, or copied repositories in temporary paths.
-- Create a temporary directory or worktree only when isolation is needed.
-  A terminal result or `.done` marker alone never authorizes deletion. Remove
-  an exact worktree or temporary directory only with owner/controller
-  acceptance and explicit cleanup authority; preserve work that is active,
-  held, dirty, or unknown.
-- Update `CONTEXT.md` when current truth or the next action changes.
-- Keep `SPEC.md` small. A worker proceeds inside an approved SPEC and stops on
-  a safety, scope, authorization, or evidence failure.
+- Follow KISS: one useful milestone, one happy path, proportional proof.
+- Preserve existing work; do not revert unrelated changes.
+- Keep durable code/decisions in Git. Never commit credentials, tokens, session data, private keys, private endpoints, personal/company account IDs/ARNs, or raw private evidence.
+- This repository is public. Real non-secret AWS identifiers may appear in the private runtime/demo, but environment-specific identifiers stay outside committed source.
+- Update `CONTEXT.md` when current truth or next action changes.
+- An approved Issue/SPEC authorizes the normal narrowly scoped AWS/IAM/configuration/deployment/restart/validation work required for that milestone. Stop only on a real safety/scope/identity/account/Region/external-impact expansion.
+
+## AWS / AgentCore
+
+- Live control plane target: `ap-southeast-1`.
+- Product workloads run in an approved Organizations member dev/sandbox or security-tooling account, **not** the Organizations management account.
+- Never use a company/production account unless a later milestone explicitly authorizes it.
+- Development/bootstrap may use interactive AWS access; deployed workloads use workload IAM and cross-account STS where required.
+- Actual read/remediation tools must sit behind MCP AgentCore Gateway + Policy. Do not create a generic AWS write shell/API tool.
+- Account, Region, role and allowed-action routing are server-owned/allowlisted, not model-selected.
+- Prefer provider truth and provider re-read over custom scanners or inferred state.
+
+## AWS CLI First
+
+- For simple AWS reads, setup, verification, or one-off changes, use direct AWS CLI first.
+- Prefer `--query`, `--output`, shell variables and command substitution; use `jq` only when needed.
+- Do not add Python/SDK/shell wrappers around a few simple CLI commands.
+- Application/IaC code is appropriate for reusable runtime behavior, exact tools, policies, tests and non-trivial processing.
+
+## Validation
+
+- Use focused tests for changed behavior.
+- Prove live claims proportionally; do not add a new framework merely to collect evidence.
+- Report provider evidence and the ALLOW/DENY/mutation result without committing private environment values.
 
 ## Global Guidance
 
-When available, use `~/.agent/CORE.md` as the shared machine-wide operating
-contract. `~/.codex/AGENTS.md` is a Codex-specific adapter only. Agent OS is
-reusable guidance, never automatic project authority; local repository rules
-and approved SPECs remain authoritative.
+When available, use `~/.agent/CORE.md` as shared machine-wide guidance. Agent OS is reusable guidance, never automatic project authority; this repository and its approved Issues/SPECs are authoritative.
