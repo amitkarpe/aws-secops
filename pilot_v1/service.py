@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
+from .backlog import FindingBacklog
 from .config import PilotConfig
+from .findings import normalize_s3, normalize_sg
 from .gateway import call_tool, result_text
 from .harness import invoke
 from .workflow import approve_remediation, reject_remediation
@@ -28,6 +30,7 @@ class PilotService:
         self.profile = profile
         self.harness_call = harness_call
         self.gateway_call = gateway_call
+        self.findings = FindingBacklog()
         self.state: dict[str, Any] = {
             "stage": "READY",
             "workflow": None,
@@ -35,7 +38,14 @@ class PilotService:
             "finding": None,
             "explanation": None,
             "audit": None,
+            "backlog": self.findings.summary(),
         }
+
+    def _refresh_backlog(self) -> None:
+        self.state["backlog"] = self.findings.summary()
+
+    def backlog(self) -> dict[str, Any]:
+        return self.findings.summary()
 
     def _call_gateway(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return self.gateway_call(
@@ -69,6 +79,7 @@ class PilotService:
         finding = result["tool_results"][0]
         if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"}:
             raise RuntimeError("Harness tool result did not contain provider status")
+        self.findings.upsert([normalize_sg(finding)])
         self.state = {
             "stage": "FINDING",
             "workflow": "sg",
@@ -84,6 +95,7 @@ class PilotService:
                 "provider_verification": finding["status"],
                 "changed": False,
             },
+            "backlog": self.findings.summary(),
         }
         return self.state
 
@@ -100,6 +112,7 @@ class PilotService:
         finding = result["tool_results"][0]
         if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"} or len(finding.get("controls", [])) != 5:
             raise RuntimeError("Harness S3 result did not contain five provider controls")
+        self.findings.upsert(normalize_s3(finding))
         self.state = {
             "stage": "S3_BASELINE",
             "workflow": "s3",
@@ -115,6 +128,7 @@ class PilotService:
                 "provider_verification": finding["status"],
                 "changed": False,
             },
+            "backlog": self.findings.summary(),
         }
         return self.state
 
@@ -136,6 +150,8 @@ class PilotService:
             provider_verification=verification["status"],
             changed=False,
         )
+        self.findings.upsert([normalize_sg(verification)])
+        self._refresh_backlog()
         return self.state
 
     def approve(self, environment: str) -> dict[str, Any]:
@@ -171,4 +187,6 @@ class PilotService:
             provider_verification=verification["status"],
             changed=decision["changed"],
         )
+        self.findings.upsert([normalize_sg(verification)])
+        self._refresh_backlog()
         return self.state

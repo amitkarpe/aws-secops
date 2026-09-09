@@ -53,6 +53,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/api/state":
             self._json(200, self.service.state)
+        elif self.path == "/api/backlog":
+            self._json(200, self.service.backlog())
         else:
             self._json(404, {"error": "not found"})
 

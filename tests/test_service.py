@@ -75,12 +75,16 @@ class ServiceTest(unittest.TestCase):
 
     def test_s3_baseline_is_read_only_and_cannot_enable_sg_approval(self):
         s3_finding = {
+            "resource_id": "pilot-bucket",
             "resource_name": "pilot-bucket",
             "control": "five-control S3 baseline",
             "status": "COMPLIANT",
             "source": "AWS S3 control-plane APIs",
             "recommendation": "No action required.",
-            "controls": [{"name": str(i), "status": "PASS"} for i in range(5)],
+            "controls": [
+                {"name": str(i), "status": "PASS", "evidence": "provider pass"}
+                for i in range(5)
+            ],
         }
 
         def s3_harness(config, prompt):

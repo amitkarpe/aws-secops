@@ -42,3 +42,15 @@ rejects missing/unknown fields and unsupported status/severity/environment
 values, and accepts the public-safe samples under `examples/`. The source names
 in those samples illustrate future mapping only; no VAPT, CloudSCAPE, Config,
 Inspector, or Security Hub integration was added.
+
+## M3 — Management compliance backlog: PASS
+
+The same bounded common findings now feed a deterministic backlog summary and
+the single-user UI. The screen shows total open findings, high/critical count,
+bounded finding count, source and resource-type groupings, the ten highest
+priority/oldest open findings, and one recommended focus derived from the top
+record. No model calculates or changes these management values.
+
+Provider rechecks upsert the same SG/control record, so successful remediation
+closes the open finding instead of creating a duplicate. The summary is also
+available from `GET /api/backlog` for a small API-first check.
