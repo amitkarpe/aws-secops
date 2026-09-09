@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1.1 / Issue #7 — M1 PASS; M2–M5 in progress
+Status: Pilot v1.1 / Issue #7 — M1–M2 PASS; M3–M5 in progress
 
 ## Current Truth
 
@@ -12,7 +12,9 @@ Status: Pilot v1.1 / Issue #7 — M1 PASS; M2–M5 in progress
 - M1 added one repo-owned live smoke command and proved SG finding, Reject
   no-change, synthetic Policy DENY no-change, DEV ALLOW with provider
   COMPLIANT, read-only S3, and final SG reset to NON_COMPLIANT.
+- M2 added one common SG/S3 finding contract plus bounded deterministic JSON
+  and CSV import with public-safe samples; no new live source integration.
 
 ## Next Action
 
-- Implement M2 common findings and bounded sanitized import in PR #8.
+- Implement the M3 management backlog view in PR #8.

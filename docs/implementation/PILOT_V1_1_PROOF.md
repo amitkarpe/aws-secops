@@ -29,3 +29,16 @@ One live run proved:
   `NON_COMPLIANT`.
 
 The command ended with `PILOT_V1_1_SMOKE=PASS` and left zero local listener.
+
+## M2 — Common finding contract: PASS
+
+`pilot_v1.findings` defines one bounded provider-neutral contract used by the
+existing Security Group and S3 results. It includes provider/source,
+resource type and identity, environment, control, severity, status, evidence,
+recommendation, and observation time, plus optional owner and target fields.
+
+The import path accepts JSON or CSV, caps a file at 256 KB and 100 findings,
+rejects missing/unknown fields and unsupported status/severity/environment
+values, and accepts the public-safe samples under `examples/`. The source names
+in those samples illustrate future mapping only; no VAPT, CloudSCAPE, Config,
+Inspector, or Security Hub integration was added.
