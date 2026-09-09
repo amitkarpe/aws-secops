@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1.1 / Issue #7 — M1–M5 PASS; final validation in progress
+Status: Pilot v1.1 / Issue #7 — M1–M5 PASS; ready for review
 
 ## Current Truth
 
@@ -21,7 +21,10 @@ Status: Pilot v1.1 / Issue #7 — M1–M5 PASS; final validation in progress
   mutations; the caller/model cannot select buckets.
 - M5 added CSV and Markdown reduction-plan exports from the same bounded open
   findings used by the UI; no second reporting store or AWS write was added.
+- Final acceptance passed 26 deterministic tests, one live end-to-end API
+  smoke, provider readback, public-safety review, and one headless browser
+  smoke of the management screen.
 
 ## Next Action
 
-- Run final checks, one browser smoke, public-safety review, and PR handoff.
+- Review PR #8 and merge only after the actual diff/evidence is accepted.

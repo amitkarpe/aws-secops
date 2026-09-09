@@ -95,3 +95,18 @@ The single-user page exposes two read-only downloads:
 The live API smoke verifies both exports contain the provider-backed S3
 versioning exception. The existing exact Security Group remediation remains
 the only AWS write action in the Pilot.
+
+## Final acceptance: PASS
+
+- deterministic suite: 26 tests;
+- live API smoke: SG finding, Reject, Policy DENY, DEV ALLOW/provider
+  verification, S3 assessment, backlog, CSV export, Markdown export;
+- final SG state: `NON_COMPLIANT`, zero attachments, ready for the next demo;
+- final S3 state: two empty allowlisted buckets, 10 controls, one intentional
+  versioning exception, zero assessment mutation;
+- one headless browser smoke: management backlog and both export controls
+  visible at `http://localhost:3340/`;
+- public-safety and `git diff --check`: PASS.
+
+The private browser screenshot and deployment/readback evidence remain under
+`/home/user/.AGENTS-temp/aws-secops/` and are not committed.
