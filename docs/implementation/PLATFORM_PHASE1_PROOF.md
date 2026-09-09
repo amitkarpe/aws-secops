@@ -22,9 +22,29 @@ Two public-safe fixtures prove the explicit mappings:
 | CloudSCAPE-style | JSON compliance record | Compliance Agent | PLAN_ONLY |
 | VAPT-style | CSV vulnerability record | Vulnerability Agent | PLAN_ONLY |
 
-Both records join the same bounded backlog. Grounded explanations quote the
-normalized source, resource, status, control, and recommendation; no model
-chooses the specialist route.
+Both records join the same bounded backlog. Server-owned routing selects one
+of two distinct system instructions and invokes Nova 2 Lite through the
+retained AgentCore Harness once per import batch. Imported JSON is explicitly
+untrusted evidence. The response appears in the existing Agent explanation.
+
+Each invocation overrides allowed tools with the exact nonmatching name
+`__pilot_explanation_no_tools__`; the CLI omits an empty-string allowlist.
+This exposes no built-in or registered MCP tools. Any returned tool-use event
+or tool result fails the import before backlog/state publication. Resources,
+IAM, and the retained Harness configuration are unchanged.
+
+Correction validation command:
+
+```bash
+AWS_PROFILE=amit AWS_REGION=ap-southeast-1 ./scripts/pilot-v1.sh specialist-smoke
+```
+
+Two live invocations passed: Compliance Agent explained the synthetic
+CloudSCAPE retention control and configuration review; Vulnerability Agent
+explained VAPT-DEMO-0001 and a package upgrade/validation plan. Both named their
+source, returned zero tool calls, remained PLAN_ONLY, and made no claim of
+completed remediation. The real HTTP approval attempt returned 400. Result:
+`PLATFORM_SPECIALIST_SMOKE=PASS`. No AWS infrastructure mutation occurred.
 
 ## M4 — Eligibility and governed action: PASS
 
@@ -53,12 +73,16 @@ the same deterministic finding objects as CSV and Markdown exports.
 
 Final validation:
 
-- 29 deterministic tests: PASS;
+- 31 deterministic tests after the specialist correction: PASS;
 - live API/provider sequence: CloudSCAPE import, VAPT import, plan-only block,
   SG finding, Reject, Policy DENY, DEV ALLOW, S3 read, backlog, export: PASS;
 - retained demo SG after reset: `NON_COMPLIANT`, zero attachments;
 - headless browser-visible smoke at `http://localhost:3340/`: PASS;
 - public-safety review and `git diff --check`: PASS.
+
+The correction used the two-invocation API smoke above. The earlier full SG
+and browser proofs cover the unchanged action path and layout; they were not
+repeated for this explanation-only change.
 
 Private browser and live-service evidence remains under
 `/home/user/.AGENTS-temp/aws-secops/platform-phase1/` and is not committed.

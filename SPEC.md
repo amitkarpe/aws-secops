@@ -32,6 +32,9 @@ eligibility, and the shared operations view/export.
   verification or authorization to mutate.
 - Route specialist work deterministically on the server; do not let a model
   select an arbitrary agent or tool.
+- Imported explanations use distinct server-owned specialist instructions via
+  the retained Nova 2 Lite Harness, with zero effective tools and rejection of
+  any attempted tool call.
 - Keep the provider-backed exact public-SSH Security Group finding as the only
   `REMEDIATION_SUPPORTED` record.
 

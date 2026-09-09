@@ -102,7 +102,9 @@ The existing exact SG mutation boundary must remain unchanged.
 - M2: explicit CloudSCAPE-style and VAPT-style adapters accept only their
   public-safe synthetic schemas and reject missing, extra, or unsupported data.
 - M3: server-owned routing sends compliance/configuration evidence to
-  `Compliance Agent` and VAPT evidence to `Vulnerability Agent`.
+  `Compliance Agent` and VAPT evidence to `Vulnerability Agent`. Each runs its
+  own system instruction through the retained Nova 2 Lite Harness with zero
+  effective tools; the returned AI explanation is shown in the UI.
 - M4: imported evidence is always `PLAN_ONLY`; only the provider-backed exact
   public-SSH Security Group finding is `REMEDIATION_SUPPORTED`.
 - M5: the common backlog and CSV/Markdown exports show source, specialist, and

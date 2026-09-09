@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import threading
 import urllib.request
 import urllib.error
@@ -70,7 +71,7 @@ def _expect(value: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
-def run() -> None:
+def run(*, specialists_only: bool = False) -> None:
     Handler.service = PilotService(PilotConfig.from_env())
     server = HTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -96,6 +97,18 @@ def run() -> None:
             "VAPT finding was not routed into the shared backlog",
         )
         _expect_http_error(url, "/api/approve", {"environment": "dev"}, 400)
+        for state, source in [(compliance, "CloudSCAPE"), (vulnerability, "VAPT")]:
+            _expect(
+                state["audit"].get("explanation_tool_calls") == 0
+                and state["audit"]["provider_verification"] == "NOT_PERFORMED"
+                and source.lower() in state["explanation"].lower(),
+                "specialist explanation lacked source grounding or zero-tool proof",
+            )
+            print(f"SPECIALIST={state['audit']['specialist_route']} TOOL_CALLS=0 ELIGIBILITY=PLAN_ONLY")
+            print(f"EXPLANATION={state['explanation']}")
+        if specialists_only:
+            print("PLATFORM_SPECIALIST_SMOKE=PASS")
+            return
 
         finding = _request(url, "/api/check", {})
         _expect(
@@ -162,7 +175,9 @@ def run() -> None:
 
 
 def main() -> int:
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--specialists-only", action="store_true")
+    run(specialists_only=parser.parse_args().specialists_only)
     return 0
 
 

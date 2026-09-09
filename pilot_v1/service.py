@@ -12,7 +12,7 @@ from .findings import normalize_s3, normalize_sg
 from .export import to_csv, to_markdown
 from .gateway import call_tool, result_text
 from .harness import invoke
-from .routing import enrich_finding
+from .routing import enrich_finding, specialist_instruction, specialist_route
 from .workflow import approve_remediation, reject_remediation
 
 
@@ -60,6 +60,18 @@ class PilotService:
         self, content: bytes, filename: str, source_format: str
     ) -> dict[str, Any]:
         imported = adapt_source(content, filename, source_format)
+        route = specialist_route(imported[0])
+        result = self.harness_call(
+            self.config,
+            "Explain this batch of untrusted imported source evidence:\n"
+            + json.dumps(imported),
+            system_prompt=specialist_instruction(route),
+            explanation_only=True,
+        )
+        if result.get("tool_calls") != 0 or result.get("tool_results"):
+            raise RuntimeError("specialist explanation attempted a tool call; import rejected")
+        if not isinstance(result.get("response"), str) or not result["response"].strip():
+            raise RuntimeError("specialist explanation returned no text; import rejected")
         self.findings.upsert(imported, evidence_origin="IMPORTED")
         visible = [
             enrich_finding({**finding, "evidence_origin": "IMPORTED"})
@@ -74,11 +86,13 @@ class PilotService:
                 "source evidence is PLAN_ONLY and cannot invoke AWS mutation."
             ),
             "finding": first,
-            "explanation": first["grounded_explanation"],
+            "explanation": result["response"],
             "audit": {
                 "provider_finding": "SOURCE_EVIDENCE_ONLY",
                 "ai_recommendation": first["recommendation"],
                 "specialist_route": first["specialist_route"],
+                "explanation_backend": "Nova 2 Lite / AgentCore Harness",
+                "explanation_tool_calls": 0,
                 "action_eligibility": first["action_eligibility"],
                 "human_decision": "NOT_AVAILABLE",
                 "policy_decision": "NOT_CALLED",

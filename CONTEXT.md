@@ -41,4 +41,9 @@ Status: Platform Phase 1 / Issue #9 — M1–M5 PASS; ready for review
 
 ## Next Action
 
+- PR #10 review correction: imported findings now execute distinct Compliance
+  and Vulnerability system instructions through Nova 2 Lite / retained Harness.
+  Two live API imports passed with zero tool calls, PLAN_ONLY and approval
+  rejection. The focused correction made no AWS infrastructure changes.
+
 - Review PR #10 and merge only after the actual diff/evidence is accepted.
