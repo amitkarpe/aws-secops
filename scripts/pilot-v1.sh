@@ -62,6 +62,11 @@ rearm_sg() {
 }
 
 serve() {
+  export_pilot_config
+  python3 -m pilot_v1.server --host 127.0.0.1 --port "$PILOT_PORT"
+}
+
+export_pilot_config() {
   export AWS_PROFILE="$AWS_PROFILE_NAME"
   export AWS_REGION="$AWS_REGION_NAME"
   export PILOT_HARNESS_ARN="$(state_value harnessArn)"
@@ -69,11 +74,25 @@ serve() {
   export PILOT_SG_READ_TOOL="$(state_value readToolName)"
   export PILOT_SG_REMEDIATE_TOOL="$(state_value remediationToolName)"
   export PILOT_S3_READ_TOOL="$(state_value s3ToolName)"
-  python3 -m pilot_v1.server --host 127.0.0.1 --port "$PILOT_PORT"
+}
+
+smoke() {
+  local result=0
+  preflight
+  rearm_sg >/dev/null
+  export_pilot_config
+  python3 -m pilot_v1.smoke || result=$?
+  rearm_sg || result=$?
+  if [[ "$result" == "0" ]]; then
+    echo "PILOT_V1_1_SMOKE=PASS"
+  else
+    echo "PILOT_V1_1_SMOKE=BLOCKED" >&2
+  fi
+  return "$result"
 }
 
 usage() {
-  echo "Usage: $0 {status|rearm-sg|serve}"
+  echo "Usage: $0 {status|rearm-sg|serve|smoke}"
 }
 
 case "${1:-}" in
@@ -88,6 +107,9 @@ case "${1:-}" in
   serve)
     preflight
     serve
+    ;;
+  smoke)
+    smoke
     ;;
   *)
     usage >&2
