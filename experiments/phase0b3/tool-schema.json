@@ -1,0 +1,37 @@
+[
+  {
+    "name": "check_demo_scope",
+    "description": "Return a harmless marker for the synthetic dev environment. Never changes AWS resources.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Synthetic environment label: dev is allowed and prod is denied by Gateway Policy."
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "result",
+        "environment",
+        "effect"
+      ]
+    }
+  }
+]
