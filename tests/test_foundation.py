@@ -42,6 +42,20 @@ class FoundationTest(unittest.TestCase):
         self.assertIn("--harness-arn", command)
         self.assertNotIn("--tools", command)
 
+    @patch("pilot_v1.harness.subprocess.run")
+    def test_harness_wrapper_uses_verbose_text_deltas_when_summary_is_empty(self, run):
+        run.return_value.returncode = 0
+        run.return_value.stderr = ""
+        run.return_value.stdout = "\n".join(
+            [
+                json.dumps({"delta": {"text": "STATUS: "}}),
+                json.dumps({"delta": {"text": "NON_COMPLIANT"}}),
+                json.dumps({"success": True, "response": '{"text":""}'}),
+            ]
+        )
+        config = PilotConfig(DEFAULT_REGION, DEFAULT_MODEL_ID, "arn:test", "", "", "", "")
+        self.assertEqual(invoke(config, "test")["response"], "STATUS: NON_COMPLIANT")
+
 
 if __name__ == "__main__":
     unittest.main()

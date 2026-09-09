@@ -1,0 +1,37 @@
+[
+  {
+    "name": "check_security_group",
+    "description": "Read the fixed Pilot v1 demo Security Group in the dev lab and report whether public IPv4 SSH ingress exists. This tool never changes AWS.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Use dev for the fixed Pilot v1 personal-lab resource."
+        }
+      },
+      "required": ["environment"]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "resource_id": {"type": "string"},
+        "resource_name": {"type": "string"},
+        "control": {"type": "string"},
+        "status": {"type": "string"},
+        "source": {"type": "string"},
+        "recommendation": {"type": "string"},
+        "mutation": {"type": "string"}
+      },
+      "required": [
+        "resource_id",
+        "resource_name",
+        "control",
+        "status",
+        "source",
+        "recommendation",
+        "mutation"
+      ]
+    }
+  }
+]

@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1 / Issue #5 active — M1 PASS, M2 next
+Status: Pilot v1 / Issue #5 active — M1–M2 PASS, M3 next
 
 ## Current Truth
 
@@ -10,8 +10,12 @@ Status: Pilot v1 / Issue #5 active — M1 PASS, M2 next
 - Private resource identities and raw evidence remain outside this public repo.
 - M1 reset the retained Harness to zero tools and proved one exact Nova 2 Lite
   response with zero tool calls.
+- M2 created one unattached dedicated demo Security Group, exposed one exact
+  read tool, and proved a provider-grounded NON_COMPLIANT result with no
+  mutation.
 
 ## Next Action
 
-- Complete M2: deploy one exact provider-backed Security Group read tool, show
-  the dedicated demo Group as NON_COMPLIANT, and make no remediation.
+- Complete M3: add the exact remediation Lambda and Cedar permit, then prove
+  Reject and synthetic PROD make zero changes while DEV Approve revokes only
+  the fixed SSH rule once.

@@ -37,6 +37,7 @@ def invoke(config: PilotConfig, prompt: str, *, cli: str = "agentcore") -> dict[
         "--session-id",
         session_id,
         "--json",
+        "--verbose",
         "--prompt",
         prompt,
     ]
@@ -47,7 +48,16 @@ def invoke(config: PilotConfig, prompt: str, *, cli: str = "agentcore") -> dict[
     summary = next((event for event in reversed(events) if "success" in event), None)
     if not summary or summary.get("success") is not True:
         raise RuntimeError("AgentCore Harness returned no successful summary")
-    response = _response_text(summary.get("response"))
+    try:
+        response = _response_text(summary.get("response"))
+    except RuntimeError:
+        response = "".join(
+            event.get("delta", {}).get("text", "")
+            for event in events
+            if isinstance(event.get("delta", {}).get("text"), str)
+        ).strip()
+        if not response:
+            raise RuntimeError("AgentCore Harness returned no text response")
     return {
         "response": response,
         "tool_calls": sum(1 for event in events if event.get("start", {}).get("toolUse")),
