@@ -30,6 +30,7 @@ class PilotService:
         self.gateway_call = gateway_call
         self.state: dict[str, Any] = {
             "stage": "READY",
+            "workflow": None,
             "message": "Run the provider check to begin.",
             "finding": None,
             "explanation": None,
@@ -70,6 +71,7 @@ class PilotService:
             raise RuntimeError("Harness tool result did not contain provider status")
         self.state = {
             "stage": "FINDING",
+            "workflow": "sg",
             "message": "Provider check complete. Choose Reject or Approve.",
             "finding": finding,
             "explanation": result["response"],
@@ -85,9 +87,40 @@ class PilotService:
         }
         return self.state
 
+    def check_s3(self) -> dict[str, Any]:
+        if not self.config.s3_tool_name:
+            raise RuntimeError("the fixed S3 baseline tool is not configured")
+        result = self.harness_call(
+            self.config,
+            "Check the fixed dev demo S3 bucket across its five configured controls. "
+            "Summarize only the provider tool result and end with STATUS: COMPLIANT or STATUS: NON_COMPLIANT.",
+        )
+        if result["tool_calls"] != 1 or len(result["tool_results"]) != 1:
+            raise RuntimeError("Harness did not make exactly one S3 provider read")
+        finding = result["tool_results"][0]
+        if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"} or len(finding.get("controls", [])) != 5:
+            raise RuntimeError("Harness S3 result did not contain five provider controls")
+        self.state = {
+            "stage": "S3_BASELINE",
+            "workflow": "s3",
+            "message": "Read-only S3 baseline complete; no AWS change was made.",
+            "finding": finding,
+            "explanation": result["response"],
+            "audit": {
+                "provider_finding": finding["status"],
+                "ai_recommendation": finding["recommendation"],
+                "human_decision": "NOT_REQUIRED",
+                "policy_decision": "ALLOW",
+                "exact_tool": self.config.s3_tool_name,
+                "provider_verification": finding["status"],
+                "changed": False,
+            },
+        }
+        return self.state
+
     def reject(self) -> dict[str, Any]:
-        if not self.state.get("finding"):
-            raise RuntimeError("run the provider check first")
+        if self.state.get("workflow") != "sg":
+            raise RuntimeError("run the Security Group provider check first")
         decision = reject_remediation()
         verification = self._read_finding()
         self.state["stage"] = "REJECTED"
@@ -106,8 +139,8 @@ class PilotService:
         return self.state
 
     def approve(self, environment: str) -> dict[str, Any]:
-        if not self.state.get("finding"):
-            raise RuntimeError("run the provider check first")
+        if self.state.get("workflow") != "sg":
+            raise RuntimeError("run the Security Group provider check first")
 
         def gateway(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
             return self._call_gateway(tool_name, arguments)

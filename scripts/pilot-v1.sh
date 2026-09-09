@@ -68,6 +68,7 @@ serve() {
   export PILOT_GATEWAY_URL="$(state_value gatewayUrl)"
   export PILOT_SG_READ_TOOL="$(state_value readToolName)"
   export PILOT_SG_REMEDIATE_TOOL="$(state_value remediationToolName)"
+  export PILOT_S3_READ_TOOL="$(state_value s3ToolName)"
   python3 -m pilot_v1.server --host 127.0.0.1 --port "$PILOT_PORT"
 }
 

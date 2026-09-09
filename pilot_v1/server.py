@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from .config import PilotConfig
@@ -45,6 +45,8 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
             if self.path == "/api/check":
                 result = self.service.check()
+            elif self.path == "/api/check-s3":
+                result = self.service.check_s3()
             elif self.path == "/api/reject":
                 result = self.service.reject()
             elif self.path == "/api/approve":
@@ -65,7 +67,7 @@ def main() -> int:
     if args.host not in {"127.0.0.1", "localhost"}:
         parser.error("Pilot v1 binds to loopback only")
     Handler.service = PilotService(PilotConfig.from_env())
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    server = HTTPServer((args.host, args.port), Handler)
     print(f"PILOT_V1_URL=http://localhost:{server.server_port}/", flush=True)
     server.serve_forever()
     return 0

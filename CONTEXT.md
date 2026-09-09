@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1 / Issue #5 active — M1–M4 PASS, M5 next
+Status: Pilot v1 / Issue #5 — M1–M5 PASS, final validation next
 
 ## Current Truth
 
@@ -17,8 +17,10 @@ Status: Pilot v1 / Issue #5 active — M1–M4 PASS, M5 next
   the exact Lambda once and provider re-read returned COMPLIANT.
 - M4 added the dependency-free loopback manager UI and proved its real buttons
   show finding, Reject, native Policy DENY, DEV ALLOW, and provider verification.
+- M5 added a fixed-bucket, five-control S3 provider read through Harness and
+  Gateway plus the operator, retention, cost, status, and demo package.
 
 ## Next Action
 
-- Complete M5: add one provider-backed read-only S3 baseline and the practical
-  pilot runbook, retained-resource inventory, cost/cleanup notes, and demo script.
+- Run final deterministic/live/public-safety validation, post the M1–M5 handoff,
+  and mark PR #6 Ready without merging it.

@@ -30,6 +30,7 @@
     .audit { margin-top:18px; }
     .audit-row { display:grid; grid-template-columns:28px 180px 1fr; gap:10px; padding:11px 0; border-top:1px solid var(--line); }
     .audit-row span:first-child { color:var(--cyan); font-weight:900; }
+    #controls .audit-row { grid-template-columns:145px 1fr; font-size:13px; }
     pre { white-space:pre-wrap; margin:0; font:14px/1.55 ui-monospace,monospace; color:#d8e9fb; }
     #error { display:none; color:#ffd0d0; border-color:#843d49; margin-top:18px; }
     @media(max-width:800px){ .grid{grid-template-columns:1fr} header{align-items:start;flex-direction:column} dl{grid-template-columns:1fr}.audit-row{grid-template-columns:28px 1fr}.audit-row b{grid-column:2} }
@@ -48,6 +49,7 @@
       <div id="message" class="muted">Run the provider check to begin.</div>
       <div class="actions">
         <button id="check">1. Check real SG</button>
+        <button id="check-s3">Read S3 baseline</button>
         <button id="reject" class="secondary">2A. Reject</button>
         <button id="approve" class="approve">2B. Approve DEV</button>
         <button id="deny" class="deny">Policy DENY test</button>
@@ -61,6 +63,7 @@
         <dt>Status</dt><dd id="finding-status">—</dd>
         <dt>Evidence</dt><dd id="source">—</dd>
       </dl>
+      <div id="controls" class="audit"></div>
     </div>
   </section>
   <section class="card audit">
@@ -74,9 +77,16 @@
   <section id="error" class="card"></section>
 </main>
 <script>
-const ids = ['check','reject','approve','deny'];
-const busy = on => ids.forEach(id => document.getElementById(id).disabled = on);
+const ids = ['check','check-s3','reject','approve','deny'];
+let current={stage:'READY',workflow:null};
+function controls(on){
+  document.getElementById('check').disabled=on;
+  document.getElementById('check-s3').disabled=on;
+  const sgReady=current.workflow==='sg' && current.stage!=='COMPLETED';
+  ['reject','approve','deny'].forEach(id=>document.getElementById(id).disabled=on||!sgReady);
+}
 function render(data){
+  current=data;
   document.getElementById('stage').textContent=data.stage;
   document.getElementById('message').textContent=data.message;
   const f=data.finding||{};
@@ -84,6 +94,8 @@ function render(data){
   document.getElementById('control').textContent=f.control||'—';
   document.getElementById('finding-status').textContent=f.status||'—';
   document.getElementById('source').textContent=f.source||'—';
+  const controlBox=document.getElementById('controls'); controlBox.replaceChildren();
+  (f.controls||[]).forEach(item=>{const row=document.createElement('div'); row.className='audit-row'; const name=document.createElement('b'); name.textContent=item.name; const status=document.createElement('span'); status.textContent=`${item.status} — ${item.evidence}`; row.append(name,status); controlBox.append(row);});
   document.getElementById('explanation').textContent=data.explanation||'Waiting for the Harness provider check.';
   const labels={provider_finding:'Provider finding',ai_recommendation:'AI recommendation',human_decision:'Human decision',policy_decision:'Policy decision',exact_tool:'Exact tool',provider_verification:'Provider verification',changed:'Changed AWS'};
   const audit=data.audit||{};
@@ -96,14 +108,16 @@ function render(data){
     const value=document.createElement('span'); value.textContent=String(audit[key]??'—');
     row.append(number,title,value); auditBox.append(row);
   });
+  controls(false);
 }
 async function action(path, body={}){
-  busy(true); document.getElementById('error').style.display='none';
+  controls(true); document.getElementById('error').style.display='none';
   try { const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const data=await r.json(); if(!r.ok) throw new Error(data.error||'Request failed'); render(data); }
   catch(e){ const box=document.getElementById('error'); box.textContent=e.message; box.style.display='block'; }
-  finally { busy(false); }
+  finally { controls(false); }
 }
 document.getElementById('check').onclick=()=>action('/api/check');
+document.getElementById('check-s3').onclick=()=>action('/api/check-s3');
 document.getElementById('reject').onclick=()=>action('/api/reject');
 document.getElementById('approve').onclick=()=>action('/api/approve',{environment:'dev'});
 document.getElementById('deny').onclick=()=>action('/api/approve',{environment:'prod'});

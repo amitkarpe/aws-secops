@@ -20,15 +20,16 @@ class ServiceTest(unittest.TestCase):
     def setUp(self):
         self.provider_status = "NON_COMPLIANT"
 
-    def config(self):
+    def config(self, s3_tool=""):
         return PilotConfig(
             "ap-southeast-1",
             "model",
             "arn:harness",
-            "https://demo.gateway.bedrock-agentcore.ap-southeast-1.amazonaws.com",
+            "https://demo.gateway.bedrock-agentcore."
+            "ap-southeast-1.amazonaws.com",
             "read_tool",
             "remediate_tool",
-            "",
+            s3_tool,
         )
 
     def gateway(self, url, region, profile, tool, arguments):
@@ -71,6 +72,27 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(result["audit"]["policy_decision"], "DENY")
         self.assertEqual(result["audit"]["provider_verification"], "NON_COMPLIANT")
         self.assertFalse(result["audit"]["changed"])
+
+    def test_s3_baseline_is_read_only_and_cannot_enable_sg_approval(self):
+        s3_finding = {
+            "resource_name": "pilot-bucket",
+            "control": "five-control S3 baseline",
+            "status": "COMPLIANT",
+            "source": "AWS S3 control-plane APIs",
+            "recommendation": "No action required.",
+            "controls": [{"name": str(i), "status": "PASS"} for i in range(5)],
+        }
+
+        def s3_harness(config, prompt):
+            return {"response": "Five controls passed", "tool_calls": 1, "tool_results": [s3_finding]}
+
+        service = PilotService(self.config("s3_tool"), harness_call=s3_harness, gateway_call=self.gateway)
+        result = service.check_s3()
+        self.assertEqual(result["stage"], "S3_BASELINE")
+        self.assertEqual(result["audit"]["exact_tool"], "s3_tool")
+        self.assertFalse(result["audit"]["changed"])
+        with self.assertRaisesRegex(RuntimeError, "Security Group"):
+            service.approve("dev")
 
 
 if __name__ == "__main__":

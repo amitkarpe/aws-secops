@@ -112,3 +112,30 @@ change was the exact demo-owned TCP/22 rule; the Group remained unattached.
 verifies profile/Region/identity and provider state, `rearm-sg` restores only
 the fixed unattached demo finding, and `serve` starts the UI on loopback. Raw
 browser images and live identities remain in the private evidence directory.
+
+## M5 — S3 relevance and pilot packaging: PASS
+
+One dedicated empty demo bucket was configured with five deterministic controls:
+
+| Provider control | Live result |
+| --- | --- |
+| Bucket Block Public Access, all four flags | PASS |
+| Default server-side encryption | PASS |
+| Versioning | PASS |
+| TLS-only bucket policy | PASS |
+| Bucket-owner-enforced object ownership | PASS |
+
+A separate 128 MB read Lambda and role can call only the five required
+bucket-control APIs on that fixed bucket. The Gateway target exposes only
+`check_s3_baseline(environment=dev)`. Its strict Cedar policy reached ACTIVE,
+and the Gateway remains in ENFORCE mode.
+
+The Harness allowlist now contains exactly the SG read tool and S3 read tool;
+no remediation, shell, file, browser, Code Interpreter, or generic AWS tool is
+model-selectable. One native Harness invocation selected the S3 tool exactly
+once, returned five PASS results and `STATUS: COMPLIANT`, and reported mutation
+`none`. A real browser click received HTTP 200 and displayed all five PASS
+controls, Policy ALLOW, provider COMPLIANT, and changed AWS `false`.
+
+The retained-resource inventory, cost notes, operator runbook, 3–5 minute demo
+script, and PROVEN/PROPOSED/LATER status are now tracked under `docs/`.
