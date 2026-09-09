@@ -1,0 +1,17 @@
+{
+  "findings": [
+    {
+      "source": "VAPT",
+      "resource_type": "EC2_INSTANCE",
+      "resource_id": "demo-host-02",
+      "resource_name": "batch-demo",
+      "environment": "demo",
+      "control": "Supported operating system",
+      "severity": "MEDIUM",
+      "status": "NON_COMPLIANT",
+      "evidence": "Sanitized sample: operating system support date has passed.",
+      "recommendation": "Plan an operating system upgrade in the next maintenance window.",
+      "observed_at": "2026-09-01T08:00:00+00:00"
+    }
+  ]
+}

@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
+from .backlog import FindingBacklog
 from .config import PilotConfig
+from .findings import normalize_s3, normalize_sg
+from .export import to_csv, to_markdown
 from .gateway import call_tool, result_text
 from .harness import invoke
 from .workflow import approve_remediation, reject_remediation
@@ -28,6 +31,7 @@ class PilotService:
         self.profile = profile
         self.harness_call = harness_call
         self.gateway_call = gateway_call
+        self.findings = FindingBacklog()
         self.state: dict[str, Any] = {
             "stage": "READY",
             "workflow": None,
@@ -35,7 +39,20 @@ class PilotService:
             "finding": None,
             "explanation": None,
             "audit": None,
+            "backlog": self.findings.summary(),
         }
+
+    def _refresh_backlog(self) -> None:
+        self.state["backlog"] = self.findings.summary()
+
+    def backlog(self) -> dict[str, Any]:
+        return self.findings.summary()
+
+    def export_csv(self) -> str:
+        return to_csv(self.findings.open_findings())
+
+    def export_markdown(self) -> str:
+        return to_markdown(self.findings.open_findings())
 
     def _call_gateway(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return self.gateway_call(
@@ -69,6 +86,7 @@ class PilotService:
         finding = result["tool_results"][0]
         if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"}:
             raise RuntimeError("Harness tool result did not contain provider status")
+        self.findings.upsert([normalize_sg(finding)])
         self.state = {
             "stage": "FINDING",
             "workflow": "sg",
@@ -84,6 +102,7 @@ class PilotService:
                 "provider_verification": finding["status"],
                 "changed": False,
             },
+            "backlog": self.findings.summary(),
         }
         return self.state
 
@@ -92,18 +111,28 @@ class PilotService:
             raise RuntimeError("the fixed S3 baseline tool is not configured")
         result = self.harness_call(
             self.config,
-            "Check the fixed dev demo S3 bucket across its five configured controls. "
-            "Summarize only the provider tool result and end with STATUS: COMPLIANT or STATUS: NON_COMPLIANT.",
+            "Check the operator-owned dev S3 bucket allowlist. Report the provider aggregate. "
+            "If there are failures, explain only the exceptions; otherwise report the passing counts. "
+            "End with STATUS: COMPLIANT or STATUS: NON_COMPLIANT.",
         )
         if result["tool_calls"] != 1 or len(result["tool_results"]) != 1:
             raise RuntimeError("Harness did not make exactly one S3 provider read")
         finding = result["tool_results"][0]
-        if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"} or len(finding.get("controls", [])) != 5:
-            raise RuntimeError("Harness S3 result did not contain five provider controls")
+        valid_single = len(finding.get("controls", [])) == 5
+        valid_batch = (
+            isinstance(finding.get("buckets"), list)
+            and 1 <= len(finding["buckets"]) <= 5
+            and finding.get("controls_checked") == len(finding["buckets"]) * 5
+            and finding.get("pass_count", 0) + finding.get("fail_count", 0)
+            == finding.get("controls_checked")
+        )
+        if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"} or not (valid_single or valid_batch):
+            raise RuntimeError("Harness S3 result did not contain a valid provider baseline")
+        self.findings.upsert(normalize_s3(finding))
         self.state = {
             "stage": "S3_BASELINE",
             "workflow": "s3",
-            "message": "Read-only S3 baseline complete; no AWS change was made.",
+            "message": "Read-only allowlisted S3 assessment complete; no AWS change was made.",
             "finding": finding,
             "explanation": result["response"],
             "audit": {
@@ -115,6 +144,7 @@ class PilotService:
                 "provider_verification": finding["status"],
                 "changed": False,
             },
+            "backlog": self.findings.summary(),
         }
         return self.state
 
@@ -136,6 +166,8 @@ class PilotService:
             provider_verification=verification["status"],
             changed=False,
         )
+        self.findings.upsert([normalize_sg(verification)])
+        self._refresh_backlog()
         return self.state
 
     def approve(self, environment: str) -> dict[str, Any]:
@@ -171,4 +203,6 @@ class PilotService:
             provider_verification=verification["status"],
             changed=decision["changed"],
         )
+        self.findings.upsert([normalize_sg(verification)])
+        self._refresh_backlog()
         return self.state

@@ -1,0 +1,2 @@
+source,resource_type,resource_id,resource_name,environment,control,severity,status,evidence,recommendation,observed_at,owner,target
+CloudSCAPE,S3_BUCKET,demo-archive,archive-demo,demo,Data retention,HIGH,NON_COMPLIANT,Sanitized sample retention exception.,Confirm and apply the approved retention schedule.,2026-09-02T08:00:00+00:00,platform-team,2026-Q4
