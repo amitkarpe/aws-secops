@@ -1,0 +1,29 @@
+[
+  {
+    "name": "remove_unrestricted_ssh",
+    "description": "Remove only the exact TCP/22 ingress rule from 0.0.0.0/0 on the fixed Pilot v1 demo Security Group after explicit approval.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Use dev for the fixed personal-lab resource; synthetic prod is denied by Policy."
+        },
+        "approved": {
+          "type": "boolean",
+          "description": "True only after the human selected Approve."
+        }
+      },
+      "required": ["environment", "approved"]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "result": {"type": "string"},
+        "changed": {"type": "boolean"},
+        "verification": {"type": "string"}
+      },
+      "required": ["result", "changed", "verification"]
+    }
+  }
+]

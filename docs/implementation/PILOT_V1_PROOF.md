@@ -55,3 +55,34 @@ The Policy analyzer rejected an initial unconditional read permit as overly
 permissive. No invocation occurred under that failed policy. The final tool,
 Lambda validation, and Cedar condition all require `environment=dev`; strict
 validation then reached ACTIVE without ignored findings.
+
+## M3 — Human-governed remediation: PASS
+
+One separate remediation Lambda and IAM role were added. The role can describe
+Security Groups and revoke ingress only on the fixed dedicated demo Group. The
+Lambda accepts only the exact `remove_unrestricted_ssh` Gateway tool with
+`environment=dev` and `approved=true`, and it can revoke only TCP/22 from
+`0.0.0.0/0`. It re-reads EC2 and returns COMPLIANT only after the provider
+confirms that rule is absent.
+
+The ACTIVE Cedar permit binds the exact tool and Gateway and requires both the
+fixed `dev` environment and explicit approval boolean. The Gateway remains in
+Policy ENFORCE mode.
+
+Live acceptance results:
+
+| Path | Gateway/Policy | Remediation Lambda | Provider result |
+| --- | --- | ---: | --- |
+| Human Reject | not called | 0 | unchanged NON_COMPLIANT |
+| Synthetic PROD + Approve | DENY by default | 0 | unchanged NON_COMPLIANT |
+| DEV + Approve | ALLOW | 1 | COMPLIANT |
+
+Lambda START-event evidence over the complete decision window contained
+exactly one remediation invocation. The fixed Security Group remained
+unattached. No instance, ENI, route, public IP, workload, or other Security
+Group rule was changed.
+
+The direct Gateway client passes short-lived SigV4 credentials to `curl` over
+stdin rather than command arguments. It accepts the native JSON-RPC denial only
+for error code `-32002` with the expected Policy denial markers; other errors
+do not count as DENY proof.

@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1 / Issue #5 active — M1–M2 PASS, M3 next
+Status: Pilot v1 / Issue #5 active — M1–M3 PASS, M4 next
 
 ## Current Truth
 
@@ -13,9 +13,11 @@ Status: Pilot v1 / Issue #5 active — M1–M2 PASS, M3 next
 - M2 created one unattached dedicated demo Security Group, exposed one exact
   read tool, and proved a provider-grounded NON_COMPLIANT result with no
   mutation.
+- M3 proved Reject and synthetic PROD make zero changes; DEV Approve reached
+  the exact Lambda once and provider re-read returned COMPLIANT.
 
 ## Next Action
 
-- Complete M3: add the exact remediation Lambda and Cedar permit, then prove
-  Reject and synthetic PROD make zero changes while DEV Approve revokes only
-  the fixed SSH rule once.
+- Complete M4: add the smallest single-user UI and compact audit sequence,
+  rearm the dedicated demo SG, and prove the visible finding/decision/action/
+  verification flow plus Reject/DENY evidence.
