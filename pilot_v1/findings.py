@@ -110,9 +110,20 @@ def normalize_s3(provider: dict[str, Any], *, observed_at: str | None = None) ->
         exceptions = provider.get("exceptions", [])
         if not isinstance(buckets, list) or not 1 <= len(buckets) <= 5:
             raise ValueError("S3 provider aggregate must contain 1 to 5 buckets")
+        if not isinstance(exceptions, list):
+            raise ValueError("S3 provider aggregate exceptions must be a list")
+        bucket_ids = [item.get("resource_id") for item in buckets]
+        if len(bucket_ids) != len(set(bucket_ids)) or any(not item for item in bucket_ids):
+            raise ValueError("S3 provider aggregate bucket identities must be unique")
         exception_keys = {
             (item.get("resource_id"), item.get("control")) for item in exceptions
         }
+        if (
+            len(exception_keys) != len(exceptions)
+            or any(item.get("resource_id") not in bucket_ids for item in exceptions)
+            or provider.get("fail_count") != len(exceptions)
+        ):
+            raise ValueError("S3 provider aggregate exceptions do not match its buckets")
         findings = []
         for bucket in buckets:
             bucket_exceptions = [
@@ -156,8 +167,6 @@ def normalize_s3(provider: dict[str, Any], *, observed_at: str | None = None) ->
                         }
                     )
                 )
-        if len(exception_keys) != len(exceptions):
-            raise ValueError("S3 provider aggregate contains duplicate exceptions")
         return findings
 
     findings = []

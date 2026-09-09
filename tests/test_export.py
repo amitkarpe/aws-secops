@@ -20,16 +20,17 @@ class ExportTest(unittest.TestCase):
                 "evidence": "not enabled",
                 "recommendation": "Enable after approval.",
                 "observed_at": "2026-09-10T00:00:00+00:00",
-                "owner": "platform-team",
+                "owner": "=untrusted-formula",
                 "target": "2026-Q4",
             }
         ]
         csv_rows = list(csv.DictReader(io.StringIO(to_csv(findings))))
         self.assertEqual(csv_rows[0]["finding"], "S3_BUCKET/archive-demo: Versioning")
         self.assertEqual(csv_rows[0]["approval_required"], "YES")
+        self.assertEqual(csv_rows[0]["owner"], "'=untrusted-formula")
         markdown = to_markdown(findings)
         self.assertIn("Open actions: **1**", markdown)
-        self.assertIn("platform-team", markdown)
+        self.assertIn("=untrusted-formula", markdown)
         self.assertIn("2026-Q4", markdown)
 
 

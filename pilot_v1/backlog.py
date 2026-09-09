@@ -28,9 +28,10 @@ class FindingBacklog:
     def upsert(self, findings: Iterable[dict[str, Any]]) -> None:
         for raw in findings:
             finding = validate_finding(raw)
-            self._findings[_key(finding)] = finding
-            if len(self._findings) > MAX_FINDINGS:
+            key = _key(finding)
+            if key not in self._findings and len(self._findings) >= MAX_FINDINGS:
                 raise ValueError(f"backlog cannot exceed {MAX_FINDINGS} findings")
+            self._findings[key] = finding
 
     def open_findings(self) -> list[dict[str, str]]:
         open_findings = [

@@ -38,7 +38,13 @@ def to_csv(findings: Iterable[dict[str, str]]) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=FIELDS, lineterminator="\n")
     writer.writeheader()
-    writer.writerows(action_plan(findings))
+    writer.writerows(
+        {
+            key: f"'{value}" if value.startswith(("=", "+", "-", "@")) else value
+            for key, value in row.items()
+        }
+        for row in action_plan(findings)
+    )
     return output.getvalue()
 
 
