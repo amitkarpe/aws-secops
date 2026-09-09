@@ -1,52 +1,53 @@
 # Specification
 
-Status: approved — MVP-1 / Issue #1
+Status: approved — Phase 0A / Issue #1
 
 ## Problem
 
-The R&D repo proved governance mechanics, but the clean product needs one real AgentCore-native security remediation path without historical POC plumbing.
+We have a working AgentCore governance R&D demo, but management approval is not yet secured and the clean product architecture still has new-service, Region, model, scale, and cost questions.
+
+The immediate need is a technically honest **proposal and decision baseline**, not another rushed full implementation before Friday.
 
 ## Scope
 
-One Compliance Agent checks one real Security Group, asks for human approval when remediation is needed, invokes the actual bounded tool through Gateway Policy, and verifies provider state afterwards.
+Produce a management-ready AWS Copilot proposal that clearly separates:
+
+- what the R&D demo has already **PROVEN**;
+- what the clean product **PROPOSES**;
+- what the next standalone personal-lab milestone must **VALIDATE**.
 
 ## MUST
 
-- Run the Compliance Agent on AgentCore Harness in `ap-southeast-1`.
-- Run the product workload in an approved Organizations member dev/sandbox account, not the management account.
-- Put exact Security Group read/remediation tools behind MCP Gateway + AgentCore Policy.
-- Prefer tiny Lambda MCP targets with narrow workload IAM.
-- Use real provider reads and real provider resource identity in the private demo.
-- Reject/no approval and Policy DENY must cause no remediation.
-- Approved ALLOW removes only the intended unrestricted TCP/22 ingress rule.
-- Re-read AWS and report COMPLIANT only when provider state proves it.
-- Already-COMPLIANT is a no-op.
-- Record a compact request -> human decision -> policy -> tool -> verification audit.
+- Explain the problem, proposed value, governance story, architecture, phased deployment path, and next validation questions.
+- Keep AgentCore Harness -> MCP Gateway -> Policy -> exact governed tools -> workload IAM/STS -> provider verification as the proposed direction.
+- Record the standalone personal `vagent` account as the preferred isolated R&D lab for follow-on experiments.
+- Define concrete scale/cost scenarios, including 1,000 and 20,000 S3 buckets with five controls and a monthly 20-EC2 workflow.
+- Keep model choice replaceable; include Nova 2 Lite and stronger candidates in the next benchmark plan.
+- Keep the repository public-safe: no private AWS environment identity or secrets committed.
 
 ## MUST NOT
 
-- Depend on Amit's SSO session at runtime.
-- Deploy the product workload in the Organizations management account.
-- Use company/production accounts.
-- Expose a generic AWS CLI/API mutation tool or model-selected account/role/Region/action.
-- Add Registry, StackSets, Security Hub, Inspector, Temporal Policy, WAF, EKS, Supervisor/A2A, or another control to MVP-1.
-- Commit environment-specific account IDs/ARNs, credentials, tokens, private endpoints, or private evidence.
+- Deploy the full clean product runtime in this PR.
+- Claim Harness/Registry/model/Region behavior that has not been validated.
+- Treat promotional credit as proof that a service is free.
+- Build multi-account onboarding, second controls, broad security-service rollout, Temporal Policy, WAF, Registry, StackSets, Supervisor/A2A, or EKS here.
+- Copy old R&D plumbing wholesale.
+- Commit account IDs, environment ARNs, credentials, tokens, private endpoints, emails, or private evidence.
 
 ## Verification
 
-One proportional live proof must demonstrate:
+The PR is accepted when a reviewer can answer, from repository docs alone:
 
-```text
-real NON_COMPLIANT SG
--> human Approve
--> Gateway Policy ALLOW
--> exact remediation tool
--> AWS provider re-read
--> COMPLIANT
-```
+1. What problem are we proposing to solve?
+2. What has already been demonstrated?
+3. What architecture are we proposing?
+4. What is still unknown?
+5. What should be tested next in the personal lab?
+6. What scale/cost questions must be answered before a company pilot?
+7. What is the Friday management ask?
 
-and one negative proof must show Reject or DENY -> zero remediation.
+No AWS mutation is required for Phase 0A acceptance.
 
 ## Stop Gates
 
-Stop for owner/controller review if implementation requires a different security model, the management/company/production account, broad AWS mutation capability, unrelated infrastructure, or secret/private-data exposure.
+Stop for owner/controller review if work starts implementing the full product, changes the proposed security boundary materially, uses company/production AWS, or exposes private environment data.
