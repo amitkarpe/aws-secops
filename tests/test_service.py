@@ -1,14 +1,18 @@
 import json
 import unittest
+from pathlib import Path
 
 from pilot_v1.config import PilotConfig
 from pilot_v1.service import PilotService
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 FINDING = {
     "resource_id": "sg-private",
     "resource_name": "pilot-demo",
-    "control": "TCP/22",
+    "control": "TCP/22 from the public IPv4 internet",
     "status": "NON_COMPLIANT",
     "source": "0.0.0.0/0",
     "recommendation": "Remove exact rule",
@@ -39,7 +43,12 @@ class ServiceTest(unittest.TestCase):
         self.provider_status = "COMPLIANT"
         return {"result": {"isError": False, "content": [{"type": "text", "text": json.dumps({"result": "SSH_RULE_REMOVED", "changed": True, "verification": "COMPLIANT"})}]}}
 
-    def harness(self, config, prompt):
+    def harness(self, config, prompt, **options):
+        if options.get("explanation_only"):
+            evidence = json.loads(prompt.split("\n", 1)[1])[0]
+            self.assertIn("PLAN_ONLY", options["system_prompt"])
+            return {"response": f"{evidence['source']}: {evidence['evidence']}",
+                    "tool_calls": 0, "tool_results": []}
         return {"response": "Grounded explanation", "tool_calls": 1, "tool_results": [FINDING]}
 
     def test_reject_has_visible_no_call_audit(self):
@@ -127,6 +136,43 @@ class ServiceTest(unittest.TestCase):
         result = service.check_s3()
         self.assertEqual(result["finding"]["fail_count"], 1)
         self.assertEqual(result["backlog"]["total_open"], 1)
+
+    def test_import_routes_both_sources_and_exposes_no_mutation_path(self):
+        service = PilotService(self.config(), harness_call=self.harness, gateway_call=self.gateway)
+        cloudscape = ROOT.joinpath("examples/cloudscape-synthetic.json")
+        first = service.import_source(cloudscape.read_bytes(), cloudscape.name, "cloudscape")
+        self.assertEqual(first["audit"]["specialist_route"], "Compliance Agent")
+        self.assertEqual(first["audit"]["action_eligibility"], "PLAN_ONLY")
+        self.assertEqual(first["audit"]["provider_verification"], "NOT_PERFORMED")
+        self.assertIn("CloudSCAPE", first["explanation"])
+
+        vapt = ROOT.joinpath("examples/vapt-synthetic.csv")
+        second = service.import_source(vapt.read_bytes(), vapt.name, "vapt")
+        self.assertEqual(second["audit"]["specialist_route"], "Vulnerability Agent")
+        self.assertEqual(second["backlog"]["total_open"], 2)
+        self.assertIn("VAPT", second["explanation"])
+        with self.assertRaisesRegex(RuntimeError, "Security Group"):
+            service.approve("dev")
+
+    def test_specialists_use_distinct_instructions_and_reject_tool_attempt(self):
+        calls = []
+        def explain(config, prompt, **options):
+            calls.append(options)
+            return self.harness(config, prompt, **options)
+        service = PilotService(self.config(), harness_call=explain, gateway_call=self.gateway)
+        for source, filename in [("cloudscape", "cloudscape-synthetic.json"),
+                                 ("vapt", "vapt-synthetic.csv")]:
+            service.import_source((ROOT / "examples" / filename).read_bytes(), filename, source)
+        self.assertIn("You are the Compliance Agent", calls[0]["system_prompt"])
+        self.assertIn("You are the Vulnerability Agent", calls[1]["system_prompt"])
+        self.assertTrue(all(call["explanation_only"] for call in calls))
+        previous = service.state
+        service.harness_call = lambda *args, **kwargs: {
+            "response": "unsafe", "tool_calls": 1, "tool_results": []}
+        with self.assertRaisesRegex(RuntimeError, "tool call"):
+            service.import_source((ROOT / "examples/cloudscape-synthetic.json").read_bytes(),
+                                  "sample.json", "cloudscape")
+        self.assertIs(service.state, previous)
 
 
 if __name__ == "__main__":

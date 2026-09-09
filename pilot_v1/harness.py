@@ -40,7 +40,10 @@ def _tool_results(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return results
 
 
-def invoke(config: PilotConfig, prompt: str, *, cli: str = "agentcore") -> dict[str, Any]:
+def invoke(
+    config: PilotConfig, prompt: str, *, cli: str = "agentcore",
+    system_prompt: str | None = None, explanation_only: bool = False,
+) -> dict[str, Any]:
     config.require_harness()
     session_id = f"pilot-{uuid.uuid4()}"
     command = [
@@ -57,10 +60,23 @@ def invoke(config: PilotConfig, prompt: str, *, cli: str = "agentcore") -> dict[
         "--prompt",
         prompt,
     ]
+    if system_prompt is not None:
+        command.extend(["--system-prompt", system_prompt])
+    if explanation_only:
+        # Empty strings are omitted by the CLI. This exact name matches no
+        # built-in or registered MCP tool; it grants no effective tool access.
+        command.extend([
+            "--allowed-tools", "__pilot_explanation_no_tools__",
+            "--model-id", config.model_id, "--model-provider", "bedrock",
+            "--max-tokens", "700", "--max-iterations", "1",
+        ])
     completed = subprocess.run(command, check=False, capture_output=True, text=True)
     if completed.returncode != 0:
         raise RuntimeError("AgentCore Harness invocation failed")
     events = [json.loads(line) for line in completed.stdout.splitlines() if line.strip()]
+    tool_calls = sum(1 for event in events if event.get("start", {}).get("toolUse"))
+    if explanation_only and (tool_calls or _tool_results(events)):
+        raise RuntimeError("specialist explanation attempted a tool call; result rejected")
     summary = next((event for event in reversed(events) if "success" in event), None)
     if not summary or summary.get("success") is not True:
         raise RuntimeError("AgentCore Harness returned no successful summary")
@@ -76,7 +92,7 @@ def invoke(config: PilotConfig, prompt: str, *, cli: str = "agentcore") -> dict[
             raise RuntimeError("AgentCore Harness returned no text response")
     return {
         "response": response,
-        "tool_calls": sum(1 for event in events if event.get("start", {}).get("toolUse")),
+        "tool_calls": tool_calls,
         "tool_results": _tool_results(events),
         "events": events,
         "session_id": session_id,

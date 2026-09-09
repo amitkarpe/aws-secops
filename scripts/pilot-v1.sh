@@ -85,6 +85,7 @@ smoke() {
   rearm_sg || result=$?
   if [[ "$result" == "0" ]]; then
     echo "PILOT_V1_1_SMOKE=PASS"
+    echo "PLATFORM_PHASE1_SMOKE=PASS"
   else
     echo "PILOT_V1_1_SMOKE=BLOCKED" >&2
   fi
@@ -92,7 +93,7 @@ smoke() {
 }
 
 usage() {
-  echo "Usage: $0 {status|rearm-sg|serve|smoke}"
+  echo "Usage: $0 {status|rearm-sg|serve|smoke|specialist-smoke}"
 }
 
 case "${1:-}" in
@@ -110,6 +111,11 @@ case "${1:-}" in
     ;;
   smoke)
     smoke
+    ;;
+  specialist-smoke)
+    preflight
+    export_pilot_config
+    python3 -m pilot_v1.smoke --specialists-only
     ;;
   *)
     usage >&2

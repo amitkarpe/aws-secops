@@ -6,6 +6,7 @@ from collections import Counter
 from typing import Any, Iterable
 
 from .findings import MAX_FINDINGS, validate_finding
+from .routing import enrich_finding
 
 
 PRIORITY = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
@@ -25,9 +26,14 @@ class FindingBacklog:
         self._findings: dict[tuple[str, str, str, str], dict[str, str]] = {}
         self.upsert(findings)
 
-    def upsert(self, findings: Iterable[dict[str, Any]]) -> None:
+    def upsert(
+        self, findings: Iterable[dict[str, Any]], *, evidence_origin: str = "IMPORTED"
+    ) -> None:
+        if evidence_origin not in {"IMPORTED", "AWS_PROVIDER"}:
+            raise ValueError("evidence origin is unsupported")
         for raw in findings:
             finding = validate_finding(raw)
+            finding["evidence_origin"] = evidence_origin
             key = _key(finding)
             if key not in self._findings and len(self._findings) >= MAX_FINDINGS:
                 raise ValueError(f"backlog cannot exceed {MAX_FINDINGS} findings")
@@ -35,7 +41,7 @@ class FindingBacklog:
 
     def open_findings(self) -> list[dict[str, str]]:
         open_findings = [
-            finding
+            enrich_finding(finding)
             for finding in self._findings.values()
             if finding["status"] == "NON_COMPLIANT"
         ]
@@ -74,6 +80,8 @@ class FindingBacklog:
             ),
             "by_source": grouped("source"),
             "by_resource_type": grouped("resource_type"),
+            "by_specialist": grouped("specialist_route"),
+            "by_eligibility": grouped("action_eligibility"),
             "priority_findings": open_findings[:10],
             "open_findings": open_findings,
             "recommended_focus": focus,

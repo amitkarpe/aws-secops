@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import json
+import argparse
 import threading
 import urllib.request
+import urllib.error
 from http.server import HTTPServer
+from pathlib import Path
 from typing import Any
 
 from .config import PilotConfig
 from .server import Handler
 from .service import PilotService
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _request(url: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -34,12 +40,38 @@ def _download(url: str, path: str) -> str:
         return response.read().decode()
 
 
+def _import(url: str, path: Path, source_format: str) -> dict[str, Any]:
+    media_type = "text/csv" if path.suffix == ".csv" else "application/json"
+    request = urllib.request.Request(
+        f"{url}/api/import",
+        data=path.read_bytes(),
+        headers={
+            "Content-Type": media_type,
+            "Origin": url,
+            "X-Filename": path.name,
+            "X-Source-Format": source_format,
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def _expect_http_error(url: str, path: str, payload: dict[str, Any], status: int) -> None:
+    try:
+        _request(url, path, payload)
+    except urllib.error.HTTPError as exc:
+        _expect(exc.code == status, f"expected HTTP {status}, received {exc.code}")
+        return
+    raise RuntimeError(f"expected HTTP {status}, request succeeded")
+
+
 def _expect(value: bool, message: str) -> None:
     if not value:
         raise RuntimeError(message)
 
 
-def run() -> None:
+def run(*, specialists_only: bool = False) -> None:
     Handler.service = PilotService(PilotConfig.from_env())
     server = HTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -48,6 +80,35 @@ def run() -> None:
     try:
         ready = _request(url, "/api/state")
         _expect(ready.get("stage") == "READY", "app did not start in READY state")
+
+        compliance = _import(
+            url, ROOT / "examples/cloudscape-synthetic.json", "cloudscape"
+        )
+        _expect(
+            compliance.get("audit", {}).get("specialist_route") == "Compliance Agent"
+            and compliance.get("audit", {}).get("action_eligibility") == "PLAN_ONLY",
+            "CloudSCAPE finding was not routed to plan-only Compliance Agent",
+        )
+        vulnerability = _import(url, ROOT / "examples/vapt-synthetic.csv", "vapt")
+        _expect(
+            vulnerability.get("audit", {}).get("specialist_route")
+            == "Vulnerability Agent"
+            and vulnerability.get("backlog", {}).get("total_open") == 2,
+            "VAPT finding was not routed into the shared backlog",
+        )
+        _expect_http_error(url, "/api/approve", {"environment": "dev"}, 400)
+        for state, source in [(compliance, "CloudSCAPE"), (vulnerability, "VAPT")]:
+            _expect(
+                state["audit"].get("explanation_tool_calls") == 0
+                and state["audit"]["provider_verification"] == "NOT_PERFORMED"
+                and source.lower() in state["explanation"].lower(),
+                "specialist explanation lacked source grounding or zero-tool proof",
+            )
+            print(f"SPECIALIST={state['audit']['specialist_route']} TOOL_CALLS=0 ELIGIBILITY=PLAN_ONLY")
+            print(f"EXPLANATION={state['explanation']}")
+        if specialists_only:
+            print("PLATFORM_SPECIALIST_SMOKE=PASS")
+            return
 
         finding = _request(url, "/api/check", {})
         _expect(
@@ -93,17 +154,20 @@ def run() -> None:
         csv_export = _download(url, "/api/export.csv")
         markdown_export = _download(url, "/api/export.md")
         _expect(
-            csv_export.startswith("finding,priority,recommended_fix")
+            csv_export.startswith("source,specialist_route,action_eligibility")
             and "Versioning" in csv_export,
             "CSV action plan did not contain the S3 exception",
         )
         _expect(
-            markdown_export.startswith("# Pilot v1.1 compliance reduction plan")
+            markdown_export.startswith("# AWS SecOps Platform Phase 1 action plan")
             and "Versioning" in markdown_export,
             "Markdown action plan did not contain the S3 exception",
         )
-        print("PILOT_V1_1_API_SMOKE=PASS")
-        print("PILOT_V1_1_SEQUENCE=SG_FINDING,REJECT,DENY,APPROVE,S3,BACKLOG,EXPORT")
+        print("PLATFORM_PHASE1_API_SMOKE=PASS")
+        print(
+            "PLATFORM_PHASE1_SEQUENCE=CLOUDSCAPE_IMPORT,VAPT_IMPORT,PLAN_ONLY_BLOCK,"
+            "SG_FINDING,REJECT,DENY,APPROVE,S3,BACKLOG,EXPORT"
+        )
     finally:
         server.shutdown()
         server.server_close()
@@ -111,7 +175,9 @@ def run() -> None:
 
 
 def main() -> int:
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--specialists-only", action="store_true")
+    run(specialists_only=parser.parse_args().specialists_only)
     return 0
 
 

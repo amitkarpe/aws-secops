@@ -1,0 +1,2 @@
+asset_id,asset_name,environment,vulnerability_id,severity,status,evidence,recommended_action,observed_at
+synthetic-host-01,synthetic-web,demo,VAPT-DEMO-0001,CRITICAL,OPEN,Synthetic VAPT-style evidence: unsupported demo package detected.,Prepare a package upgrade plan and validate it in a maintenance window.,2026-09-10T02:05:00+00:00

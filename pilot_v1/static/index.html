@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AWS Compliance Agent Pilot v1.1</title>
+  <title>AWS SecOps Platform Phase 1</title>
   <style>
     :root { color-scheme: dark; --bg:#07111f; --panel:#101d30; --line:#29405d; --text:#eef6ff; --muted:#9bb0c8; --cyan:#4cc9f0; --green:#44d492; --amber:#ffbd59; --red:#ff6b6b; }
     * { box-sizing:border-box; }
@@ -18,7 +18,9 @@
     .card { background:color-mix(in srgb,var(--panel) 92%,transparent); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:0 14px 40px #0004; }
     .status { font-size:24px; font-weight:850; margin:5px 0 6px; }
     .muted { color:var(--muted); }
-    button,.button { border:0; border-radius:10px; padding:12px 17px; font-weight:800; cursor:pointer; color:#06101d; background:var(--cyan); text-decoration:none; display:inline-block; }
+    button,.button,select,input { border:0; border-radius:10px; padding:12px 17px; font:inherit; }
+    button,.button { font-weight:800; cursor:pointer; color:#06101d; background:var(--cyan); text-decoration:none; display:inline-block; }
+    select,input { color:var(--text); background:#091525; border:1px solid var(--line); }
     button.secondary,.button.secondary { background:#b9c8d8; }
     button.approve { background:var(--green); }
     button.deny { background:var(--amber); }
@@ -47,7 +49,7 @@
 <body>
 <main>
   <header>
-    <div><div class="eyebrow">Amazon Bedrock AgentCore</div><h1>Compliance Agent Pilot v1.1</h1><div class="muted">Real provider evidence. Human decision. Deterministic policy.</div></div>
+    <div><div class="eyebrow">Amazon Bedrock AgentCore</div><h1>AWS SecOps Platform Phase 1</h1><div class="muted">Multi-source evidence. Deterministic specialist routing. Governed exact action.</div></div>
     <div class="badge">Single-user personal lab</div>
   </header>
   <section class="grid">
@@ -70,8 +72,23 @@
         <dt>Control</dt><dd id="control">—</dd>
         <dt>Status</dt><dd id="finding-status">—</dd>
         <dt>Evidence</dt><dd id="source">—</dd>
+        <dt>Specialist</dt><dd id="specialist">—</dd>
+        <dt>Eligibility</dt><dd id="eligibility">—</dd>
       </dl>
       <div id="controls" class="audit"></div>
+    </div>
+  </section>
+  <section class="card audit">
+    <div class="label">Bounded source intake</div>
+    <h2>Import public-safe source evidence</h2>
+    <div class="muted">JSON/CSV content is limited to 256 KB and 100 records. The browser never sends a filesystem path. Imported findings are always PLAN_ONLY.</div>
+    <div class="actions">
+      <select id="source-format" aria-label="Source format">
+        <option value="cloudscape">CloudSCAPE-style compliance</option>
+        <option value="vapt">VAPT-style vulnerability</option>
+      </select>
+      <input id="source-file" type="file" accept=".json,.csv,application/json,text/csv">
+      <button id="import-source">Import source</button>
     </div>
   </section>
   <section class="card audit">
@@ -85,9 +102,11 @@
     <div class="grid audit">
       <div><b>By source</b><div id="source-groups" class="group-list"></div></div>
       <div><b>By resource type</b><div id="resource-groups" class="group-list"></div></div>
+      <div><b>By specialist</b><div id="specialist-groups" class="group-list"></div></div>
+      <div><b>By eligibility</b><div id="eligibility-groups" class="group-list"></div></div>
     </div>
     <table>
-      <thead><tr><th>Priority</th><th>Resource</th><th>Control</th><th>Observed</th></tr></thead>
+      <thead><tr><th>Priority</th><th>Source</th><th>Specialist</th><th>Resource</th><th>Eligibility</th><th>Control</th></tr></thead>
       <tbody id="priority-findings"></tbody>
     </table>
     <div class="actions">
@@ -106,11 +125,12 @@
   <section id="error" class="card"></section>
 </main>
 <script>
-const ids = ['check','check-s3','reject','approve','deny'];
+const ids = ['check','check-s3','reject','approve','deny','import-source'];
 let current={stage:'READY',workflow:null};
 function controls(on){
   document.getElementById('check').disabled=on;
   document.getElementById('check-s3').disabled=on;
+  document.getElementById('import-source').disabled=on;
   const sgReady=current.workflow==='sg' && current.stage!=='COMPLETED';
   ['reject','approve','deny'].forEach(id=>document.getElementById(id).disabled=on||!sgReady);
 }
@@ -123,6 +143,8 @@ function render(data){
   document.getElementById('control').textContent=f.control||'—';
   document.getElementById('finding-status').textContent=f.status||'—';
   document.getElementById('source').textContent=f.source||'—';
+  document.getElementById('specialist').textContent=f.specialist_route||(data.audit||{}).specialist_route||'—';
+  document.getElementById('eligibility').textContent=f.action_eligibility||(data.audit||{}).action_eligibility||'—';
   const controlBox=document.getElementById('controls'); controlBox.replaceChildren();
   const providerRows=f.controls||(
     f.buckets_checked===undefined?[]:[
@@ -133,7 +155,7 @@ function render(data){
   );
   providerRows.forEach(item=>{const row=document.createElement('div'); row.className='audit-row'; const name=document.createElement('b'); name.textContent=item.name; const status=document.createElement('span'); status.textContent=`${item.status} — ${item.evidence}`; row.append(name,status); controlBox.append(row);});
   document.getElementById('explanation').textContent=data.explanation||'Waiting for the Harness provider check.';
-  const labels={provider_finding:'Provider finding',ai_recommendation:'AI recommendation',human_decision:'Human decision',policy_decision:'Policy decision',exact_tool:'Exact tool',provider_verification:'Provider verification',changed:'Changed AWS'};
+  const labels={provider_finding:'Provider finding',ai_recommendation:'Recommendation',specialist_route:'Specialist route',action_eligibility:'Action eligibility',human_decision:'Human decision',policy_decision:'Policy decision',exact_tool:'Exact tool',provider_verification:'Provider verification',changed:'Changed AWS'};
   const audit=data.audit||{};
   const auditBox=document.getElementById('audit');
   auditBox.replaceChildren();
@@ -152,8 +174,10 @@ function render(data){
   function renderGroups(id,groups){const box=document.getElementById(id);box.replaceChildren();(groups||[]).forEach(group=>{const item=document.createElement('span');item.textContent=`${group.name}: ${group.count}`;box.append(item);});}
   renderGroups('source-groups',backlog.by_source);
   renderGroups('resource-groups',backlog.by_resource_type);
+  renderGroups('specialist-groups',backlog.by_specialist);
+  renderGroups('eligibility-groups',backlog.by_eligibility);
   const tbody=document.getElementById('priority-findings');tbody.replaceChildren();
-  (backlog.priority_findings||[]).forEach(finding=>{const row=document.createElement('tr');[finding.severity,finding.resource_name,finding.control,finding.observed_at].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;row.append(cell);});tbody.append(row);});
+  (backlog.priority_findings||[]).forEach(finding=>{const row=document.createElement('tr');[finding.severity,finding.source,finding.specialist_route,finding.resource_name,finding.action_eligibility,finding.control].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;row.append(cell);});tbody.append(row);});
   controls(false);
 }
 async function action(path, body={}){
@@ -167,6 +191,18 @@ document.getElementById('check-s3').onclick=()=>action('/api/check-s3');
 document.getElementById('reject').onclick=()=>action('/api/reject');
 document.getElementById('approve').onclick=()=>action('/api/approve',{environment:'dev'});
 document.getElementById('deny').onclick=()=>action('/api/approve',{environment:'prod'});
+document.getElementById('import-source').onclick=async()=>{
+  const file=document.getElementById('source-file').files[0];
+  const format=document.getElementById('source-format').value;
+  if(!file){const box=document.getElementById('error');box.textContent='Choose one JSON or CSV file.';box.style.display='block';return;}
+  controls(true);document.getElementById('error').style.display='none';
+  try {
+    const type=file.name.toLowerCase().endsWith('.csv')?'text/csv':'application/json';
+    const r=await fetch('/api/import',{method:'POST',headers:{'Content-Type':type,'X-Filename':file.name,'X-Source-Format':format},body:await file.arrayBuffer()});
+    const data=await r.json();if(!r.ok)throw new Error(data.error||'Import failed');render(data);
+  } catch(e){const box=document.getElementById('error');box.textContent=e.message;box.style.display='block';}
+  finally{controls(false);}
+};
 fetch('/api/state').then(r=>r.json()).then(render);
 </script>
 </body>

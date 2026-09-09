@@ -1,7 +1,8 @@
 import unittest
 from pathlib import Path
 
-from pilot_v1.findings import import_findings, normalize_s3, normalize_sg, validate_finding
+from pilot_v1.adapters import adapt_source
+from pilot_v1.findings import import_findings, import_findings_content, normalize_s3, normalize_sg, validate_finding
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +49,27 @@ class FindingContractTest(unittest.TestCase):
         self.assertEqual(len(import_findings(ROOT / "examples/findings-sanitized.json")), 1)
         csv_finding = import_findings(ROOT / "examples/findings-sanitized.csv")[0]
         self.assertEqual(csv_finding["owner"], "platform-team")
+
+    def test_browser_content_and_explicit_source_adapters_are_bounded(self):
+        common = ROOT.joinpath("examples/findings-sanitized.json")
+        self.assertEqual(len(import_findings_content(common.read_bytes(), common.name)), 1)
+
+        cloudscape = ROOT.joinpath("examples/cloudscape-synthetic.json")
+        compliance = adapt_source(cloudscape.read_bytes(), cloudscape.name, "cloudscape")[0]
+        self.assertEqual(
+            (compliance["source"], compliance["resource_type"], compliance["status"]),
+            ("CloudSCAPE", "S3_BUCKET", "NON_COMPLIANT"),
+        )
+
+        vapt = ROOT.joinpath("examples/vapt-synthetic.csv")
+        vulnerability = adapt_source(vapt.read_bytes(), vapt.name, "vapt")[0]
+        self.assertEqual(
+            (vulnerability["source"], vulnerability["control"], vulnerability["status"]),
+            ("VAPT", "VAPT-DEMO-0001", "NON_COMPLIANT"),
+        )
+
+        with self.assertRaisesRegex(ValueError, "source format"):
+            adapt_source(vapt.read_bytes(), vapt.name, "generic")
 
     def test_invalid_or_unbounded_findings_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "severity"):

@@ -50,6 +50,14 @@ class BacklogTest(unittest.TestCase):
         self.assertEqual((result["total_open"], result["high_critical"]), (2, 2))
         self.assertEqual(result["priority_findings"][0]["severity"], "CRITICAL")
         self.assertEqual(result["by_resource_type"][0], {"name": "EC2_INSTANCE", "count": 1})
+        self.assertEqual(
+            result["by_specialist"],
+            [
+                {"name": "Compliance Agent", "count": 1},
+                {"name": "Vulnerability Agent", "count": 1},
+            ],
+        )
+        self.assertEqual(result["by_eligibility"], [{"name": "PLAN_ONLY", "count": 2}])
         self.assertIn("CRITICAL", result["recommended_focus"])
 
     def test_upsert_replaces_provider_status_instead_of_double_counting(self):
