@@ -1,30 +1,39 @@
 # aws-secops
 
-**AWS Copilot** — an AWS security and compliance copilot built on Amazon Bedrock AgentCore for governed, human-approved, provider-verified remediation.
+**AWS Copilot** — a proposed AWS security and compliance copilot built around Amazon Bedrock AgentCore, human governance, exact tools, provider verification, and audit.
+
+## Current Phase
+
+This repository is currently in **Phase 0: proposal + technical feasibility**.
+
+The near-term goal is not to rush into a full clean implementation before management approval. The working R&D proof remains in [`mytestlab123/AgentCore`](https://github.com/mytestlab123/AgentCore); this repository defines the proposed long-term product direction and the technical questions that must be validated next.
 
 ## Start Here
 
 1. Read `AGENTS.md` for repository rules.
 2. Read `CONTEXT.md` for current truth and next action.
-3. Read `SPEC.md` for the active trusted contract.
-4. Read `docs/ARCHITECTURE.md` for Architecture Decision v1.
+3. Read `SPEC.md` for the active Phase 0A contract.
+4. Read `docs/ARCHITECTURE.md` for the proposed future-state architecture.
+5. Read `ROADMAP.md` for proposal -> personal-lab feasibility -> pilot sequencing.
 
-## Current MVP
-
-[MVP-1](https://github.com/amitkarpe/aws-secops/issues/1) proves one real Security Group lifecycle:
+## Proposed Direction
 
 ```text
-thin approval UI
-  -> AgentCore Harness (Singapore)
+thin UI / approval experience
+  -> AgentCore Harness
   -> MCP Gateway + Policy
-  -> exact Lambda MCP tool
+  -> exact governed tool
   -> workload IAM / STS
-  -> real AWS Security Group
+  -> target AWS account
   -> provider verification + audit
 ```
 
-The product does not depend on a personal SSO session at runtime, and the model is never the authorization boundary.
+The model is not the authorization boundary. Provider-native findings/state and deterministic controls remain authoritative.
 
-## R&D Reference
+## Proven vs Proposed
 
-The earlier experiments remain in [`mytestlab123/AgentCore`](https://github.com/mytestlab123/AgentCore). This repository promotes only the accepted architecture and proven patterns, not the historical POC plumbing.
+**PROVEN in the R&D repo:** real human approval, AgentCore Gateway/Policy enforcement, real Security Group remediation, and provider re-verification.
+
+**PROPOSED for the clean product:** Harness-first specialist agents, actual governed tools behind Gateway, clean workload IAM, later multi-account STS/Organizations, model benchmarking, and scalable provider-backed controls.
+
+**TO VALIDATE next:** current AgentCore/Bedrock Region behavior, Harness/Runtime boundaries, model access/cost, hosting cost, and scale economics using the isolated standalone personal lab.
