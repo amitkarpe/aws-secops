@@ -1,6 +1,6 @@
 # Context
 
-Status: Phase 0B.2a complete
+Status: Phase 0B.3 complete — PASS
 
 ## Current Truth
 
@@ -8,10 +8,13 @@ Status: Phase 0B.2a complete
   Singapore with `allowedTools=[]` and zero tool calls.
 - The retained Harness is `READY`; its execution role does not grant direct
   Runtime command execution.
-- No Gateway, Policy, Lambda, or product deployment was added in this phase.
+- Phase 0B.3 proved the retained Harness can call one exact Gateway tool.
+- Policy permitted `dev` and Lambda executed exactly once; Policy denied the
+  synthetic `prod` input and the Lambda invocation delta remained zero.
+- The final roles use exact resources, built-in Harness tools remain absent,
+  and no direct Runtime-command permission was added.
 
 ## Next Action
 
-- Review Phase 0B.2a evidence in PR #4, then consider one Phase 0B.3 experiment:
-  Harness to Gateway to Policy to one harmless Lambda tool, with one ALLOW and
-  one DENY proof.
+- Review the Phase 0B.3 evidence in PR #4, then run one fixed no-tool security
+  task benchmark comparing Nova 2 Lite with one stronger Nova model.

@@ -185,12 +185,13 @@ immediate correction. Cleanup, if chosen after review, is a bounded
 `DeleteHarness` followed by deletion of this task's inline IAM policy and role;
 resource IDs and ARNs remain in private evidence rather than this public file.
 
-## Single recommended next experiment
+## Phase 0B.3 follow-up result
 
-Proceed to Phase 0B.3 with the retained Harness: attach one exact AgentCore
-Gateway tool backed by one harmless Lambda, then prove Policy ALLOW invokes it
-once and Policy DENY leaves the Lambda invocation count unchanged. Keep
-`shell`, `file_operations` and direct `InvokeAgentRuntimeCommand` unavailable.
+The recommended Gateway experiment is now **PASS**. The retained Harness called
+one exact Gateway tool; Policy permitted `dev` and Lambda ran once, while Policy
+denied synthetic `prod` and Lambda ran zero additional times. Built-in tools and
+direct `InvokeAgentRuntimeCommand` remain unavailable. See
+`GATEWAY_POLICY_LIVE_PROOF.md`.
 
 ## Official sources
 

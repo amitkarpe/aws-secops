@@ -1,11 +1,12 @@
 # AgentCore feature matrix for Singapore
 
-Status: Phase 0B.1 research, checked 2026-09-09
+Status: Phase 0B.1 research plus Phase 0B.3 live proof, checked 2026-09-09
 
 Target Region: Asia Pacific (Singapore), `ap-southeast-1`
 
-This matrix records service availability, not deployment proof. No resource was
-created and no paid feature was enabled during this pass.
+The regional matrix began as availability research. Phase 0B.3 subsequently
+proved Harness, Gateway and Policy live in Singapore; see
+`GATEWAY_POLICY_LIVE_PROOF.md` for the bounded deployment evidence.
 
 ## Regional matrix
 
@@ -16,15 +17,15 @@ name the nearest documented fallback and do not propose cross-Region use.
 
 | Capability | Singapore | Proposed use | Phase |
 | --- | --- | --- | --- |
-| AgentCore Harness | Available | Run and debug the specialist agent without managing hosting | Next experiment |
+| AgentCore Harness | **Live PASS** | Ran Nova 2 Lite and selected one exact Gateway tool | Phase 0B.2/0B.3 |
 | Runtime microVM | Available | Managed session-isolated hosting when Harness is insufficient | Later / only if needed |
 | Runtime Instances | Available | Longer-lived managed agent hosting | Later / only if needed |
-| Gateway | Available | Expose bounded tools through a governed interface | Next experiment |
-| Policy | Available | Enforce deterministic ALLOW/DENY before a controlled tool runs | Next experiment |
+| Gateway | **Live PASS** | Exposed one exact harmless Lambda tool with AWS-IAM auth | Phase 0B.3 |
+| Policy | **Live PASS** | `dev` ALLOW reached Lambda once; synthetic `prod` DENY reached it zero times | Phase 0B.3 |
 | Temporal Policy | Available | Time- and identity-aware Cedar authorization | Later |
 | Identity | Available | Workload and user identity integration | Company pilot |
 | Memory | Available | Cross-session agent context | Defer until a use case requires it |
-| Observability | Available | Agent traces, metrics and logs | Next experiment |
+| Observability | **Live PASS** | Harness stream, Runtime logs and Lambda invocation metrics captured | Phase 0B.2/0B.3 |
 | Evaluations | Available | Repeatable quality and safety evaluation | Company pilot |
 | Optimization | Available | Cost/quality tuning after measurements exist | Later |
 | Built-in tools | Available | Browser and code-interpreter capabilities | Later |

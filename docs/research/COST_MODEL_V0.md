@@ -166,10 +166,26 @@ Hosting recommendation:
 - [AWS Lambda pricing](https://aws.amazon.com/lambda/pricing/)
 - [Amazon CloudWatch pricing](https://aws.amazon.com/cloudwatch/pricing/)
 
+## Phase 0B.3 measured governed-call cost
+
+Phase 0B.3 reused the retained Harness and ran one successful DEV tool call and
+one Policy-denied synthetic PROD tool call. Including one failed no-tool
+diagnostic, measured model usage was 4,262 input and 114 output tokens:
+
+```text
+model                       = $0.00213388
+2 Gateway invocations       = $0.00001000
+2 Policy authorizations     = $0.00005000
+1 Lambda call, 128 MB/96 ms = $0.00000040 before free tier
+measured variable total     = $0.00219428
+```
+
+Tiny CloudWatch storage is excluded. One retained indexed tool is approximately
+$0.0002/month; the retained services have no separate idle compute charge.
+
 ## Single next experiment
 
-Run one minimal paid Nova 2 Lite invocation through AgentCore Harness in
-Singapore with a fixed prompt, record success, latency and exact input/output
-tokens, and stop. This is the smallest experiment that converts access and cost
-assumptions into runtime evidence without creating a Gateway, Lambda or broad
-security-service deployment.
+Run a fixed, no-tool security-task quality benchmark through the retained
+Harness using Nova 2 Lite and one stronger Nova model. Record exact
+tokens/latency/cost and score both outputs with the same small deterministic
+rubric before selecting the Friday-demo model.

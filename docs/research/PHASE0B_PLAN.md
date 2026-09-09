@@ -2,11 +2,13 @@
 
 Issue: https://github.com/amitkarpe/aws-secops/issues/3
 
-Status: planned / research PR seed
+Status: Phase 0B.1–0B.3 complete
 
 ## Objective
 
-Use the isolated standalone personal AWS lab account selected locally through `vagent` to replace assumptions with small measured evidence before a company pilot.
+Use the isolated personal AWS lab selected by Amit to replace assumptions with
+small measured evidence before a company pilot. The current live Harness and
+Gateway experiments use the `amit` profile because `vagent` quota is pending.
 
 This is not the full AWS Copilot implementation.
 
@@ -50,7 +52,7 @@ Separate security-service, model, AgentCore, execution and logging costs.
 
 ## Experiment rules
 
-- Confirm `vagent` identity and Region before AWS work.
+- Confirm the user-selected profile identity and Region before AWS work.
 - Direct AWS CLI first for simple setup/readback.
 - Small experiment -> exact proof -> cleanup/readback.
 - Do not commit private AWS environment identity.
