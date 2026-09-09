@@ -86,3 +86,29 @@ The direct Gateway client passes short-lived SigV4 credentials to `curl` over
 stdin rather than command arguments. It accepts the native JSON-RPC denial only
 for error code `-32002` with the expected Policy denial markers; other errors
 do not count as DENY proof.
+
+## M4 — Verification, audit and thin UI: PASS
+
+A dependency-free Python loopback service and static manager UI now expose the
+complete governed path at the repo-assigned local port. The UI does not execute
+AWS APIs itself: it calls the Pilot service, which preserves the Harness,
+Gateway, Policy, exact-tool, and provider-read boundaries from M1–M3.
+
+One real headless-browser run used the visible controls and proved:
+
+| Visible action | Final stage | Policy | Provider | Changed AWS |
+| --- | --- | --- | --- | ---: |
+| Check real SG | FINDING | NOT_CALLED | NON_COMPLIANT | false |
+| Reject | REJECTED | NOT_CALLED | NON_COMPLIANT | false |
+| Policy DENY test | DENIED | DENY | NON_COMPLIANT | false |
+| Approve DEV | COMPLETED | ALLOW | COMPLIANT | true |
+
+The final compact audit displays the original provider finding, agent
+recommendation, human decision, native Policy result, exact Gateway tool,
+independent provider verification, and whether AWS changed. The one approved
+change was the exact demo-owned TCP/22 rule; the Group remained unattached.
+
+`scripts/pilot-v1.sh` provides the repeatable operator boundary: `status`
+verifies profile/Region/identity and provider state, `rearm-sg` restores only
+the fixed unattached demo finding, and `serve` starts the UI on loopback. Raw
+browser images and live identities remain in the private evidence directory.

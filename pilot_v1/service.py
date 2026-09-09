@@ -1,0 +1,141 @@
+"""Single-user Pilot v1 application service."""
+
+from __future__ import annotations
+
+import json
+from typing import Any, Callable
+
+from .config import PilotConfig
+from .gateway import call_tool, result_text
+from .harness import invoke
+from .workflow import approve_remediation, reject_remediation
+
+
+class PilotService:
+    def __init__(
+        self,
+        config: PilotConfig,
+        *,
+        profile: str = "amit",
+        harness_call: Callable[..., dict[str, Any]] = invoke,
+        gateway_call: Callable[..., dict[str, Any]] = call_tool,
+    ) -> None:
+        config.require_harness()
+        config.require_gateway()
+        if not config.read_tool_name or not config.remediation_tool_name:
+            raise ValueError("exact Pilot v1 Gateway tool names are required")
+        self.config = config
+        self.profile = profile
+        self.harness_call = harness_call
+        self.gateway_call = gateway_call
+        self.state: dict[str, Any] = {
+            "stage": "READY",
+            "message": "Run the provider check to begin.",
+            "finding": None,
+            "explanation": None,
+            "audit": None,
+        }
+
+    def _call_gateway(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return self.gateway_call(
+            self.config.gateway_url,
+            self.config.region,
+            self.profile,
+            tool_name,
+            arguments,
+        )
+
+    def _read_finding(self) -> dict[str, Any]:
+        response = self._call_gateway(self.config.read_tool_name, {"environment": "dev"})
+        if response.get("result", {}).get("isError") is True or response.get("error"):
+            raise RuntimeError("provider read was denied or failed")
+        try:
+            finding = json.loads(result_text(response))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("provider read returned invalid JSON") from exc
+        if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"}:
+            raise RuntimeError("provider read returned no compliance decision")
+        return finding
+
+    def check(self) -> dict[str, Any]:
+        result = self.harness_call(
+            self.config,
+            "Check the fixed dev demo Security Group for unrestricted TCP/22. "
+            "Explain the provider result briefly and end with STATUS: COMPLIANT or STATUS: NON_COMPLIANT.",
+        )
+        if result["tool_calls"] != 1 or len(result["tool_results"]) != 1:
+            raise RuntimeError("Harness did not make exactly one provider read")
+        finding = result["tool_results"][0]
+        if finding.get("status") not in {"COMPLIANT", "NON_COMPLIANT"}:
+            raise RuntimeError("Harness tool result did not contain provider status")
+        self.state = {
+            "stage": "FINDING",
+            "message": "Provider check complete. Choose Reject or Approve.",
+            "finding": finding,
+            "explanation": result["response"],
+            "audit": {
+                "provider_finding": finding["status"],
+                "ai_recommendation": finding["recommendation"],
+                "human_decision": "PENDING",
+                "policy_decision": "NOT_CALLED",
+                "exact_tool": self.config.read_tool_name,
+                "provider_verification": finding["status"],
+                "changed": False,
+            },
+        }
+        return self.state
+
+    def reject(self) -> dict[str, Any]:
+        if not self.state.get("finding"):
+            raise RuntimeError("run the provider check first")
+        decision = reject_remediation()
+        verification = self._read_finding()
+        self.state["stage"] = "REJECTED"
+        self.state["message"] = "REJECT — no remediation call was made; provider state is unchanged."
+        self.state["explanation"] = (
+            "The human rejected remediation. Gateway and remediation Lambda were not called; "
+            f"the provider still reports {verification['status']}."
+        )
+        self.state["audit"].update(
+            human_decision=decision["human_decision"],
+            policy_decision=decision["gateway_decision"],
+            exact_tool=decision["tool"],
+            provider_verification=verification["status"],
+            changed=False,
+        )
+        return self.state
+
+    def approve(self, environment: str) -> dict[str, Any]:
+        if not self.state.get("finding"):
+            raise RuntimeError("run the provider check first")
+
+        def gateway(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            return self._call_gateway(tool_name, arguments)
+
+        decision = approve_remediation(
+            environment, self.config.remediation_tool_name, gateway
+        )
+        verification = self._read_finding()
+        denied = decision["gateway_decision"] == "DENY"
+        self.state["stage"] = "DENIED" if denied else "COMPLETED"
+        self.state["message"] = (
+            "DENY — Gateway Policy blocked the synthetic prod request; no remediation occurred."
+            if denied
+            else "ALLOW — approved remediation completed and AWS provider verification is COMPLIANT."
+        )
+        self.state["explanation"] = (
+            "Gateway Policy denied the synthetic prod context. The remediation Lambda was not "
+            f"invoked, and the provider still reports {verification['status']}."
+            if denied
+            else "The exact public SSH rule was removed after human approval and Gateway Policy "
+            f"ALLOW. The independent provider re-read now reports {verification['status']}."
+        )
+        self.state["finding"] = verification
+        self.state["audit"].update(
+            human_decision="APPROVE",
+            policy_decision=decision["gateway_decision"],
+            exact_tool=self.config.remediation_tool_name,
+            provider_verification=verification["status"],
+            changed=decision["changed"],
+        )
+        return self.state

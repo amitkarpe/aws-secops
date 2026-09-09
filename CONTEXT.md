@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1 / Issue #5 active — M1–M3 PASS, M4 next
+Status: Pilot v1 / Issue #5 active — M1–M4 PASS, M5 next
 
 ## Current Truth
 
@@ -15,9 +15,10 @@ Status: Pilot v1 / Issue #5 active — M1–M3 PASS, M4 next
   mutation.
 - M3 proved Reject and synthetic PROD make zero changes; DEV Approve reached
   the exact Lambda once and provider re-read returned COMPLIANT.
+- M4 added the dependency-free loopback manager UI and proved its real buttons
+  show finding, Reject, native Policy DENY, DEV ALLOW, and provider verification.
 
 ## Next Action
 
-- Complete M4: add the smallest single-user UI and compact audit sequence,
-  rearm the dedicated demo SG, and prove the visible finding/decision/action/
-  verification flow plus Reject/DENY evidence.
+- Complete M5: add one provider-backed read-only S3 baseline and the practical
+  pilot runbook, retained-resource inventory, cost/cleanup notes, and demo script.

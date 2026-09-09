@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AWS Compliance Agent Pilot v1</title>
+  <style>
+    :root { color-scheme: dark; --bg:#07111f; --panel:#101d30; --line:#29405d; --text:#eef6ff; --muted:#9bb0c8; --cyan:#4cc9f0; --green:#44d492; --amber:#ffbd59; --red:#ff6b6b; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font:15px/1.5 Inter,system-ui,sans-serif; background:radial-gradient(circle at top right,#163452 0,var(--bg) 45%); color:var(--text); }
+    main { max-width:1100px; margin:auto; padding:42px 24px 80px; }
+    header { display:flex; justify-content:space-between; gap:20px; align-items:end; margin-bottom:24px; }
+    h1 { margin:0; font-size:34px; letter-spacing:-.03em; }
+    h2 { margin:0 0 12px; font-size:18px; }
+    .eyebrow,.label { color:var(--cyan); font-size:12px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+    .badge { padding:7px 12px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:1.25fr .75fr; gap:18px; }
+    .card { background:color-mix(in srgb,var(--panel) 92%,transparent); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:0 14px 40px #0004; }
+    .status { font-size:24px; font-weight:850; margin:5px 0 6px; }
+    .muted { color:var(--muted); }
+    button { border:0; border-radius:10px; padding:12px 17px; font-weight:800; cursor:pointer; color:#06101d; background:var(--cyan); }
+    button.secondary { background:#b9c8d8; }
+    button.approve { background:var(--green); }
+    button.deny { background:var(--amber); }
+    button:disabled { opacity:.45; cursor:wait; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+    dl { display:grid; grid-template-columns:155px 1fr; gap:9px 14px; margin:0; }
+    dt { color:var(--muted); }
+    dd { margin:0; font-weight:700; overflow-wrap:anywhere; }
+    .audit { margin-top:18px; }
+    .audit-row { display:grid; grid-template-columns:28px 180px 1fr; gap:10px; padding:11px 0; border-top:1px solid var(--line); }
+    .audit-row span:first-child { color:var(--cyan); font-weight:900; }
+    pre { white-space:pre-wrap; margin:0; font:14px/1.55 ui-monospace,monospace; color:#d8e9fb; }
+    #error { display:none; color:#ffd0d0; border-color:#843d49; margin-top:18px; }
+    @media(max-width:800px){ .grid{grid-template-columns:1fr} header{align-items:start;flex-direction:column} dl{grid-template-columns:1fr}.audit-row{grid-template-columns:28px 1fr}.audit-row b{grid-column:2} }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="eyebrow">Amazon Bedrock AgentCore</div><h1>Compliance Agent Pilot v1</h1><div class="muted">Real provider evidence. Human decision. Deterministic policy.</div></div>
+    <div class="badge">Single-user personal lab</div>
+  </header>
+  <section class="grid">
+    <div class="card">
+      <div class="label">Current decision</div>
+      <div id="stage" class="status">READY</div>
+      <div id="message" class="muted">Run the provider check to begin.</div>
+      <div class="actions">
+        <button id="check">1. Check real SG</button>
+        <button id="reject" class="secondary">2A. Reject</button>
+        <button id="approve" class="approve">2B. Approve DEV</button>
+        <button id="deny" class="deny">Policy DENY test</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Provider finding</div>
+      <dl>
+        <dt>Resource</dt><dd id="resource">—</dd>
+        <dt>Control</dt><dd id="control">—</dd>
+        <dt>Status</dt><dd id="finding-status">—</dd>
+        <dt>Evidence</dt><dd id="source">—</dd>
+      </dl>
+    </div>
+  </section>
+  <section class="card audit">
+    <h2>Compact audit</h2>
+    <div id="audit"></div>
+  </section>
+  <section class="card audit">
+    <h2>Agent explanation</h2>
+    <pre id="explanation">Waiting for the Harness provider check.</pre>
+  </section>
+  <section id="error" class="card"></section>
+</main>
+<script>
+const ids = ['check','reject','approve','deny'];
+const busy = on => ids.forEach(id => document.getElementById(id).disabled = on);
+function render(data){
+  document.getElementById('stage').textContent=data.stage;
+  document.getElementById('message').textContent=data.message;
+  const f=data.finding||{};
+  document.getElementById('resource').textContent=f.resource_name||'—';
+  document.getElementById('control').textContent=f.control||'—';
+  document.getElementById('finding-status').textContent=f.status||'—';
+  document.getElementById('source').textContent=f.source||'—';
+  document.getElementById('explanation').textContent=data.explanation||'Waiting for the Harness provider check.';
+  const labels={provider_finding:'Provider finding',ai_recommendation:'AI recommendation',human_decision:'Human decision',policy_decision:'Policy decision',exact_tool:'Exact tool',provider_verification:'Provider verification',changed:'Changed AWS'};
+  const audit=data.audit||{};
+  const auditBox=document.getElementById('audit');
+  auditBox.replaceChildren();
+  Object.entries(labels).forEach(([key,label],i)=>{
+    const row=document.createElement('div'); row.className='audit-row';
+    const number=document.createElement('span'); number.textContent=String(i+1);
+    const title=document.createElement('b'); title.textContent=label;
+    const value=document.createElement('span'); value.textContent=String(audit[key]??'—');
+    row.append(number,title,value); auditBox.append(row);
+  });
+}
+async function action(path, body={}){
+  busy(true); document.getElementById('error').style.display='none';
+  try { const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const data=await r.json(); if(!r.ok) throw new Error(data.error||'Request failed'); render(data); }
+  catch(e){ const box=document.getElementById('error'); box.textContent=e.message; box.style.display='block'; }
+  finally { busy(false); }
+}
+document.getElementById('check').onclick=()=>action('/api/check');
+document.getElementById('reject').onclick=()=>action('/api/reject');
+document.getElementById('approve').onclick=()=>action('/api/approve',{environment:'dev'});
+document.getElementById('deny').onclick=()=>action('/api/approve',{environment:'prod'});
+fetch('/api/state').then(r=>r.json()).then(render);
+</script>
+</body>
+</html>

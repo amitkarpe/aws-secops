@@ -24,6 +24,22 @@ def _response_text(value: Any) -> str:
     return decoded.strip()
 
 
+def _tool_results(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for event in events:
+        for item in event.get("delta", {}).get("results", []):
+            text = item.get("text")
+            if not isinstance(text, str):
+                continue
+            try:
+                decoded = json.loads(text)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(decoded, dict):
+                results.append(decoded)
+    return results
+
+
 def invoke(config: PilotConfig, prompt: str, *, cli: str = "agentcore") -> dict[str, Any]:
     config.require_harness()
     session_id = f"pilot-{uuid.uuid4()}"
@@ -61,6 +77,7 @@ def invoke(config: PilotConfig, prompt: str, *, cli: str = "agentcore") -> dict[
     return {
         "response": response,
         "tool_calls": sum(1 for event in events if event.get("start", {}).get("toolUse")),
+        "tool_results": _tool_results(events),
         "events": events,
         "session_id": session_id,
     }
