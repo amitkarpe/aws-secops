@@ -6,6 +6,7 @@ import argparse
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .config import PilotConfig
 from .service import PilotService
@@ -26,6 +27,22 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _same_loopback_origin(self) -> bool:
+        host = urlsplit(f"//{self.headers.get('Host', '')}")
+        origin = urlsplit(self.headers.get("Origin", ""))
+        port = self.server.server_port
+        allowed_hosts = {"localhost", "127.0.0.1"}
+        return (
+            host.hostname in allowed_hosts
+            and host.port == port
+            and origin.scheme == "http"
+            and origin.hostname == host.hostname
+            and origin.port == host.port
+            and not origin.path
+            and not origin.query
+            and not origin.fragment
+        )
+
     def do_GET(self) -> None:
         if self.path == "/":
             body = self.page.read_bytes()
@@ -41,6 +58,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
+            if self.headers.get_content_type() != "application/json":
+                self._json(415, {"error": "POST requires application/json"})
+                return
+            if not self._same_loopback_origin():
+                self._json(403, {"error": "POST requires the same loopback origin"})
+                return
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length) or b"{}")
             if self.path == "/api/check":

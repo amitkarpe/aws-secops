@@ -1,6 +1,6 @@
 # Specification
 
-Status: active — Pilot v1 / Issue #5
+Status: complete — Pilot v1 / Issue #5 ready for review
 
 ## Problem
 

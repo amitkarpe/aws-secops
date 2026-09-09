@@ -1,6 +1,6 @@
 # Context
 
-Status: Pilot v1 / Issue #5 — M1–M5 PASS, final validation next
+Status: Pilot v1 / Issue #5 — complete and ready for review
 
 ## Current Truth
 
@@ -22,5 +22,5 @@ Status: Pilot v1 / Issue #5 — M1–M5 PASS, final validation next
 
 ## Next Action
 
-- Run final deterministic/live/public-safety validation, post the M1–M5 handoff,
-  and mark PR #6 Ready without merging it.
+- Review and land PR #4 first, retarget PR #6 to `main`, verify the resulting
+  final diff, and merge PR #6 only after that review passes.
