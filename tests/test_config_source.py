@@ -63,7 +63,8 @@ class ConfigSourceTest(unittest.TestCase):
         self.assertEqual(service.source_status["last_success"], batch["synced_at"])
         service.provider_fetch = lambda: dict(batch, findings=[])
         service.sync_provider()
-        self.assertEqual(service.backlog()["total_open"], 0)
+        self.assertEqual(service.backlog()["total_open"], 1)
+        self.assertFalse(service.backlog()["open_findings"][0]["seen_in_latest_sync"])
 
     @patch("pilot_v1.config_source._read")
     def test_inactive_recorder_and_invalid_time_are_not_fresh_success(self, read):

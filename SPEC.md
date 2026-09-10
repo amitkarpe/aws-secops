@@ -1,6 +1,6 @@
 # Specification
 
-Status: complete — Platform Phase 2 / Issue #11 ready for review
+Status: complete — Platform Phase 3 / Issue #13 ready for review
 
 ## Problem
 
@@ -9,9 +9,10 @@ workflow while retaining one exact governed AWS mutation.
 
 ## Scope
 
-Preserve Phase 1 and deliver Issue #11: exactly one existing AWS-native source
-(Config), bounded read-only sync, specialist routing, provenance/freshness and
-shared exports. Existing tools and approvals remain unchanged.
+Preserve the merged Phase 2 Config integration and deliver Issue #13: stable
+finding identity, bounded durable local backlog, safe reconciliation, operator
+mitigation planning, and restart/export proof. Existing tools and approvals
+remain unchanged.
 
 ## MUST
 
@@ -40,9 +41,17 @@ shared exports. Existing tools and approvals remain unchanged.
 
 ## MUST NOT
 
-- No new AWS resources, IAM, service enablement or configuration in Phase 2.
+- No new AWS resources, IAM, service enablement or configuration in Phase 3.
 - Config evaluations stay PLAN_ONLY. Do not infer fresh resource compliance
   from a recent sync or missing record; show actual observation and sync times.
+- Store at most 100 findings in one atomically replaced local JSON file outside
+  Git. Reject corrupt/unreadable stores without overwriting them. One app process
+  owns a store; no database or multi-writer coordination is introduced.
+- Derive IDs and sighting metadata on the server, independently from model text.
+  Preserve operator plans during sync/import; missing bounded-snapshot records
+  remain unresolved. Planning cannot alter compliance, eligibility or approvals.
+- Accept only bounded owner/mitigation_plan/target/planning_status fields for an
+  existing server finding ID through the existing same-origin JSON boundary.
 
 - Do not add generic AWS actions, arbitrary resource selection, multi-user auth,
   multi-account support, Registry, Temporal Policy, EKS, Supervisor, or A2A.
@@ -51,6 +60,10 @@ shared exports. Existing tools and approvals remain unchanged.
   private evidence.
 
 ## Verification
+
+- Phase 3: stable ID/plan survives actual process restart and Config resync;
+  exports agree. Missing records stay unresolved; failed sync/write preserves
+  state; corrupt store stops; planning cannot invoke AWS or expand eligibility.
 
 - Pilot v1.1 M1–M5 focused checks and live proofs pass.
 - The final visual path shows real finding, decision, Policy result, exact
@@ -65,4 +78,4 @@ shared exports. Existing tools and approvals remain unchanged.
 
 - Stop for identity or Region mismatch, unclear/unbounded recurring cost,
   ambiguous retained-resource ownership, Policy not in ENFORCE mode, exposure
-  of private data, risk to a non-demo resource, or expansion beyond Issue #11.
+  of private data, risk to a non-demo resource, or expansion beyond Issue #13.

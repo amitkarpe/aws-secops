@@ -1,6 +1,6 @@
 # Platform Phase 3 implementation plan
 
-Status: seeded for implementation
+Status: M1–M5 PASS — ready for review; see PLATFORM_PHASE3_PROOF.md
 
 Authority: Issue #13
 

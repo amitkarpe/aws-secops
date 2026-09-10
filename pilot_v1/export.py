@@ -10,6 +10,8 @@ from .routing import enrich_finding
 
 
 FIELDS = (
+    "finding_id", "first_seen", "last_seen", "occurrence_count", "seen_in_latest_sync",
+    "planning_status", "mitigation_plan",
     "source",
     "specialist_route",
     "action_eligibility",
@@ -37,6 +39,7 @@ def action_plan(findings: Iterable[dict[str, str]]) -> list[dict[str, str]]:
         if item["status"] != "NON_COMPLIANT":
             continue
         rows.append({
+            **{field: str(item.get(field, "")) for field in FIELDS[:7]},
             "source": item["source"],
             "specialist_route": item["specialist_route"],
             "action_eligibility": item["action_eligibility"],
@@ -77,7 +80,7 @@ def _cell(value: str) -> str:
 def to_markdown(findings: Iterable[dict[str, str]]) -> str:
     rows = action_plan(findings)
     lines = [
-        "# AWS SecOps Platform Phase 1 action plan",
+        "# AWS SecOps durable action plan",
         "",
         f"Open actions: **{len(rows)}**",
         "",

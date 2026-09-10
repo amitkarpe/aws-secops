@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AWS SecOps — live Config findings</title>
+  <title>AWS SecOps — durable compliance backlog</title>
   <style>
     :root { color-scheme: dark; --bg:#07111f; --panel:#101d30; --line:#29405d; --text:#eef6ff; --muted:#9bb0c8; --cyan:#4cc9f0; --green:#44d492; --amber:#ffbd59; --red:#ff6b6b; }
     * { box-sizing:border-box; }
@@ -38,7 +38,10 @@
     .metric strong { display:block; font-size:28px; }
     .group-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     .group-list span { border:1px solid var(--line); border-radius:999px; padding:5px 9px; color:var(--muted); }
-    table { width:100%; border-collapse:collapse; margin-top:14px; }
+    table { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+    .plan-fields { display:grid; gap:12px; }
+    .plan-fields label { display:grid; gap:4px; color:var(--muted); }
+    .plan-fields input,.plan-fields select { width:100%; min-width:0; }
     th,td { border-top:1px solid var(--line); padding:10px 7px; text-align:left; vertical-align:top; }
     th { color:var(--muted); font-size:12px; text-transform:uppercase; }
     pre { white-space:pre-wrap; margin:0; font:14px/1.55 ui-monospace,monospace; color:#d8e9fb; }
@@ -49,7 +52,7 @@
 <body>
 <main>
   <header>
-    <div><div class="eyebrow">Amazon Bedrock AgentCore</div><h1>AWS SecOps — live Config findings</h1><div class="muted">Provider evidence, specialist explanation, and a shared action plan.</div></div>
+    <div><div class="eyebrow">Amazon Bedrock AgentCore</div><h1>AWS SecOps — durable backlog</h1><div class="muted">Provider evidence and operator plans retained across restarts.</div></div>
     <div class="badge">Single-user personal lab</div>
   </header>
   <section class="grid">
@@ -108,6 +111,8 @@
       <div class="metric"><span class="muted">Bounded findings</span><strong id="finding-count">0</strong></div>
     </div>
     <div><b>Recommended focus</b><div id="focus" class="muted">No provider findings loaded.</div></div>
+    <p id="planning-counts" class="muted"></p>
+    <p class="muted">Missing from a bounded sync does not mean resolved. Plans are local operator metadata, not approval or verification. Source health above covers this process; retained findings show their own last-seen times.</p>
     <div class="grid audit">
       <div><b>By source</b><div id="source-groups" class="group-list"></div></div>
       <div><b>By resource type</b><div id="resource-groups" class="group-list"></div></div>
@@ -115,13 +120,26 @@
       <div><b>By eligibility</b><div id="eligibility-groups" class="group-list"></div></div>
     </div>
     <table>
-      <thead><tr><th>Priority / status</th><th>Source / provenance</th><th>Specialist</th><th>Resource</th><th>Eligibility</th><th>Control / observed</th></tr></thead>
+      <thead><tr><th>Priority / status</th><th>Source / provenance</th><th>Specialist</th><th>Resource</th><th>Eligibility</th><th>Control / observed</th><th>Plan / tracking</th></tr></thead>
       <tbody id="priority-findings"></tbody>
     </table>
     <div class="actions">
       <a class="button" href="/api/export.csv">Download action plan CSV</a>
       <a class="button secondary" href="/api/export.md">Download summary Markdown</a>
     </div>
+  </section>
+  <section class="card audit">
+    <h2>Operator mitigation plan</h2>
+    <p class="muted">Select any open finding (up to 100). Saving changes only the local backlog. No AWS call, AI call, approval, or compliance-status change.</p>
+    <div class="plan-fields">
+      <label>Finding<select id="plan-finding"></select></label>
+      <label>Owner<input id="plan-owner" maxlength="128"></label>
+      <label>Mitigation plan (single line)<input id="plan-mitigation" maxlength="1000"></label>
+      <label>Target date / timeline<input id="plan-target" maxlength="128" placeholder="e.g. 2026-09-18 or next review"></label>
+      <label>Planning status<select id="plan-status"><option>UNPLANNED</option><option>PLANNED</option></select></label>
+    </div>
+    <div class="actions"><button id="save-plan">Save local plan</button></div>
+    <p id="plan-result" role="status" class="muted"></p>
   </section>
   <section class="card audit">
     <h2>Compact audit</h2>
@@ -141,6 +159,7 @@ function controls(on){
   document.getElementById('check-s3').disabled=on;
   document.getElementById('sync-provider').disabled=on;
   document.getElementById('import-source').disabled=on;
+  document.getElementById('save-plan').disabled=on||!(current.backlog?.open_findings?.length);
   const sgReady=current.workflow==='sg' && current.stage!=='COMPLETED';
   ['reject','approve','deny'].forEach(id=>document.getElementById(id).disabled=on||!sgReady);
 }
@@ -186,21 +205,39 @@ function render(data){
   document.getElementById('high-count').textContent=String(backlog.high_critical??0);
   document.getElementById('finding-count').textContent=String(backlog.total_findings??0);
   document.getElementById('focus').textContent=backlog.recommended_focus||'No provider findings loaded.';
+  document.getElementById('planning-counts').textContent=`${backlog.planned||0} PLANNED / ${backlog.unplanned||0} UNPLANNED. Priority table shows up to 10; planning selector and exports include all open findings.`;
   function renderGroups(id,groups){const box=document.getElementById(id);box.replaceChildren();(groups||[]).forEach(group=>{const item=document.createElement('span');item.textContent=`${group.name}: ${group.count}`;box.append(item);});}
   renderGroups('source-groups',backlog.by_source);
   renderGroups('resource-groups',backlog.by_resource_type);
   renderGroups('specialist-groups',backlog.by_specialist);
   renderGroups('eligibility-groups',backlog.by_eligibility);
   const tbody=document.getElementById('priority-findings');tbody.replaceChildren();
-  (backlog.priority_findings||[]).forEach(finding=>{const row=document.createElement('tr');[`${finding.severity} / ${finding.status}`,`${finding.source} / ${finding.evidence_origin}`,finding.specialist_route,finding.resource_name,finding.action_eligibility,`${finding.control} / ${finding.observed_at}`].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;row.append(cell);});tbody.append(row);});
+  (backlog.priority_findings||[]).forEach(finding=>{const row=document.createElement('tr');const age=Math.max(0,Math.floor((Date.now()-Date.parse(finding.first_seen))/86400000));[`${finding.severity} / ${finding.status}`,`${finding.source} / ${finding.evidence_origin}`,finding.specialist_route,finding.resource_name,finding.action_eligibility,`${finding.control} / ${finding.observed_at}`,`${finding.planning_status} | age ${age}d | last seen ${finding.last_seen} | ${finding.occurrence_count} sightings | ${finding.seen_in_latest_sync?'seen':'NOT SEEN in latest bounded sync; unresolved'}`].forEach(value=>{const cell=document.createElement('td');cell.textContent=value;row.append(cell);});tbody.append(row);});
+  const selector=document.getElementById('plan-finding');const selected=selector.value;selector.replaceChildren();
+  (backlog.open_findings||[]).forEach(f=>{const option=document.createElement('option');option.value=f.finding_id;option.textContent=`${f.resource_name} / ${f.control} / ${f.planning_status} / ${f.finding_id.slice(0,12)}`;selector.append(option);});
+  if((backlog.open_findings||[]).some(f=>f.finding_id===selected))selector.value=selected;
+  loadPlan();
   controls(false);
 }
 async function action(path, body={}){
   controls(true); document.getElementById('error').style.display='none';
-  try { const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const data=await r.json(); if(!r.ok) throw new Error(data.error||'Request failed'); render(data); }
+  try { const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const data=await r.json(); if(!r.ok) throw new Error(data.error||'Request failed'); render(data); return true; }
   catch(e){ const box=document.getElementById('error'); box.textContent=e.message; box.style.display='block'; await fetch('/api/state').then(r=>r.json()).then(render); }
   finally { controls(false); }
 }
+function loadPlan(){
+  const f=(current.backlog?.open_findings||[]).find(f=>f.finding_id===document.getElementById('plan-finding').value)||{};
+  document.getElementById('plan-owner').value=f.owner||'';
+  document.getElementById('plan-mitigation').value=f.mitigation_plan||'';
+  document.getElementById('plan-target').value=f.target||'';
+  document.getElementById('plan-status').value=f.planning_status||'UNPLANNED';
+}
+document.getElementById('plan-finding').onchange=()=>{loadPlan();document.getElementById('plan-result').textContent='';};
+document.getElementById('save-plan').onclick=async()=>{
+  document.getElementById('plan-result').textContent='Saving local plan…';
+  const ok=await action('/api/plan',{finding_id:document.getElementById('plan-finding').value,owner:document.getElementById('plan-owner').value,mitigation_plan:document.getElementById('plan-mitigation').value,target:document.getElementById('plan-target').value,planning_status:document.getElementById('plan-status').value});
+  document.getElementById('plan-result').textContent=ok?'SAVED — local plan persisted. No AWS change; compliance and eligibility unchanged.':'NOT SAVED — see error below.';
+};
 document.getElementById('check').onclick=()=>action('/api/check');
 document.getElementById('check-s3').onclick=()=>action('/api/check-s3');
 document.getElementById('sync-provider').onclick=()=>action('/api/sync-provider');
