@@ -25,6 +25,19 @@ def backend_url():
     return value
 
 
+def review_origin(base):
+    """Display-only operator setting; never used as a request destination."""
+    value = os.environ.get("SECOPS_REVIEW_ORIGIN")
+    if not value:
+        return base.replace("127.0.0.1", "localhost")
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username
+            or parsed.password or parsed.port not in {None, 443}
+            or parsed.path or parsed.query or parsed.fragment):
+        raise ValueError("review origin must be a configured HTTPS origin")
+    return value
+
+
 def dispatch(operation, arguments):
     # Enforce independently of model hints, SDK schemas and tool annotations.
     if operation not in OPERATIONS or not isinstance(arguments, dict):
@@ -61,7 +74,7 @@ def dispatch(operation, arguments):
                 if path.startswith("/?finding_id=") or path.startswith("/?job_id="):
                     field, ident = path[2:].split("=", 1)
                     identity(ident, 32 if field == "job_id" else 64)
-                    value["review_url"] = base.replace("127.0.0.1", "localhost") + path
+                    value["review_url"] = review_origin(base) + path
                 for item in list(value.values()):
                     links(item)
             elif isinstance(value, list):

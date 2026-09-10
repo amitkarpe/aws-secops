@@ -9,6 +9,17 @@ workflow while retaining one exact governed AWS mutation.
 
 ## Scope
 
+### Approved named UI entry points — 2026-09-10
+
+Amit selected option 1: reuse the retained EC2 with one reverse proxy and TLS,
+preserve the legacy AgentCore DNS/service, add separate chat/operator subdomains,
+and protect the Operator UI with its own login. Scoped DNS, certificate renewal
+IAM, HTTPS ingress restricted to the existing trusted source, port handoff and
+service restart are approved. Operator backend stays loopback-only; the proxy
+must reject cross-origin writes before translating trusted upstream headers.
+Use the same PR #18; validate with Playwright and notify ChatGPT. No AWS approval
+may be inferred from chat access. Credentials and deployment names stay private.
+
 ### Amit approval amendment — 2026-09-10
 
 Amit approved completing this release using the home Linux host or reusing

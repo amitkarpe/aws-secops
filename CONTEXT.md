@@ -4,6 +4,13 @@ Status: Phases 5–7 / Issue #17 / PR #18 — connected acceptance PASS; ready f
 
 ## Current Truth
 
+- Approved named UI extension is deployed on the retained EC2: one Nginx,
+  HTTPS chat plus separately authenticated operator entry, and unchanged legacy
+  DNS/HTTP route. Both application backends remain loopback-only. Public access
+  remains limited to the existing trusted source IP. Browser chat-to-exact-review
+  and origin/auth boundaries passed; see NAMED_UI_DEPLOYMENT.md. No workload
+  remediation occurred. Private credentials/evidence stay outside Git.
+
 - Amit's 2026-09-10 amendment authorizes home/retained EC2 reuse and scoped
   hosting/IAM/private connectivity prerequisites. SPEC records the approval;
   reuse the old EC2 co-location pattern while preserving read-only chat tools.

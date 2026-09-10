@@ -6,6 +6,19 @@ from unittest.mock import patch
 
 @unittest.skipUnless(importlib.util.find_spec("mcp"), "install requirements-mcp.txt for MCP boundary tests")
 class McpBoundaryTest(unittest.IsolatedAsyncioTestCase):
+    def test_review_origin_is_display_only_and_https(self):
+        from pilot_v1.mcp_bridge import review_origin, backend_url
+        with patch.dict('os.environ', {'SECOPS_REVIEW_ORIGIN': 'https://ops.example.test',
+                                     'SECOPS_BACKEND_URL': 'http://localhost:3340'}):
+            self.assertEqual(review_origin(backend_url()), 'https://ops.example.test')
+            self.assertEqual(backend_url(), 'http://localhost:3340')
+        for value in ['http://ops.example.test', 'https://user:pass@ops.example.test',
+                      'https://ops.example.test/path', 'https://ops.example.test:444',
+                      'https://ops.example.test?redirect=x']:
+            with patch.dict('os.environ', {'SECOPS_REVIEW_ORIGIN': value}):
+                with self.assertRaises(ValueError):
+                    review_origin('http://localhost:3340')
+
     async def test_only_six_tools_reject_extra_args_unknown_tools_and_paths(self):
         from pilot_v1.mcp_bridge import server, dispatch, OPERATIONS
         tools = await server.list_tools()

@@ -17,13 +17,26 @@ const entry = {
   env: {PYTHONPATH: '/opt/aws-secops', SECOPS_BACKEND_URL: 'http://localhost:3340'},
   timeout: 105000, initTimeout: 15000, chatMenu: false, serverInstructions: true,
 };
+const reviewOrigin = process.env.SECOPS_REVIEW_ORIGIN;
+if (reviewOrigin) {
+  const u = new URL(reviewOrigin);
+  if (u.protocol !== 'https:' || u.origin !== reviewOrigin || u.port || u.username || u.password)
+    throw Error('SECOPS_REVIEW_ORIGIN must be an HTTPS origin');
+  entry.env.SECOPS_REVIEW_ORIGIN = reviewOrigin;
+}
 const readTools = ['list_findings','get_finding','get_source_health','explain_finding','list_jobs','get_job'];
 const allowNames = readTools.map(name => name + '_mcp_aws_secops_reader');
 if (!config.mcpServers) throw Error('existing mcpServers mapping required');
 let after = before;
 if (config.mcpServers.aws_secops_reader) {
-  if (!isDeepStrictEqual(config.mcpServers.aws_secops_reader, entry))
-    throw Error('existing reader differs; review before replacing');
+  const previous = structuredClone(entry);
+  delete previous.env.SECOPS_REVIEW_ORIGIN;
+  if (!isDeepStrictEqual(config.mcpServers.aws_secops_reader, entry)) {
+    if (!reviewOrigin || !isDeepStrictEqual(config.mcpServers.aws_secops_reader, previous))
+      throw Error('existing reader differs; review before replacing');
+    after = before.replace(/^      SECOPS_BACKEND_URL: http:\/\/localhost:3340[ \t]*$/m,
+      '$&\n      SECOPS_REVIEW_ORIGIN: ' + reviewOrigin);
+  }
 } else {
   if (!/^mcpServers:\s*$/m.test(before)) throw Error('unsupported YAML layout');
   after = before.replace(/^mcpServers:\s*$/m, 'mcpServers:\n' +
