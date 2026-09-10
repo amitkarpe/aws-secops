@@ -84,6 +84,17 @@ class ServerBoundaryTest(unittest.TestCase):
         )
         self.assertEqual(self.service.approve_calls, 1)
 
+    def test_reads_reject_external_host_and_unknown_queries(self):
+        for path, headers, status in [("/api/state", {"Host": "attacker.example"}, 403),
+                                      ("/", {"Host": "localhost"}, 403),
+                                      ("/api/v1/get_finding?finding_id=a&finding_id=b", {}, 400),
+                                      ("/api/v1/explain_finding?finding_id=a", {}, 400)]:
+            request = urllib.request.Request(f"http://127.0.0.1:{self.port}" + path, headers=headers)
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                urllib.request.urlopen(request)
+            self.assertEqual(error.exception.code, status)
+        self.assertEqual(self.service.approve_calls, 0)
+
     def test_import_accepts_content_but_rejects_paths_and_wrong_origin(self):
         body = b'{"findings": []}'
         origin = f"http://127.0.0.1:{self.port}"

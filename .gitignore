@@ -4,6 +4,7 @@
 !.env.example
 *.log
 node_modules/
+.venv-mcp/
 __pycache__/
 .pytest_cache/
 .terraform/

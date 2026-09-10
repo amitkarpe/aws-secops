@@ -1,8 +1,17 @@
 # Context
 
-Status: Platform Phase 4 / Issue #15 — M1–M5 PASS; PR #16 ready for review
+Status: Phases 5–7 / Issue #17 / PR #18 — BLOCKED_INTEGRATION; backend/MCP proved
 
 ## Current Truth
+
+- Phase 4 merged as a65347ae. Active work is the nine-milestone restricted
+  LibreChat integration in PLATFORM_PHASE5_7_PLAN.md. Chat is read/explain only;
+  the existing single-writer human UI retains all planning and approval writes.
+- M1–M4 implemented and validated, local exact-link/plan/restart proof passed.
+  Actual LibreChat conversation is not proved: retained v0.8.8-rc1 runs on EC2,
+  backend/store on WSL; no established private reverse path. Co-location would
+  also need permissions absent from the existing EC2 role (simulation evidence).
+  No remote LibreChat, IAM, AWS resource, credential or network configuration changed.
 
 - Phase 3 merged via PR #14. Current work connects the direct supported SG
   finding to durable jobs, exact preview, single-use decisions and restart-safe
@@ -67,5 +76,6 @@ Status: Platform Phase 4 / Issue #15 — M1–M5 PASS; PR #16 ready for review
 
 ## Next Action
 
-- ChatGPT full-diff review of PR #16 and PLATFORM_PHASE4_PROOF.md, then the
-  standing review/merge/next-Issue workflow. No additional scope invented here.
+- ChatGPT resolve the private deployment/connectivity gate in the same PR #18;
+  then complete the real chat segment and measurements. Do not mark Ready/merge
+  or treat the standalone MCP/local browser proof as complete integration.

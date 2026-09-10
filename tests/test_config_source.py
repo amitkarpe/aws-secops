@@ -45,6 +45,8 @@ class ConfigSourceTest(unittest.TestCase):
         state = service.sync_provider()
         self.assertEqual(state["finding"]["evidence_origin"], "AWS_PROVIDER")
         self.assertEqual(state["audit"]["action_eligibility"], "PLAN_ONLY")
+        self.assertEqual(calls, [])
+        service.explain_finding(service.findings.open_findings()[0]["finding_id"])
         self.assertTrue(calls[0]["explanation_only"])
         self.assertIn("AWS Config evaluations", calls[0]["system_prompt"])
         self.assertIn("AWS_PROVIDER", service.export_csv())

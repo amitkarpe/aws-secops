@@ -1,6 +1,7 @@
 # Integrated release: Phases 5-7
 
-Status: planned; implementation and live acceptance NOT YET performed.
+Status: backend/MCP/local operator proof PASS; BLOCKED_INTEGRATION for remote
+LibreChat connectivity. PR #18 remains Draft; full M1–M9 acceptance NOT achieved.
 
 Authority: [Issue #17](https://github.com/amitkarpe/aws-secops/issues/17).
 Base: PR #16 merged at `a65347aee76c39afe33d6acfcbaf7db1bd1ce1da`.
@@ -25,16 +26,16 @@ Human operator UI -> existing job approval -> Gateway/Policy -> exact Lambda
 
 ### Phase 5: frontend-ready backend
 
-- [ ] M1: bounded versioned finding/job list/detail and source-health contract;
+- [x] M1: bounded versioned finding/job list/detail and source-health contract;
       same IDs, provenance, plans and outcomes as the existing UI/exports.
-- [ ] M2: deterministic evidence intake independent of inference availability;
+- [x] M2: deterministic Config/import intake independent of inference availability;
       explicit ID-based specialist explanation with evidence-aware cache.
-- [ ] M3: bounded execution failures, safe diagnostics and local Host/request
+- [x] M3: bounded execution failures, safe diagnostics and local Host/request
       guards; preserve single-writer stores and no automatic mutation retry.
 
 ### Phase 6: restricted MCP and real LibreChat
 
-- [ ] M4: six exact MCP tools: list_findings, get_finding, get_source_health,
+- [x] M4: six exact MCP tools: list_findings, get_finding, get_source_health,
       explain_finding, list_jobs, get_job. No generic proxy or action endpoint.
 - [ ] M5: inspect installed LibreChat/topology, configure one scoped personal-lab
       integration and prove a real conversation invokes the backend.
@@ -49,6 +50,13 @@ Human operator UI -> existing job approval -> Gateway/Policy -> exact Lambda
       plus measured invocation/cache/latency and available token counters.
 - [ ] M9: concise topology/config/runbook, five demo prompts, honest limits,
       current SPEC/CONTEXT and one exact-head release proof/handoff.
+
+M5: installed EC2 version/topology inspected; no connected private path to WSL.
+M6: exact operator links/plan API/browser pass; chat-to-UI-to-chat unproved.
+M7: Config/MCP/Harness and local restart proof pass; LibreChat segment blocked.
+M8: focused negatives and backend usage measured; chat measurements unavailable.
+M9: runbook/template/proof delivered, but connected release acceptance incomplete.
+See PLATFORM_PHASE5_7_PROOF.md for executed/reused evidence and exact blocker.
 
 Issue #17 contains acceptance criteria and controls; do not duplicate its
 full specification into additional documents. Use the official LibreChat/MCP

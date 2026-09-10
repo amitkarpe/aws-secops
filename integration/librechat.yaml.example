@@ -1,0 +1,15 @@
+# Add only this entry to an existing mcpServers mapping. Do not replace the file.
+# Co-location prerequisite: this process can reach the ONE loopback backend.
+# This template was NOT installed on the retained remote LibreChat (see proof).
+mcpServers:
+  aws_secops_reader:
+    type: stdio
+    command: /absolute/path/aws-secops/.venv-mcp/bin/python
+    args: ["-m", "pilot_v1.mcp_bridge"]
+    env:
+      PYTHONPATH: /absolute/path/aws-secops
+      SECOPS_BACKEND_URL: http://localhost:3340
+    timeout: 105000
+    initTimeout: 15000
+    chatMenu: false
+    serverInstructions: true

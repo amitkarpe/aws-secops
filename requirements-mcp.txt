@@ -1,0 +1,2 @@
+# Official Python MCP SDK v1 stable API used by this bounded stdio adapter.
+mcp==1.30.0

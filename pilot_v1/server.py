@@ -7,7 +7,7 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 
 from .config import PilotConfig
 from .findings import MAX_IMPORT_BYTES
@@ -59,8 +59,36 @@ class Handler(BaseHTTPRequestHandler):
             and not origin.fragment
         )
 
+    def _local_host(self) -> bool:
+        try:
+            return self.headers.get_all("Host") in ([f"localhost:{self.server.server_port}"],
+                                                     [f"127.0.0.1:{self.server.server_port}"])
+        except ValueError:
+            return False
+
     def do_GET(self) -> None:
-        if self.path == "/":
+        if not self._local_host():
+            self._json(403, {"error": "unexpected local Host"})
+            return
+        parsed = urlsplit(self.path)
+        if parsed.path.startswith("/api/v1/"):
+            try:
+                query = parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True, max_num_fields=5)
+                if any(len(value) != 1 for value in query.values()):
+                    raise ValueError("duplicate argument")
+                arguments = {key: value[0] for key, value in query.items()}
+                for key in ("limit", "offset"):
+                    if key in arguments:
+                        arguments[key] = int(arguments[key])
+                operation = parsed.path.removeprefix("/api/v1/")
+                if operation == "explain_finding":
+                    raise ValueError("explanation requires explicit POST")
+                self._json(200, self.service.query(operation, arguments))
+            except ValueError:
+                self._json(400, {"error": "invalid query, filter or unknown ID"})
+            except Exception:
+                self._json(503, {"error": "backend unavailable; no action performed"})
+        elif parsed.path == "/":
             body = self.page.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -82,6 +110,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
+            if not self._local_host():
+                self._json(403, {"error": "unexpected local Host"})
+                return
             if self.path != "/api/import" and self.headers.get_content_type() != "application/json":
                 self._json(415, {"error": "POST requires application/json"})
                 return
@@ -114,7 +145,9 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
             if not isinstance(payload, dict):
                 raise ValueError("JSON action must be an object")
-            if self.path == "/api/sync-provider":
+            if self.path == "/api/v1/explain_finding":
+                result = self.service.query("explain_finding", payload)
+            elif self.path == "/api/sync-provider":
                 if payload != {}:
                     raise ValueError("AWS Config sync accepts no caller parameters")
                 result = self.service.sync_provider()
@@ -145,7 +178,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json(200, result)
         except (ValueError, RuntimeError, json.JSONDecodeError) as exc:
-            self._json(400, {"error": str(exc)})
+            self._json(400, {"error": "Request rejected or operation failed; check input, source health and local store readiness. No automatic retry."})
+        except Exception:
+            self._json(503, {"error": "Operation unavailable; check saved job outcome before retrying any action."})
 
 
 def main() -> int:

@@ -102,14 +102,16 @@ def run(*, specialists_only: bool = False) -> None:
         )
         _expect_http_error(url, "/api/approve", {"environment": "dev"}, 400)
         for state, source in [(compliance, "CloudSCAPE"), (vulnerability, "VAPT")]:
+            item = next(f for f in _request(url, "/api/backlog")["open_findings"] if f["source"] == source)
+            explanation = _request(url, "/api/v1/explain_finding", {"finding_id": item["finding_id"]})
             _expect(
-                state["audit"].get("explanation_tool_calls") == 0
+                explanation.get("tool_calls") == 0 and explanation["status"] == "READY"
                 and state["audit"]["provider_verification"] == "NOT_PERFORMED"
-                and source.lower() in state["explanation"].lower(),
+                and source.lower() in explanation["text"].lower(),
                 "specialist explanation lacked source grounding or zero-tool proof",
             )
             print(f"SPECIALIST={state['audit']['specialist_route']} TOOL_CALLS=0 ELIGIBILITY=PLAN_ONLY")
-            print(f"EXPLANATION={state['explanation']}")
+            print("EXPLANATION=READY")
         if specialists_only:
             print("PLATFORM_SPECIALIST_SMOKE=PASS")
             return
@@ -281,7 +283,7 @@ def main() -> int:
         _expect(finding.get("evidence_origin") == "AWS_PROVIDER", "missing provider provenance")
         _expect(finding.get("action_eligibility") == "PLAN_ONLY", "unexpected mutation eligibility")
         _expect(result["audit"].get("explanation_tool_calls") == 0, "specialist attempted a tool")
-        _expect("config" in result["explanation"].lower(), "explanation omitted provider source")
+        _expect("saved" in result["explanation"].lower(), "intake did not report deterministic evidence saved")
         _expect(result["source_status"].get("last_success") is not None, "missing sync time")
         _expect_http_error(url, "/api/approve", {"environment": "dev"}, 400)
         for path in ["/api/export.csv", "/api/export.md"]:

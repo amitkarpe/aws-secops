@@ -164,6 +164,10 @@ class FindingBacklog:
         )
         return open_findings
 
+    def all_findings(self) -> list[dict[str, Any]]:
+        return sorted((enrich_finding(item) for item in self._findings.values()),
+                      key=lambda item: item["finding_id"])
+
     def replace_provider(self, source: str, findings: list[dict[str, Any]], synced_at: str) -> None:
         replacement = {key: {**value, "seen_in_latest_sync": False} if value["source"] == source and value["evidence_origin"] == "AWS_PROVIDER" else value for key, value in self._findings.items()}
         now, seen = _now(), set()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import uuid
+import time
 from typing import Any
 
 from .config import PilotConfig
@@ -70,7 +71,11 @@ def invoke(
             "--model-id", config.model_id, "--model-provider", "bedrock",
             "--max-tokens", "700", "--max-iterations", "1",
         ])
-    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+    started = time.monotonic()
+    try:
+        completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Harness timed out after 90 seconds; evidence retained") from exc
     if completed.returncode != 0:
         raise RuntimeError("AgentCore Harness invocation failed")
     events = [json.loads(line) for line in completed.stdout.splitlines() if line.strip()]
@@ -96,4 +101,6 @@ def invoke(
         "tool_results": _tool_results(events),
         "events": events,
         "session_id": session_id,
+        "elapsed_seconds": round(time.monotonic() - started, 3),
+        "usage": summary.get("usage"),
     }

@@ -1,6 +1,6 @@
 # Specification
 
-Status: complete — Platform Phase 4 / Issue #15 ready for review
+Status: active — integrated Phases 5–7 / Issue #17 / PR #18
 
 ## Problem
 
@@ -9,10 +9,11 @@ workflow while retaining one exact governed AWS mutation.
 
 ## Scope
 
-Preserve the merged Phase 3 backlog and deliver Issue #15: durable jobs for
-the existing exact provider-backed DEV public-SSH remediation, action preview,
-single-use human decision, retained Policy/Lambda execution, independent
-verification and restart-safe audit. No second AWS mutation capability.
+Preserve merged Phase 4 and deliver Issue #17: bounded backend queries,
+inference-independent intake, cached zero-tool explanations, restricted MCP,
+real LibreChat integration and exact human-review links. Deliver all nine
+milestones in PLATFORM_PHASE5_7_PLAN.md. Chat cannot save plans, create jobs,
+approve, reject, execute or rearm. No second AWS mutation capability.
 
 ## MUST
 
@@ -41,7 +42,8 @@ verification and restart-safe audit. No second AWS mutation capability.
 
 ## MUST NOT
 
-- No new AWS resources, IAM, service enablement or configuration in Phase 4.
+- No new AWS resources, IAM or service enablement. Additive identified
+  LibreChat/backend application configuration and restart are in scope.
 - Only the retained dedicated demo SG and exact action may be exercised live,
   including rearm to the approved unattached demonstration state.
 - A pending job is consumed durably before network execution. Terminal jobs
@@ -86,4 +88,4 @@ verification and restart-safe audit. No second AWS mutation capability.
 
 - Stop for identity or Region mismatch, unclear/unbounded recurring cost,
   ambiguous retained-resource ownership, Policy not in ENFORCE mode, exposure
-  of private data, risk to a non-demo resource, or expansion beyond Issue #15.
+  of private data, risk to a non-demo resource, or expansion beyond Issue #17.

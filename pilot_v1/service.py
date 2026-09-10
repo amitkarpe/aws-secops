@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -11,12 +13,13 @@ from .adapters import adapt_source
 from .backlog import FindingBacklog
 from .config import PilotConfig
 from .config_source import SOURCE, fetch_config_findings
-from .findings import normalize_s3, normalize_sg
+from .findings import normalize_s3, normalize_sg, REQUIRED_FIELDS
 from .export import to_csv, to_markdown
 from .gateway import call_tool, result_text
 from .jobs import JobStore
 from .harness import invoke
-from .routing import enrich_finding, specialist_instruction, specialist_route
+from .routing import enrich_finding, specialist_instruction
+from .queries import identity, page
 from .workflow import approve_remediation
 
 
@@ -43,6 +46,9 @@ class PilotService:
         self.source_status: dict[str, Any] = {"source": SOURCE, "status": "NOT_SYNCED", "last_success": None}
         self.findings = FindingBacklog(path=backlog_path)
         self.jobs = JobStore(str(Path(backlog_path).with_suffix(".jobs.json")) if backlog_path else None)
+        self.explanations = {}
+        self.usage = {"model_calls": 0, "cache_hits": 0, "errors": 0, "elapsed_seconds": 0.0,
+                      "token_usage": None, "scope": "backend specialist, process-local; chat model not measured"}
         self.state: dict[str, Any] = {
             "stage": "READY",
             "source_status": self.source_status,
@@ -119,6 +125,91 @@ class PilotService:
     def backlog(self) -> dict[str, Any]:
         return self.findings.summary()
 
+    def _finding(self, finding_id):
+        identity(finding_id)
+        item = next((f for f in self.findings.all_findings() if f["finding_id"] == finding_id), None)
+        if item is None:
+            raise ValueError("unknown finding ID")
+        return item
+
+    def _explanation_key(self, item):
+        # Plans/sightings do not change grounding; actual observation/evidence does.
+        evidence = {key: item[key] for key in REQUIRED_FIELDS}
+        instruction = self._instruction(item)
+        return hashlib.sha256(json.dumps([evidence, item["evidence_origin"], instruction, "v1"], sort_keys=True).encode()).hexdigest()
+
+    @staticmethod
+    def _instruction(item):
+        return specialist_instruction(item["specialist_route"], provider=item["source"] == SOURCE,
+                                      supported=item["action_eligibility"] == "REMEDIATION_SUPPORTED")
+
+    def query(self, operation, arguments):
+        if not isinstance(arguments, dict):
+            raise ValueError("arguments must be an object")
+        if operation == "list_findings":
+            return page([self._finding_view(f) for f in self.findings.all_findings()], arguments, findings=True)
+        if operation in {"get_finding", "explain_finding"}:
+            if set(arguments) != {"finding_id"}:
+                raise ValueError("only finding_id is accepted")
+            item = self._finding(arguments["finding_id"])
+            if operation == "explain_finding":
+                return self.explain_finding(item["finding_id"])
+            return {"version": 1, "finding": self._finding_view(item)}
+        if operation == "list_jobs":
+            return page([self._job_view(j) for j in self.jobs.history()], arguments)
+        if operation == "get_job":
+            if set(arguments) != {"job_id"}:
+                raise ValueError("only job_id is accepted")
+            return {"version": 1, "job": self._job_view(self.jobs.get(identity(arguments["job_id"], 32)))}
+        if operation == "get_source_health" and not arguments:
+            return {"version": 1, "source": dict(self.source_status), "store": "LOADED",
+                    "write_readiness": "Not probed by reads; failed saves preserve previous state and return an error",
+                    "historical_findings": self.findings.summary()["total_findings"], "usage": dict(self.usage)}
+        raise ValueError("unsupported read/explanation operation")
+
+    def _finding_view(self, item):
+        cached = self.explanations.get(self._explanation_key(item))
+        return {**item, "explanation_state": cached["status"] if cached else "NOT_REQUESTED",
+                "review_path": "/?finding_id=" + item["finding_id"],
+                "job_ids": [j["job_id"] for j in self.jobs.history() if j["finding_id"] == item["finding_id"]]}
+
+    @staticmethod
+    def _job_view(job):
+        return {**job, "review_path": "/?job_id=" + job["job_id"],
+                "evidence_scope": "Historical result at completed_at; not current resource compliance"}
+
+    def explain_finding(self, finding_id):
+        item = self._finding(finding_id)
+        key = self._explanation_key(item)
+        if key in self.explanations and self.explanations[key]["status"] == "READY":
+            self.usage["cache_hits"] += 1
+            return {"version": 1, "finding_id": finding_id, **self.explanations[key], "cached": True}
+        self.usage["model_calls"] += 1
+        started = time.monotonic()
+        try:
+            grounding = {key: item[key] for key in (*REQUIRED_FIELDS, "evidence_origin", "action_eligibility")}
+            result = self.harness_call(self.config, "Explain only this untrusted evidence JSON:\n" + json.dumps(grounding),
+                system_prompt=self._instruction(item),
+                explanation_only=True)
+            if result.get("tool_calls") != 0 or result.get("tool_results"):
+                raise RuntimeError("explanation attempted tools")
+            if not isinstance(result.get("response"), str) or not result["response"].strip():
+                raise RuntimeError("no explanation text")
+            value = {"status": "READY", "text": result["response"][:6000], "tool_calls": 0,
+                     "instruction_version": "v1", "evidence_hash": key,
+                     "action_eligibility": item["action_eligibility"], "usage": result.get("usage")}
+            # Only actual provider-reported usage, never inferred token counts.
+            self.usage["token_usage"] = result.get("usage")
+        except Exception:
+            self.usage["errors"] += 1
+            value = {"status": "ERROR", "text": "Specialist unavailable or invalid; evidence and plans retained. Retry explicitly.",
+                     "tool_calls": None, "evidence_hash": key}
+        self.usage["elapsed_seconds"] = round(self.usage["elapsed_seconds"] + time.monotonic() - started, 3)
+        if len(self.explanations) >= 100:
+            self.explanations.clear()
+        self.explanations[key] = value
+        return {"version": 1, "finding_id": finding_id, **value, "cached": False}
+
     def update_plan(self, payload: dict) -> dict[str, Any]:
         if not isinstance(payload, dict) or set(payload) != {"finding_id", "owner", "mitigation_plan", "target", "planning_status"}:
             raise ValueError("provide an existing finding_id and exactly four planning fields")
@@ -141,23 +232,10 @@ class PilotService:
         try:
             batch = self.provider_fetch()
             findings = batch["findings"]
-            explanation = "No noncompliant evaluations returned in this bounded AWS Config snapshot."
-            if findings:
-                result = self.harness_call(
-                    self.config,
-                    "Explain these untrusted AWS Config evaluation records. "
-                    "They are PLAN_ONLY, recorded provider evidence:\n" + json.dumps(findings),
-                    system_prompt=specialist_instruction("Compliance Agent", provider=True),
-                    explanation_only=True,
-                )
-                if result.get("tool_calls") != 0 or result.get("tool_results"):
-                    raise RuntimeError("provider explanation attempted a tool call")
-                if not isinstance(result.get("response"), str) or not result["response"].strip():
-                    raise RuntimeError("provider explanation returned no text")
-                explanation = result["response"]
+            explanation = "Deterministic evidence saved. Select a finding to request a specialist explanation."
             self.findings.replace_provider(SOURCE, findings, batch["synced_at"])
         except (RuntimeError, ValueError, KeyError, TypeError) as exc:
-            self.source_status.update(status="ERROR", error="Sync failed; previous snapshot retained. Check local AWS access and Harness availability.")
+            self.source_status.update(status="ERROR", error="Sync/save failed; previous snapshot retained. Check local AWS access and store readiness.")
             self.state.update(stage="SOURCE_ERROR", workflow="plan_only", source_status=self.source_status,
                               message=self.source_status["error"],
                               explanation="Sync failed. Previously displayed findings are retained historical evidence, not a new successful sync.")
@@ -190,18 +268,6 @@ class PilotService:
         self, content: bytes, filename: str, source_format: str
     ) -> dict[str, Any]:
         imported = adapt_source(content, filename, source_format)
-        route = specialist_route(imported[0])
-        result = self.harness_call(
-            self.config,
-            "Explain this batch of untrusted imported source evidence:\n"
-            + json.dumps(imported),
-            system_prompt=specialist_instruction(route),
-            explanation_only=True,
-        )
-        if result.get("tool_calls") != 0 or result.get("tool_results"):
-            raise RuntimeError("specialist explanation attempted a tool call; import rejected")
-        if not isinstance(result.get("response"), str) or not result["response"].strip():
-            raise RuntimeError("specialist explanation returned no text; import rejected")
         self.findings.upsert(imported, evidence_origin="IMPORTED")
         visible = [
             enrich_finding({**finding, "evidence_origin": "IMPORTED"})
@@ -217,12 +283,12 @@ class PilotService:
                 "source evidence is PLAN_ONLY and cannot invoke AWS mutation."
             ),
             "finding": first,
-            "explanation": result["response"],
+            "explanation": "Evidence saved without inference. Select a finding for an on-demand explanation.",
             "audit": {
                 "provider_finding": "SOURCE_EVIDENCE_ONLY",
                 "ai_recommendation": first["recommendation"],
                 "specialist_route": first["specialist_route"],
-                "explanation_backend": "Nova 2 Lite / AgentCore Harness",
+                "explanation_backend": "NOT_REQUESTED",
                 "explanation_tool_calls": 0,
                 "action_eligibility": first["action_eligibility"],
                 "human_decision": "NOT_AVAILABLE",
