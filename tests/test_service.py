@@ -144,13 +144,13 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(first["audit"]["specialist_route"], "Compliance Agent")
         self.assertEqual(first["audit"]["action_eligibility"], "PLAN_ONLY")
         self.assertEqual(first["audit"]["provider_verification"], "NOT_PERFORMED")
-        self.assertIn("CloudSCAPE", first["explanation"])
+        self.assertIn("without inference", first["explanation"])
 
         vapt = ROOT.joinpath("examples/vapt-synthetic.csv")
         second = service.import_source(vapt.read_bytes(), vapt.name, "vapt")
         self.assertEqual(second["audit"]["specialist_route"], "Vulnerability Agent")
         self.assertEqual(second["backlog"]["total_open"], 2)
-        self.assertIn("VAPT", second["explanation"])
+        self.assertIn("without inference", second["explanation"])
         with self.assertRaisesRegex(RuntimeError, "Security Group"):
             service.approve("dev")
 
@@ -163,16 +163,18 @@ class ServiceTest(unittest.TestCase):
         for source, filename in [("cloudscape", "cloudscape-synthetic.json"),
                                  ("vapt", "vapt-synthetic.csv")]:
             service.import_source((ROOT / "examples" / filename).read_bytes(), filename, source)
+            item = next(f for f in service.findings.all_findings() if f["source"].lower() == source)
+            service.explain_finding(item["finding_id"])
         self.assertIn("You are the Compliance Agent", calls[0]["system_prompt"])
         self.assertIn("You are the Vulnerability Agent", calls[1]["system_prompt"])
         self.assertTrue(all(call["explanation_only"] for call in calls))
-        previous = service.state
+        previous = service.findings.all_findings()
+        service.explanations.clear()
         service.harness_call = lambda *args, **kwargs: {
             "response": "unsafe", "tool_calls": 1, "tool_results": []}
-        with self.assertRaisesRegex(RuntimeError, "tool call"):
-            service.import_source((ROOT / "examples/cloudscape-synthetic.json").read_bytes(),
-                                  "sample.json", "cloudscape")
-        self.assertIs(service.state, previous)
+        result = service.explain_finding(previous[0]["finding_id"])
+        self.assertEqual(result["status"], "ERROR")
+        self.assertEqual(service.findings.all_findings(), previous)
 
 
 if __name__ == "__main__":

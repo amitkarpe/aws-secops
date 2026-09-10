@@ -138,12 +138,12 @@
       <label>Target date / timeline<input id="plan-target" maxlength="128" placeholder="e.g. 2026-09-18 or next review"></label>
       <label>Planning status<select id="plan-status"><option>UNPLANNED</option><option>PLANNED</option></select></label>
     </div>
-    <div class="actions"><button id="save-plan">Save local plan</button></div>
+    <div class="actions"><button id="save-plan">Save local plan</button><button id="explain-selected">Explain selected finding (AI)</button></div>
     <p id="plan-result" role="status" class="muted"></p>
   </section>
   <section class="card audit">
     <h2>Governed remediation jobs</h2>
-    <p class="muted">Only the direct provider-backed DEV SSH finding can create a job. A saved plan is not approval. Terminal jobs are single-use; restart never retries a mutation.</p>
+    <p class="muted">Only the direct provider-backed DEV SSH finding can create a job. A saved plan is not approval. Terminal jobs are single-use; restart never retries a mutation. Completed results describe the resource at completed_at, not its current compliance. UNKNOWN is not zero change.</p>
     <label>Job history <select id="job-select" aria-label="Job history"></select></label>
     <dl id="job-preview" class="audit"></dl>
     <div class="actions"><button id="job-reject" class="secondary">Reject job</button><button id="job-approve" class="approve">Approve exact DEV job</button><button id="job-deny" class="deny">Synthetic Policy DENY test</button></div>
@@ -162,6 +162,8 @@
 const ids = ['check','check-s3','reject','approve','deny','import-source'];
 let current={stage:'READY',workflow:null};
 let jobs=[];
+const review=new URLSearchParams(location.search);
+let findingReviewPending=review.has('finding_id'),jobReviewPending=review.has('job_id');
 function selectedJob(){return jobs.find(j=>j.job_id===document.getElementById('job-select').value);}
 function jobPreview(){
   const job=selectedJob()||{};const box=document.getElementById('job-preview');box.replaceChildren();
@@ -173,6 +175,7 @@ async function refreshJobs(){
   const select=document.getElementById('job-select');const old=select.value;select.replaceChildren();
   jobs.forEach(job=>{const option=document.createElement('option');option.value=job.job_id;option.textContent=`${job.state} / ${job.resource_name} / ${job.job_id.slice(0,12)}`;select.append(option);});
   if(current.job)select.value=current.job.job_id;else if(jobs.some(j=>j.job_id===old))select.value=old;
+  if(jobReviewPending){select.value=review.get('job_id');jobReviewPending=false;if(!select.value){document.getElementById('message').textContent='Unknown historical job link; no action performed.';}else document.getElementById('job-preview').scrollIntoView();}
   jobPreview();
 }
 document.getElementById('job-select').onchange=jobPreview;
@@ -243,6 +246,7 @@ function render(data){
   const selector=document.getElementById('plan-finding');const selected=selector.value;selector.replaceChildren();
   (backlog.open_findings||[]).forEach(f=>{const option=document.createElement('option');option.value=f.finding_id;option.textContent=`${f.resource_name} / ${f.control} / ${f.planning_status} / ${f.finding_id.slice(0,12)}`;selector.append(option);});
   if((backlog.open_findings||[]).some(f=>f.finding_id===selected))selector.value=selected;
+  if(findingReviewPending){selector.value=review.get('finding_id');findingReviewPending=false;if(!selector.value){document.getElementById('plan-result').textContent='Finding is unknown or not open; use the read-only detail below.';fetch('/api/v1/get_finding?finding_id='+encodeURIComponent(review.get('finding_id'))).then(r=>r.json()).then(d=>{document.getElementById('explanation').textContent=JSON.stringify(d,null,2);});}else selector.scrollIntoView();}
   loadPlan();
   refreshJobs().catch(()=>{document.getElementById('error').textContent='Job history unavailable; do not approve.';document.getElementById('error').style.display='block';});
   controls(false);
@@ -261,6 +265,13 @@ function loadPlan(){
   document.getElementById('plan-status').value=f.planning_status||'UNPLANNED';
 }
 document.getElementById('plan-finding').onchange=()=>{loadPlan();document.getElementById('plan-result').textContent='';};
+document.getElementById('explain-selected').onclick=async()=>{
+  const finding_id=document.getElementById('plan-finding').value;if(!finding_id)return;
+  const button=document.getElementById('explain-selected');button.disabled=true;
+  try{const response=await fetch('/api/v1/explain_finding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({finding_id})});const value=await response.json();document.getElementById('explanation').textContent=value.text||value.error;}
+  catch(e){document.getElementById('explanation').textContent='Explanation unavailable; evidence and plan retained.';}
+  finally{button.disabled=false;}
+};
 document.getElementById('save-plan').onclick=async()=>{
   document.getElementById('plan-result').textContent='Saving local plan…';
   const ok=await action('/api/plan',{finding_id:document.getElementById('plan-finding').value,owner:document.getElementById('plan-owner').value,mitigation_plan:document.getElementById('plan-mitigation').value,target:document.getElementById('plan-target').value,planning_status:document.getElementById('plan-status').value});

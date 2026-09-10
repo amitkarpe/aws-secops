@@ -1,8 +1,37 @@
 # Context
 
-Status: Platform Phase 4 / Issue #15 — M1–M5 PASS; PR #16 ready for review
+Status: Phases 5–7 / Issue #17 / PR #18 — connected acceptance PASS; ready for review
 
 ## Current Truth
+
+- Approved named UI extension is deployed on the retained EC2: one Nginx,
+  HTTPS chat plus separately authenticated operator entry, and unchanged legacy
+  DNS/HTTP route. Both application backends remain loopback-only. Public access
+  remains limited to the existing trusted source IP. Browser chat-to-exact-review
+  and origin/auth boundaries passed; see NAMED_UI_DEPLOYMENT.md. No workload
+  remediation occurred. Private credentials/evidence stay outside Git.
+
+- Amit's 2026-09-10 amendment authorizes home/retained EC2 reuse and scoped
+  hosting/IAM/private connectivity prerequisites. SPEC records the approval;
+  reuse the old EC2 co-location pattern while preserving read-only chat tools.
+
+- Phase 4 merged as a65347ae. Active work is the nine-milestone restricted
+  LibreChat integration in PLATFORM_PHASE5_7_PLAN.md. Chat is read/explain only;
+  the existing single-writer human UI retains all planning and approval writes.
+- M1–M9 implemented and validated. Sole backend/stores now live beside LibreChat
+  at /opt/aws-secops on the retained EC2. Original WSL files are retained but
+  their writer is stopped: do not start the old local serve command.
+- Native Bedrock Nova chat used all six reader tools. Explicit promptCache=false
+  avoids the installed provider's cachePoint follow-up error. The old Codex
+  subscription path returned text without tools and was not accepted as proof.
+- Real chat -> exact operator link -> saved human plan -> chat readback/refusal
+  passed. Remote restart preserved both stores byte-for-byte; source freshness
+  resets honestly. Scoped role policies, native Bedrock config and an additive
+  read-only MCP entry were installed under Amit's amendment. No new EC2 or
+  resource remediation occurred. Historical agents/chats remain intact.
+- Use scripts/connect-retained-ui.sh with the private retained Name tag and
+  explicit AWS_PROFILE=amit / AWS_REGION=ap-southeast-1. Operator localhost:3340;
+  LibreChat localhost:13080. The runbook has the tested reader settings.
 
 - Phase 3 merged via PR #14. Current work connects the direct supported SG
   finding to durable jobs, exact preview, single-use decisions and restart-safe
@@ -67,5 +96,6 @@ Status: Platform Phase 4 / Issue #15 — M1–M5 PASS; PR #16 ready for review
 
 ## Next Action
 
-- ChatGPT full-diff review of PR #16 and PLATFORM_PHASE4_PROOF.md, then the
-  standing review/merge/next-Issue workflow. No additional scope invented here.
+- ChatGPT review the final connected M1–M9 evidence and full PR #18 diff, then
+  merge if clean. No next scope is invented here. Preserve the retained backend
+  and its sole store; Amit can create his reader using the tested agent template.
