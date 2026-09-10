@@ -93,7 +93,7 @@ smoke() {
 }
 
 usage() {
-  echo "Usage: $0 {status|rearm-sg|serve|smoke|specialist-smoke|provider-smoke|durable-smoke}"
+  echo "Usage: $0 {status|rearm-sg|serve|smoke|specialist-smoke|provider-smoke|durable-smoke|jobs-smoke}"
 }
 
 case "${1:-}" in
@@ -125,6 +125,18 @@ case "${1:-}" in
     preflight
     export_pilot_config
     python3 -m pilot_v1.smoke --durable-only
+    ;;
+  jobs-smoke)
+    preflight
+    gateway_mode="$(aws bedrock-agentcore-control get-gateway --gateway-identifier "$(state_value gatewayId)" --profile "$AWS_PROFILE_NAME" --region "$AWS_REGION_NAME" --query policyEngineConfiguration.mode --output text)"
+    [[ "$gateway_mode" == "ENFORCE" ]] || fail "retained Gateway Policy is not ENFORCE"
+    echo "POLICY_MODE=ENFORCE"
+    rearm_sg
+    export_pilot_config
+    result=0
+    python3 -m pilot_v1.smoke --jobs-only || result=$?
+    rearm_sg || result=$?
+    exit "$result"
     ;;
   *)
     usage >&2

@@ -13,3 +13,5 @@ tmp/
 .local/
 backlog.json
 .backlog-*
+*.jobs.json
+.jobs-*

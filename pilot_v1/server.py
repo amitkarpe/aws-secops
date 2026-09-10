@@ -18,6 +18,11 @@ class Handler(BaseHTTPRequestHandler):
     service: PilotService
     page = Path(__file__).with_name("static").joinpath("index.html")
 
+    def setup(self) -> None:
+        super().setup()
+        # Browser-preopened idle sockets must not pin this single-writer server.
+        self.connection.settimeout(5)
+
     def log_message(self, format: str, *args: object) -> None:
         return
 
@@ -66,6 +71,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, self.service.state)
         elif self.path == "/api/backlog":
             self._json(200, self.service.backlog())
+        elif self.path == "/api/jobs":
+            self._json(200, {"jobs": self.service.jobs.history()})
         elif self.path == "/api/export.csv":
             self._download("text/csv; charset=utf-8", "platform-phase1-action-plan.csv", self.service.export_csv())
         elif self.path == "/api/export.md":
@@ -115,12 +122,24 @@ class Handler(BaseHTTPRequestHandler):
                 result = self.service.check()
             elif self.path == "/api/plan":
                 result = self.service.update_plan(payload)
+            elif self.path == "/api/jobs":
+                if set(payload) != {"finding_id"}:
+                    raise ValueError("job creation accepts only an existing finding_id")
+                result = self.service.create_job(payload["finding_id"])
+            elif self.path == "/api/jobs/decision":
+                if set(payload) != {"job_id", "decision"}:
+                    raise ValueError("job decision accepts only job_id and decision")
+                result = self.service.decide_job(payload["job_id"], payload["decision"])
             elif self.path == "/api/check-s3":
                 result = self.service.check_s3()
             elif self.path == "/api/reject":
-                result = self.service.reject()
+                if set(payload) != {"job_id"}:
+                    raise ValueError("Reject requires the exact job_id")
+                result = self.service.decide_job(payload["job_id"], "REJECT")
             elif self.path == "/api/approve":
-                result = self.service.approve(payload.get("environment", ""))
+                if set(payload) != {"job_id", "environment"} or payload["environment"] not in {"dev", "prod"}:
+                    raise ValueError("Approve requires exact job_id and dev or synthetic prod")
+                result = self.service.decide_job(payload["job_id"], "APPROVE" if payload["environment"] == "dev" else "DENY_TEST")
             else:
                 self._json(404, {"error": "not found"})
                 return

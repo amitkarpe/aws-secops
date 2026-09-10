@@ -1,6 +1,6 @@
 # Platform Phase 4 implementation plan
 
-Status: planned — Issue #15 / PR implementation
+Status: M1–M5 PASS — Issue #15 / PR #16 ready for review; see PLATFORM_PHASE4_PROOF.md
 
 Authority: Issue #15
 

@@ -27,8 +27,7 @@ def approve_remediation(environment: str, tool_name: str, call: GatewayCall) -> 
     response = call(tool_name, {"environment": environment, "approved": True})
     error = response.get("error", {})
     denied = (
-        response.get("result", {}).get("isError") is True
-        or (
+        (
             error.get("code") == -32002
             and "Tool Execution Denied" in error.get("message", "")
             and "denied by default" in error.get("message", "")
@@ -42,6 +41,8 @@ def approve_remediation(environment: str, tool_name: str, call: GatewayCall) -> 
             "changed": False,
             "verification": "UNCHANGED",
         }
+    if response.get("error") or response.get("result", {}).get("isError") is True:
+        raise RuntimeError("unexpected Gateway/tool error; not proof of Policy DENY")
     text = result_text(response)
     try:
         payload = json.loads(text)

@@ -1,8 +1,16 @@
 # Context
 
-Status: Platform Phase 3 / Issue #13 — M1–M5 PASS; PR #14 ready for review
+Status: Platform Phase 4 / Issue #15 — M1–M5 PASS; PR #16 ready for review
 
 ## Current Truth
+
+- Phase 3 merged via PR #14. Current work connects the direct supported SG
+  finding to durable jobs, exact preview, single-use decisions and restart-safe
+  history. No new AWS resources, actions or IAM permissions.
+- Phase 4 live proof passed Reject/no call, synthetic Policy DENY, DEV ALLOW
+  with independent provider COMPLIANT, terminal replay rejection and actual
+  restart history retention. The dedicated demo SG was restored NON_COMPLIANT
+  and unattached. Browser history/reload/disabled terminal approval passed.
 
 - Phase 2 merged as PR #12. Phase 3 adds server-owned stable IDs, atomic local
   JSON persistence, sighting tracking and a narrow operator planning action.
@@ -59,5 +67,5 @@ Status: Platform Phase 3 / Issue #13 — M1–M5 PASS; PR #14 ready for review
 
 ## Next Action
 
-- Review PR #14 and `docs/implementation/PLATFORM_PHASE3_PROOF.md`. No further milestone
-  or AWS mutation is authorized by this phase.
+- ChatGPT full-diff review of PR #16 and PLATFORM_PHASE4_PROOF.md, then the
+  standing review/merge/next-Issue workflow. No additional scope invented here.

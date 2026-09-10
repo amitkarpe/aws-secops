@@ -1,6 +1,6 @@
 # Specification
 
-Status: complete — Platform Phase 3 / Issue #13 ready for review
+Status: complete — Platform Phase 4 / Issue #15 ready for review
 
 ## Problem
 
@@ -9,10 +9,10 @@ workflow while retaining one exact governed AWS mutation.
 
 ## Scope
 
-Preserve the merged Phase 2 Config integration and deliver Issue #13: stable
-finding identity, bounded durable local backlog, safe reconciliation, operator
-mitigation planning, and restart/export proof. Existing tools and approvals
-remain unchanged.
+Preserve the merged Phase 3 backlog and deliver Issue #15: durable jobs for
+the existing exact provider-backed DEV public-SSH remediation, action preview,
+single-use human decision, retained Policy/Lambda execution, independent
+verification and restart-safe audit. No second AWS mutation capability.
 
 ## MUST
 
@@ -41,7 +41,15 @@ remain unchanged.
 
 ## MUST NOT
 
-- No new AWS resources, IAM, service enablement or configuration in Phase 3.
+- No new AWS resources, IAM, service enablement or configuration in Phase 4.
+- Only the retained dedicated demo SG and exact action may be exercised live,
+  including rearm to the approved unattached demonstration state.
+- A pending job is consumed durably before network execution. Terminal jobs
+  cannot be replayed. Interrupted execution becomes FAILED with unknown effect;
+  no automatic retry. Only independent matching provider COMPLIANT can finish
+  an allowed action as COMPLETED. Generic tool errors are not Policy DENY.
+- Retain at most 100 jobs/256 KB in a private atomic local journal next to the
+  backlog. Plans and Config/imported findings cannot authorize a job.
 - Config evaluations stay PLAN_ONLY. Do not infer fresh resource compliance
   from a recent sync or missing record; show actual observation and sync times.
 - Store at most 100 findings in one atomically replaced local JSON file outside
@@ -78,4 +86,4 @@ remain unchanged.
 
 - Stop for identity or Region mismatch, unclear/unbounded recurring cost,
   ambiguous retained-resource ownership, Policy not in ENFORCE mode, exposure
-  of private data, risk to a non-demo resource, or expansion beyond Issue #13.
+  of private data, risk to a non-demo resource, or expansion beyond Issue #15.
