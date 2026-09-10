@@ -93,7 +93,7 @@ smoke() {
 }
 
 usage() {
-  echo "Usage: $0 {status|rearm-sg|serve|smoke|specialist-smoke}"
+  echo "Usage: $0 {status|rearm-sg|serve|smoke|specialist-smoke|provider-smoke}"
 }
 
 case "${1:-}" in
@@ -116,6 +116,10 @@ case "${1:-}" in
     preflight
     export_pilot_config
     python3 -m pilot_v1.smoke --specialists-only
+    ;;
+  provider-smoke)
+    preflight
+    python3 -m pilot_v1.smoke --provider-only --port "$PILOT_PORT"
     ;;
   *)
     usage >&2

@@ -14,6 +14,7 @@ class FakeService:
     def __init__(self):
         self.approve_calls = 0
         self.import_calls = 0
+        self.sync_calls = 0
 
     def approve(self, environment):
         self.approve_calls += 1
@@ -27,6 +28,10 @@ class FakeService:
             "filename": filename,
             "source_format": source_format,
         }
+
+    def sync_provider(self):
+        self.sync_calls += 1
+        return {"stage": "SOURCE_SYNCED"}
 
 
 class ServerBoundaryTest(unittest.TestCase):
@@ -96,6 +101,14 @@ class ServerBoundaryTest(unittest.TestCase):
             403,
         )
         self.assertEqual(self.service.import_calls, 1)
+
+    def test_provider_sync_rejects_caller_selection(self):
+        origin = f"http://127.0.0.1:{self.port}"
+        self.assertEqual(self.post("application/json", origin, path="sync-provider",
+                                   body=b'{"region":"other"}'), 400)
+        self.assertEqual(self.service.sync_calls, 0)
+        self.assertEqual(self.post("application/json", origin, path="sync-provider", body=b'{}'), 200)
+        self.assertEqual(self.service.sync_calls, 1)
 
 
 if __name__ == "__main__":

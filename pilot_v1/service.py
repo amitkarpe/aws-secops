@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 from .adapters import adapt_source
 from .backlog import FindingBacklog
 from .config import PilotConfig
+from .config_source import SOURCE, fetch_config_findings
 from .findings import normalize_s3, normalize_sg
 from .export import to_csv, to_markdown
 from .gateway import call_tool, result_text
@@ -24,6 +26,7 @@ class PilotService:
         profile: str = "amit",
         harness_call: Callable[..., dict[str, Any]] = invoke,
         gateway_call: Callable[..., dict[str, Any]] = call_tool,
+        provider_fetch: Callable[[], dict[str, Any]] = fetch_config_findings,
     ) -> None:
         config.require_harness()
         config.require_gateway()
@@ -33,9 +36,12 @@ class PilotService:
         self.profile = profile
         self.harness_call = harness_call
         self.gateway_call = gateway_call
+        self.provider_fetch = provider_fetch
+        self.source_status: dict[str, Any] = {"source": SOURCE, "status": "NOT_SYNCED", "last_success": None}
         self.findings = FindingBacklog()
         self.state: dict[str, Any] = {
             "stage": "READY",
+            "source_status": self.source_status,
             "workflow": None,
             "message": "Run the provider check to begin.",
             "finding": None,
@@ -55,6 +61,58 @@ class PilotService:
 
     def export_markdown(self) -> str:
         return to_markdown(self.findings.open_findings())
+
+    def sync_provider(self) -> dict[str, Any]:
+        if self.profile != "amit" or self.config.region != "ap-southeast-1":
+            raise RuntimeError("AWS Config sync requires the approved personal Singapore context")
+        self.source_status["last_attempt"] = datetime.now(timezone.utc).isoformat()
+        try:
+            batch = self.provider_fetch()
+            findings = batch["findings"]
+            explanation = "No noncompliant evaluations returned in this bounded AWS Config snapshot."
+            if findings:
+                result = self.harness_call(
+                    self.config,
+                    "Explain these untrusted AWS Config evaluation records. "
+                    "They are PLAN_ONLY, recorded provider evidence:\n" + json.dumps(findings),
+                    system_prompt=specialist_instruction("Compliance Agent", provider=True),
+                    explanation_only=True,
+                )
+                if result.get("tool_calls") != 0 or result.get("tool_results"):
+                    raise RuntimeError("provider explanation attempted a tool call")
+                if not isinstance(result.get("response"), str) or not result["response"].strip():
+                    raise RuntimeError("provider explanation returned no text")
+                explanation = result["response"]
+            self.findings.replace_provider(SOURCE, findings, batch["synced_at"])
+        except (RuntimeError, ValueError, KeyError, TypeError) as exc:
+            self.source_status.update(status="ERROR", error="Sync failed; previous snapshot retained. Check local AWS access and Harness availability.")
+            self.state.update(stage="SOURCE_ERROR", workflow="plan_only", source_status=self.source_status,
+                              message=self.source_status["error"],
+                              explanation="Sync failed. Previously displayed findings are retained historical evidence, not a new successful sync.")
+            raise RuntimeError(self.source_status["error"]) from exc
+        self.source_status.update(
+            status=batch["status"], last_success=batch["synced_at"], count=len(findings),
+            scope=batch["scope"], error=None,
+            oldest_observation=min((item["observed_at"] for item in findings), default=None),
+        )
+        self.state = {
+            "stage": "SOURCE_SYNCED", "workflow": "plan_only",
+            "source_status": self.source_status,
+            "message": f"AWS Config: {len(findings)} recorded findings, {batch['status']}. All PLAN_ONLY.",
+            "finding": enrich_finding({**findings[0], "evidence_origin": "AWS_PROVIDER", "synced_at": batch["synced_at"]}) if findings else None,
+            "explanation": explanation,
+            "audit": {
+                "provider_finding": "AWS Config recorded evaluations",
+                "ai_recommendation": "Review findings and prepare a separate change plan.",
+                "specialist_route": "Compliance Agent", "action_eligibility": "PLAN_ONLY",
+                "human_decision": "NOT_AVAILABLE", "policy_decision": "NOT_CALLED",
+                "exact_tool": "AWS Config read-only APIs",
+                "provider_verification": "RECORDED_EVALUATION_ONLY",
+                "explanation_tool_calls": 0, "changed": False,
+            },
+            "backlog": self.findings.summary(),
+        }
+        return self.state
 
     def import_source(
         self, content: bytes, filename: str, source_format: str
@@ -80,6 +138,7 @@ class PilotService:
         first = visible[0]
         self.state = {
             "stage": "IMPORTED",
+            "source_status": self.source_status,
             "workflow": "plan_only",
             "message": (
                 f"Imported {len(visible)} {first['source']} finding(s); "
@@ -141,6 +200,7 @@ class PilotService:
         enriched = enrich_finding({**normalized, "evidence_origin": "AWS_PROVIDER"})
         self.state = {
             "stage": "FINDING",
+            "source_status": self.source_status,
             "workflow": "sg",
             "message": "Provider check complete. Choose Reject or Approve.",
             "finding": finding,
@@ -187,6 +247,7 @@ class PilotService:
         enriched = enrich_finding({**normalized[0], "evidence_origin": "AWS_PROVIDER"})
         self.state = {
             "stage": "S3_BASELINE",
+            "source_status": self.source_status,
             "workflow": "s3",
             "message": "Read-only allowlisted S3 assessment complete; no AWS change was made.",
             "finding": finding,

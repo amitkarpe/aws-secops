@@ -13,6 +13,9 @@ FIELDS = (
     "source",
     "specialist_route",
     "action_eligibility",
+    "evidence_origin",
+    "observed_at",
+    "synced_at",
     "finding",
     "priority",
     "recommended_fix",
@@ -37,6 +40,9 @@ def action_plan(findings: Iterable[dict[str, str]]) -> list[dict[str, str]]:
             "source": item["source"],
             "specialist_route": item["specialist_route"],
             "action_eligibility": item["action_eligibility"],
+            "evidence_origin": item.get("evidence_origin", "IMPORTED"),
+            "observed_at": item["observed_at"],
+            "synced_at": item.get("synced_at", ""),
             "finding": f"{item['resource_type']}/{item['resource_name']}: {item['control']}",
             "priority": item["severity"],
             "recommended_fix": item["recommendation"],
@@ -75,13 +81,13 @@ def to_markdown(findings: Iterable[dict[str, str]]) -> str:
         "",
         f"Open actions: **{len(rows)}**",
         "",
-        "| Source | Specialist | Eligibility | Finding | Priority | Recommended fix | Owner | Approval required | Status | Target |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| " + " | ".join(field.replace("_", " ").title() for field in FIELDS) + " |",
+        "| " + " | ".join("---" for _ in FIELDS) + " |",
     ]
     lines.extend(
         "| " + " | ".join(_cell(row[field]) for field in FIELDS) + " |"
         for row in rows
     )
     if not rows:
-        lines.append("| — | — | — | No open findings | — | No action required |  | — | COMPLIANT |  |")
+        lines.append("| No open findings |" + " |" * (len(FIELDS) - 1))
     return "\n".join(lines) + "\n"

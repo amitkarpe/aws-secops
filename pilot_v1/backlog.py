@@ -55,6 +55,18 @@ class FindingBacklog:
         )
         return open_findings
 
+    def replace_provider(self, source: str, findings: list[dict[str, Any]], synced_at: str) -> None:
+        replacement = {key: value for key, value in self._findings.items() if value["source"] != source}
+        for raw in findings:
+            finding = validate_finding(raw)
+            if finding["source"] != source:
+                raise ValueError("provider source mismatch")
+            finding.update(evidence_origin="AWS_PROVIDER", synced_at=synced_at)
+            replacement[_key(finding)] = finding
+        if len(replacement) > MAX_FINDINGS:
+            raise ValueError(f"backlog cannot exceed {MAX_FINDINGS} findings")
+        self._findings = replacement
+
     def summary(self) -> dict[str, Any]:
         open_findings = self.open_findings()
 

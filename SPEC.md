@@ -1,6 +1,6 @@
 # Specification
 
-Status: complete — Platform Phase 1 / Issue #9 ready for review
+Status: complete — Platform Phase 2 / Issue #11 ready for review
 
 ## Problem
 
@@ -9,9 +9,9 @@ workflow while retaining one exact governed AWS mutation.
 
 ## Scope
 
-Preserve Pilot v1.1 and deliver Issue #9 M1–M5: bounded source intake, two
-explicit adapters, two deterministic specialist routes, explicit action
-eligibility, and the shared operations view/export.
+Preserve Phase 1 and deliver Issue #11: exactly one existing AWS-native source
+(Config), bounded read-only sync, specialist routing, provenance/freshness and
+shared exports. Existing tools and approvals remain unchanged.
 
 ## MUST
 
@@ -40,6 +40,10 @@ eligibility, and the shared operations view/export.
 
 ## MUST NOT
 
+- No new AWS resources, IAM, service enablement or configuration in Phase 2.
+- Config evaluations stay PLAN_ONLY. Do not infer fresh resource compliance
+  from a recent sync or missing record; show actual observation and sync times.
+
 - Do not add generic AWS actions, arbitrary resource selection, multi-user auth,
   multi-account support, Registry, Temporal Policy, EKS, Supervisor, or A2A.
 - Do not use company, production, or Organizations-management resources.
@@ -61,4 +65,4 @@ eligibility, and the shared operations view/export.
 
 - Stop for identity or Region mismatch, unclear/unbounded recurring cost,
   ambiguous retained-resource ownership, Policy not in ENFORCE mode, exposure
-  of private data, risk to a non-demo resource, or expansion beyond Issue #9.
+  of private data, risk to a non-demo resource, or expansion beyond Issue #11.

@@ -102,7 +102,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, result)
                 return
             payload = json.loads(self.rfile.read(length) or b"{}")
-            if self.path == "/api/check":
+            if self.path == "/api/sync-provider":
+                if payload != {}:
+                    raise ValueError("AWS Config sync accepts no caller parameters")
+                result = self.service.sync_provider()
+            elif self.path == "/api/check":
                 result = self.service.check()
             elif self.path == "/api/check-s3":
                 result = self.service.check_s3()
