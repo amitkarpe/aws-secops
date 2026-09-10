@@ -1,8 +1,20 @@
 # Context
 
-Status: Platform Phase 2 / Issue #11 — M1–M5 PASS; PR #12 ready for review
+Status: Platform Phase 3 / Issue #13 — M1–M5 PASS; PR #14 ready for review
 
 ## Current Truth
+
+- Phase 2 merged as PR #12. Phase 3 adds server-owned stable IDs, atomic local
+  JSON persistence, sighting tracking and a narrow operator planning action.
+- Config records missing from later bounded snapshots remain unresolved with
+  seen_in_latest_sync=false. Plans survive sync/import independently of provider
+  compliance. No AWS mutation capability was added or exercised in this phase.
+- The application defaults to ~/.local/state/aws-secops/backlog.json. Private
+  backlog data must never be committed. A corrupt store stops startup.
+- Live proof passed: three real Config records, plan saved, actual process
+  restart, same ID/plan restored, repeated sync reconciled, CSV/Markdown matched.
+  One Chromium smoke clicked Save local plan and reloaded successfully. Zero
+  specialist tool calls and zero AWS mutations; no new browser framework.
 
 - Phase 1 merged through PR #10. PR #12 implements Phase 2 using existing AWS
   Config in the personal Singapore lab: read-only bounded sync, specialist
@@ -47,9 +59,5 @@ Status: Platform Phase 2 / Issue #11 — M1–M5 PASS; PR #12 ready for review
 
 ## Next Action
 
-- PR #10 review correction: imported findings now execute distinct Compliance
-  and Vulnerability system instructions through Nova 2 Lite / retained Harness.
-  Two live API imports passed with zero tool calls, PLAN_ONLY and approval
-  rejection. The focused correction made no AWS infrastructure changes.
-
-- Review PR #12 and `docs/implementation/PLATFORM_PHASE2_PROOF.md` before merge.
+- Review PR #14 and `docs/implementation/PLATFORM_PHASE3_PROOF.md`. No further milestone
+  or AWS mutation is authorized by this phase.

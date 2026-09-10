@@ -27,6 +27,7 @@ class PilotService:
         harness_call: Callable[..., dict[str, Any]] = invoke,
         gateway_call: Callable[..., dict[str, Any]] = call_tool,
         provider_fetch: Callable[[], dict[str, Any]] = fetch_config_findings,
+        backlog_path: str | None = None,
     ) -> None:
         config.require_harness()
         config.require_gateway()
@@ -38,7 +39,7 @@ class PilotService:
         self.gateway_call = gateway_call
         self.provider_fetch = provider_fetch
         self.source_status: dict[str, Any] = {"source": SOURCE, "status": "NOT_SYNCED", "last_success": None}
-        self.findings = FindingBacklog()
+        self.findings = FindingBacklog(path=backlog_path)
         self.state: dict[str, Any] = {
             "stage": "READY",
             "source_status": self.source_status,
@@ -55,6 +56,15 @@ class PilotService:
 
     def backlog(self) -> dict[str, Any]:
         return self.findings.summary()
+
+    def update_plan(self, payload: dict) -> dict[str, Any]:
+        if not isinstance(payload, dict) or set(payload) != {"finding_id", "owner", "mitigation_plan", "target", "planning_status"}:
+            raise ValueError("provide an existing finding_id and exactly four planning fields")
+        if not isinstance(payload["finding_id"], str) or len(payload["finding_id"]) != 64:
+            raise ValueError("invalid server-owned finding ID")
+        self.findings.update_plan(payload["finding_id"], {key: value for key, value in payload.items() if key != "finding_id"})
+        self._refresh_backlog()
+        return self.state
 
     def export_csv(self) -> str:
         return to_csv(self.findings.open_findings())

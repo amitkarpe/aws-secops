@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import json
 import argparse
+from contextlib import contextmanager
+import select
+import subprocess
+import sys
 import threading
 import urllib.request
 import urllib.error
@@ -154,12 +158,12 @@ def run(*, specialists_only: bool = False) -> None:
         csv_export = _download(url, "/api/export.csv")
         markdown_export = _download(url, "/api/export.md")
         _expect(
-            csv_export.startswith("source,specialist_route,action_eligibility")
+            "source,specialist_route,action_eligibility" in csv_export.splitlines()[0]
             and "Versioning" in csv_export,
             "CSV action plan did not contain the S3 exception",
         )
         _expect(
-            markdown_export.startswith("# AWS SecOps Platform Phase 1 action plan")
+            markdown_export.startswith("# AWS SecOps durable action plan")
             and "Versioning" in markdown_export,
             "Markdown action plan did not contain the S3 exception",
         )
@@ -174,13 +178,70 @@ def run(*, specialists_only: bool = False) -> None:
         thread.join(timeout=5)
 
 
+@contextmanager
+def _owned_server():
+    """Restart only this smoke's child process; never take a user's listener."""
+    process = subprocess.Popen(
+        [sys.executable, "-m", "pilot_v1.server", "--port", "0"],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+    )
+    try:
+        _expect(bool(select.select([process.stdout], [], [], 20)[0]), "server startup timed out")
+        line = process.stdout.readline().strip()
+        _expect(line.startswith("PILOT_V1_URL=http://localhost:"), "server startup failed; inspect local store/config")
+        yield line.split("=", 1)[1].rstrip("/")
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+        process.stdout.close()
+
+
+def durable_smoke() -> None:
+    with _owned_server() as url:
+        first = _request(url, "/api/sync-provider", {})
+        _expect(first["audit"]["explanation_tool_calls"] == 0, "unexpected specialist tool call")
+        candidates = [item for item in first["backlog"]["open_findings"] if item["source"] == "AWS Config"
+                      and item["seen_in_latest_sync"] and item["planning_status"] == "UNPLANNED"
+                      and not item["owner"] and not item["mitigation_plan"] and not item["target"]]
+        _expect(bool(candidates), "no unplanned real Config finding; existing operator work preserved")
+        item = candidates[0]
+        identity = item["finding_id"]
+        plan = dict(finding_id=identity, owner="Lab operator", mitigation_plan="Review recorded Config evidence before a separately approved change.", target="next lab review", planning_status="PLANNED")
+        saved = _request(url, "/api/plan", plan)
+        _expect(saved["backlog"]["planned"] >= 1, "plan was not saved")
+        _expect_http_error(url, "/api/approve", {"environment": "dev"}, 400)
+    with _owned_server() as url:
+        recovered = _request(url, "/api/backlog")
+        restored = next(f for f in recovered["open_findings"] if f["finding_id"] == identity)
+        _expect(all(restored[key] == value for key, value in plan.items()), "restart lost the plan")
+        result = _request(url, "/api/sync-provider", {})
+        latest = next(f for f in result["backlog"]["open_findings"] if f["finding_id"] == identity)
+        _expect(all(latest[key] == value for key, value in plan.items()), "sync changed operator plan")
+        _expect(latest["first_seen"] == item["first_seen"] and latest["last_seen"] >= item["last_seen"]
+                and latest["occurrence_count"] == item["occurrence_count"] + 1 and latest["seen_in_latest_sync"], "tracking did not reconcile")
+        _expect(latest["action_eligibility"] == "PLAN_ONLY" and result["audit"]["explanation_tool_calls"] == 0, "boundary changed")
+        _expect_http_error(url, "/api/approve", {"environment": "dev"}, 400)
+        for path in ("/api/export.csv", "/api/export.md"):
+            exported = _download(url, path)
+            _expect(identity in exported and plan["mitigation_plan"] in exported and "PLANNED" in exported, "export lost identity or plan")
+        print("PLATFORM_PHASE3_DURABLE_SMOKE=PASS")
+        print(f"SOURCE=AWS_CONFIG COUNT={result['source_status']['count']} RESTART=PASS PLAN_RETAINED=PASS TRACKING=PASS EXPORT=PASS TOOLS=0 AWS_MUTATIONS=0")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--specialists-only", action="store_true")
     parser.add_argument("--provider-only", action="store_true")
+    parser.add_argument("--durable-only", action="store_true")
     parser.add_argument("--port", type=int, default=3340)
     args = parser.parse_args()
-    if args.provider_only:
+    if args.durable_only:
+        durable_smoke()
+    elif args.provider_only:
         url = f"http://localhost:{args.port}"
         result = _request(url, "/api/sync-provider", {})
         finding = result.get("finding") or {}

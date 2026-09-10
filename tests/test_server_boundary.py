@@ -15,6 +15,11 @@ class FakeService:
         self.approve_calls = 0
         self.import_calls = 0
         self.sync_calls = 0
+        self.plan_calls = 0
+
+    def update_plan(self, payload):
+        self.plan_calls += 1
+        return {"stage": "READY"}
 
     def approve(self, environment):
         self.approve_calls += 1
@@ -109,6 +114,16 @@ class ServerBoundaryTest(unittest.TestCase):
         self.assertEqual(self.service.sync_calls, 0)
         self.assertEqual(self.post("application/json", origin, path="sync-provider", body=b'{}'), 200)
         self.assertEqual(self.service.sync_calls, 1)
+
+    def test_planning_has_same_origin_json_and_size_boundary(self):
+        origin = f"http://127.0.0.1:{self.port}"
+        self.assertEqual(self.post("text/plain", origin, path="plan"), 415)
+        self.assertEqual(self.post("application/json", "https://attacker.example", path="plan"), 403)
+        self.assertEqual(self.post("application/json", origin, path="plan", body=b"x" * 16_001), 400)
+        self.assertEqual(self.post("application/json", origin, path="plan", body=b"[]"), 400)
+        self.assertEqual(self.service.plan_calls, 0)
+        self.assertEqual(self.post("application/json", origin, path="plan", body=b"{}"), 200)
+        self.assertEqual(self.service.plan_calls, 1)
 
 
 if __name__ == "__main__":

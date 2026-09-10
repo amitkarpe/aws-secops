@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -101,13 +102,19 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 self._json(200, result)
                 return
+            if length < 0 or length > 16_000:
+                raise ValueError("JSON action exceeds 16 KB")
             payload = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(payload, dict):
+                raise ValueError("JSON action must be an object")
             if self.path == "/api/sync-provider":
                 if payload != {}:
                     raise ValueError("AWS Config sync accepts no caller parameters")
                 result = self.service.sync_provider()
             elif self.path == "/api/check":
                 result = self.service.check()
+            elif self.path == "/api/plan":
+                result = self.service.update_plan(payload)
             elif self.path == "/api/check-s3":
                 result = self.service.check_s3()
             elif self.path == "/api/reject":
@@ -129,7 +136,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.host not in {"127.0.0.1", "localhost"}:
         parser.error("Pilot v1 binds to loopback only")
-    Handler.service = PilotService(PilotConfig.from_env())
+    backlog_path = os.environ.get("PILOT_BACKLOG_FILE", str(Path.home() / ".local/state/aws-secops/backlog.json"))
+    Handler.service = PilotService(PilotConfig.from_env(), backlog_path=backlog_path)
     server = HTTPServer((args.host, args.port), Handler)
     print(f"PILOT_V1_URL=http://localhost:{server.server_port}/", flush=True)
     server.serve_forever()
