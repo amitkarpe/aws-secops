@@ -120,15 +120,16 @@ def run(*, specialists_only: bool = False) -> None:
             "SG finding was not NON_COMPLIANT",
         )
 
-        rejected = _request(url, "/api/reject", {})
+        rejected = _request(url, "/api/reject", {"job_id": finding["job"]["job_id"]})
         _expect(rejected.get("stage") == "REJECTED", "Reject did not complete")
         _expect(
-            rejected.get("audit", {}).get("provider_verification") == "NON_COMPLIANT"
+            rejected.get("audit", {}).get("provider_verification") == "NOT_READ"
             and rejected.get("audit", {}).get("changed") is False,
             "Reject changed or lost provider state",
         )
 
-        denied = _request(url, "/api/approve", {"environment": "prod"})
+        finding = _request(url, "/api/check", {})
+        denied = _request(url, "/api/approve", {"environment": "prod", "job_id": finding["job"]["job_id"]})
         _expect(denied.get("stage") == "DENIED", "synthetic prod was not denied")
         _expect(
             denied.get("audit", {}).get("policy_decision") == "DENY"
@@ -137,7 +138,8 @@ def run(*, specialists_only: bool = False) -> None:
             "Policy DENY changed or lost provider state",
         )
 
-        approved = _request(url, "/api/approve", {"environment": "dev"})
+        finding = _request(url, "/api/check", {})
+        approved = _request(url, "/api/approve", {"environment": "dev", "job_id": finding["job"]["job_id"]})
         _expect(approved.get("stage") == "COMPLETED", "DEV approval did not complete")
         _expect(
             approved.get("audit", {}).get("policy_decision") == "ALLOW"
@@ -232,14 +234,44 @@ def durable_smoke() -> None:
         print(f"SOURCE=AWS_CONFIG COUNT={result['source_status']['count']} RESTART=PASS PLAN_RETAINED=PASS TRACKING=PASS EXPORT=PASS TOOLS=0 AWS_MUTATIONS=0")
 
 
+def jobs_smoke() -> None:
+    completed = []
+    with _owned_server() as url:
+        for decision, expected in (("REJECT", "REJECTED"), ("DENY_TEST", "DENIED"), ("APPROVE", "COMPLETED")):
+            checked = _request(url, "/api/check", {})
+            _expect(checked["finding"]["status"] == "NON_COMPLIANT", "demo must start noncompliant")
+            job = checked["job"]
+            _expect(job["state"] == "PENDING" and job["action"] == "remove_unrestricted_ssh" and job["environment"] == "dev", "incorrect job preview")
+            result = _request(url, "/api/jobs/decision", {"job_id": job["job_id"], "decision": decision})["job"]
+            _expect(result["state"] == expected, "job did not reach expected terminal state")
+            _expect(result["changed"] is (decision == "APPROVE"), "unexpected change evidence")
+            if decision == "REJECT":
+                _expect(result["policy_decision"] == "NOT_CALLED", "Reject called Policy")
+            else:
+                _expect(result["policy_decision"] == ("ALLOW" if decision == "APPROVE" else "DENY"), "wrong Policy decision")
+                _expect(result["provider_after"] == ("COMPLIANT" if decision == "APPROVE" else "NON_COMPLIANT"), "provider verification failed")
+            _expect_http_error(url, "/api/jobs/decision", {"job_id": job["job_id"], "decision": "APPROVE"}, 400)
+            completed.append(result)
+            print(f"JOB={expected} REPLAY=BLOCKED POLICY={result['policy_decision']} CHANGED={result['changed']} PROVIDER_AFTER={result['provider_after']}")
+    with _owned_server() as url:
+        history = _request(url, "/api/jobs")["jobs"]
+        for job in completed:
+            _expect(next(item for item in history if item["job_id"] == job["job_id"]) == job, "restart changed audit history")
+        _expect_http_error(url, "/api/jobs/decision", {"job_id": completed[-1]["job_id"], "decision": "APPROVE"}, 400)
+    print("PLATFORM_PHASE4_JOBS_SMOKE=PASS RESTART=PASS NO_AUTOMATIC_REPLAY=PASS")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--specialists-only", action="store_true")
     parser.add_argument("--provider-only", action="store_true")
     parser.add_argument("--durable-only", action="store_true")
+    parser.add_argument("--jobs-only", action="store_true")
     parser.add_argument("--port", type=int, default=3340)
     args = parser.parse_args()
-    if args.durable_only:
+    if args.jobs_only:
+        jobs_smoke()
+    elif args.durable_only:
         durable_smoke()
     elif args.provider_only:
         url = f"http://localhost:{args.port}"

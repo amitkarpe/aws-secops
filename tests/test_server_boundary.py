@@ -25,6 +25,10 @@ class FakeService:
         self.approve_calls += 1
         return {"stage": "COMPLETED", "environment": environment}
 
+    def decide_job(self, job_id, decision):
+        self.approve_calls += 1
+        return {"stage": "COMPLETED"}
+
     def import_source(self, content, filename, source_format):
         self.import_calls += 1
         return {
@@ -57,7 +61,7 @@ class ServerBoundaryTest(unittest.TestCase):
     def post(self, content_type, origin, *, path="approve", body=None, headers=None):
         request = urllib.request.Request(
             self.url.rsplit("/", 1)[0] + f"/{path}",
-            data=body or json.dumps({"environment": "dev"}).encode(),
+            data=body or json.dumps({"environment": "dev", "job_id": "synthetic"}).encode(),
             headers={"Content-Type": content_type, "Origin": origin, **(headers or {})},
             method="POST",
         )

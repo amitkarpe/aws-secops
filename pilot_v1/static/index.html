@@ -61,7 +61,7 @@
       <div id="stage" class="status">READY</div>
       <div id="message" class="muted">Run the provider check to begin.</div>
       <div class="actions">
-        <button id="check">1. Check real SG</button>
+        <button id="check">1. Check SG + preview job</button>
         <button id="check-s3">Read S3 assessment</button>
         <button id="sync-provider">Sync AWS Config</button>
         <button id="reject" class="secondary">2A. Reject</button>
@@ -142,6 +142,13 @@
     <p id="plan-result" role="status" class="muted"></p>
   </section>
   <section class="card audit">
+    <h2>Governed remediation jobs</h2>
+    <p class="muted">Only the direct provider-backed DEV SSH finding can create a job. A saved plan is not approval. Terminal jobs are single-use; restart never retries a mutation.</p>
+    <label>Job history <select id="job-select" aria-label="Job history"></select></label>
+    <dl id="job-preview" class="audit"></dl>
+    <div class="actions"><button id="job-reject" class="secondary">Reject job</button><button id="job-approve" class="approve">Approve exact DEV job</button><button id="job-deny" class="deny">Synthetic Policy DENY test</button></div>
+  </section>
+  <section class="card audit">
     <h2>Compact audit</h2>
     <div id="audit"></div>
   </section>
@@ -154,13 +161,33 @@
 <script>
 const ids = ['check','check-s3','reject','approve','deny','import-source'];
 let current={stage:'READY',workflow:null};
+let jobs=[];
+function selectedJob(){return jobs.find(j=>j.job_id===document.getElementById('job-select').value);}
+function jobPreview(){
+  const job=selectedJob()||{};const box=document.getElementById('job-preview');box.replaceChildren();
+  ['job_id','finding_id','resource_name','control','evidence','action','environment','expected_postcondition','state','human_decision','policy_decision','provider_before','provider_after','changed','created_at','completed_at','message'].forEach(key=>{const label=document.createElement('dt');label.textContent=key.replaceAll('_',' ');const value=document.createElement('dd');value.textContent=job[key]===null?(key==='changed'?'UNKNOWN — recheck provider':'—'):String(job[key]??'—');box.append(label,value);});
+  ['job-reject','job-approve','job-deny'].forEach(id=>document.getElementById(id).disabled=job.state!=='PENDING');
+}
+async function refreshJobs(){
+  const data=await fetch('/api/jobs').then(r=>r.json());jobs=data.jobs;
+  const select=document.getElementById('job-select');const old=select.value;select.replaceChildren();
+  jobs.forEach(job=>{const option=document.createElement('option');option.value=job.job_id;option.textContent=`${job.state} / ${job.resource_name} / ${job.job_id.slice(0,12)}`;select.append(option);});
+  if(current.job)select.value=current.job.job_id;else if(jobs.some(j=>j.job_id===old))select.value=old;
+  jobPreview();
+}
+document.getElementById('job-select').onchange=jobPreview;
+async function jobDecision(decision){const job=selectedJob();if(job)await action('/api/jobs/decision',{job_id:job.job_id,decision});}
+document.getElementById('job-reject').onclick=()=>jobDecision('REJECT');
+document.getElementById('job-approve').onclick=()=>jobDecision('APPROVE');
+document.getElementById('job-deny').onclick=()=>jobDecision('DENY_TEST');
 function controls(on){
   document.getElementById('check').disabled=on;
   document.getElementById('check-s3').disabled=on;
   document.getElementById('sync-provider').disabled=on;
   document.getElementById('import-source').disabled=on;
   document.getElementById('save-plan').disabled=on||!(current.backlog?.open_findings?.length);
-  const sgReady=current.workflow==='sg' && current.stage!=='COMPLETED';
+  ['job-reject','job-approve','job-deny'].forEach(id=>document.getElementById(id).disabled=on||selectedJob()?.state!=='PENDING');
+  const sgReady=current.job?.state==='PENDING';
   ['reject','approve','deny'].forEach(id=>document.getElementById(id).disabled=on||!sgReady);
 }
 function render(data){
@@ -217,6 +244,7 @@ function render(data){
   (backlog.open_findings||[]).forEach(f=>{const option=document.createElement('option');option.value=f.finding_id;option.textContent=`${f.resource_name} / ${f.control} / ${f.planning_status} / ${f.finding_id.slice(0,12)}`;selector.append(option);});
   if((backlog.open_findings||[]).some(f=>f.finding_id===selected))selector.value=selected;
   loadPlan();
+  refreshJobs().catch(()=>{document.getElementById('error').textContent='Job history unavailable; do not approve.';document.getElementById('error').style.display='block';});
   controls(false);
 }
 async function action(path, body={}){
@@ -241,9 +269,9 @@ document.getElementById('save-plan').onclick=async()=>{
 document.getElementById('check').onclick=()=>action('/api/check');
 document.getElementById('check-s3').onclick=()=>action('/api/check-s3');
 document.getElementById('sync-provider').onclick=()=>action('/api/sync-provider');
-document.getElementById('reject').onclick=()=>action('/api/reject');
-document.getElementById('approve').onclick=()=>action('/api/approve',{environment:'dev'});
-document.getElementById('deny').onclick=()=>action('/api/approve',{environment:'prod'});
+document.getElementById('reject').onclick=()=>jobDecision('REJECT');
+document.getElementById('approve').onclick=()=>jobDecision('APPROVE');
+document.getElementById('deny').onclick=()=>jobDecision('DENY_TEST');
 document.getElementById('import-source').onclick=async()=>{
   const file=document.getElementById('source-file').files[0];
   const format=document.getElementById('source-format').value;

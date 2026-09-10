@@ -25,6 +25,12 @@
 
 ## Global Guidance
 
+For this repository, follow the standing GitHub loop: Codex implements and
+validates the posted handoff; ChatGPT reviews the full diff, fixes the same PR
+if needed, merges when clean, then creates the next Issue/PR and handoff.
+Start concrete in-scope handoffs without waiting for another go. Batch Git
+publication; do not invent the next scope or skip the review gate.
+
 When available, use `~/.agent/CORE.md` as the shared machine-wide operating
 contract. `~/.codex/AGENTS.md` is a Codex-specific adapter only. Agent OS is
 reusable guidance, never automatic project authority; local repository rules

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
 from .adapters import adapt_source
@@ -13,9 +14,10 @@ from .config_source import SOURCE, fetch_config_findings
 from .findings import normalize_s3, normalize_sg
 from .export import to_csv, to_markdown
 from .gateway import call_tool, result_text
+from .jobs import JobStore
 from .harness import invoke
 from .routing import enrich_finding, specialist_instruction, specialist_route
-from .workflow import approve_remediation, reject_remediation
+from .workflow import approve_remediation
 
 
 class PilotService:
@@ -40,6 +42,7 @@ class PilotService:
         self.provider_fetch = provider_fetch
         self.source_status: dict[str, Any] = {"source": SOURCE, "status": "NOT_SYNCED", "last_success": None}
         self.findings = FindingBacklog(path=backlog_path)
+        self.jobs = JobStore(str(Path(backlog_path).with_suffix(".jobs.json")) if backlog_path else None)
         self.state: dict[str, Any] = {
             "stage": "READY",
             "source_status": self.source_status,
@@ -49,10 +52,69 @@ class PilotService:
             "explanation": None,
             "audit": None,
             "backlog": self.findings.summary(),
+            "jobs": self.jobs.history(),
         }
 
     def _refresh_backlog(self) -> None:
         self.state["backlog"] = self.findings.summary()
+        self.state["jobs"] = self.jobs.history()
+
+    def create_job(self, finding_id: str) -> dict[str, Any]:
+        item = next((f for f in self.findings.open_findings() if f["finding_id"] == finding_id), None)
+        if not item or item["action_eligibility"] != "REMEDIATION_SUPPORTED":
+            raise ValueError("only the supported direct Security Group finding may create a job; all others are PLAN_ONLY")
+        current = normalize_sg(self._read_finding())
+        if any(current[key] != item[key] for key in ("resource_id", "control", "status")):
+            raise RuntimeError("provider no longer matches the exact eligible finding; check again")
+        self.state["job"] = self.jobs.create(item)
+        self._refresh_backlog()
+        return self.state
+
+    def decide_job(self, job_id: str, decision: str) -> dict[str, Any]:
+        if not isinstance(decision, str) or decision not in {"REJECT", "APPROVE", "DENY_TEST"}:
+            raise ValueError("decision must be REJECT, APPROVE or synthetic DENY_TEST")
+        job = self.jobs.get(job_id)
+        if job["state"] != "PENDING":
+            raise ValueError("job is not pending; decisions are single-use and never replayed")
+        if decision == "REJECT":
+            job = self.jobs.update(job_id, state="REJECTED", human_decision="REJECT", completed_at=datetime.now(timezone.utc).isoformat(),
+                                   message="REJECTED — no Gateway or Lambda call; no AWS change.")
+        else:
+            # Persist consumption BEFORE any network operation. A lost response
+            # must leave a non-replayable record, never a pending approval.
+            job = self.jobs.update(job_id, state="EXECUTING", human_decision="APPROVE",
+                                   message="Execution started; no automatic retry.")
+            try:
+                if self.profile != "amit" or self.config.region != "ap-southeast-1":
+                    raise RuntimeError("unexpected AWS context")
+                before = self._read_finding()
+                if before["status"] != "NON_COMPLIANT" or any(before.get(key) != job[key] for key in ("resource_id", "control")):
+                    raise RuntimeError("provider no longer matches the approved exact action")
+                job = self.jobs.update(job_id, changed=None, policy_decision="UNKNOWN")
+                outcome = approve_remediation("prod" if decision == "DENY_TEST" else "dev",
+                                              self.config.remediation_tool_name, self._call_gateway)
+                job = self.jobs.update(job_id, changed=outcome["changed"], policy_decision=outcome["gateway_decision"])
+                after = self._read_finding()
+                job = self.jobs.update(job_id, provider_after=after["status"])
+                expected = "NON_COMPLIANT" if outcome["gateway_decision"] == "DENY" else "COMPLIANT"
+                if any(after.get(key) != job[key] for key in ("resource_id", "control")) or after["status"] != expected:
+                    raise RuntimeError("independent provider verification failed")
+                if decision == "DENY_TEST" and outcome["gateway_decision"] != "DENY":
+                    raise RuntimeError("synthetic PROD unexpectedly allowed")
+                self.findings.upsert([normalize_sg(after)], evidence_origin="AWS_PROVIDER")
+                self.state["finding"] = after
+                job = self.jobs.update(job_id, state="DENIED" if expected == "NON_COMPLIANT" else "COMPLETED",
+                                       completed_at=datetime.now(timezone.utc).isoformat(),
+                                       message="DENIED — Gateway Policy blocked the synthetic request; no remediation." if expected == "NON_COMPLIANT" else "COMPLETED — exact DEV action allowed; provider re-read COMPLIANT.")
+            except Exception:
+                job = self.jobs.update(job_id, state="FAILED", completed_at=datetime.now(timezone.utc).isoformat(),
+                                       message="FAILED — check provider and local prerequisites. No automatic retry; unknown change is not zero change.")
+        self.state.update(stage=job["state"], job=job, message=job["message"], explanation=job["message"],
+                          audit=dict(human_decision=job["human_decision"], policy_decision=job["policy_decision"],
+                                     provider_verification=job["provider_after"], changed=job["changed"],
+                                     exact_tool="NOT_CALLED" if decision == "REJECT" else self.config.remediation_tool_name))
+        self._refresh_backlog()
+        return self.state
 
     def backlog(self) -> dict[str, Any]:
         return self.findings.summary()
@@ -228,6 +290,10 @@ class PilotService:
             },
             "backlog": self.findings.summary(),
         }
+        if enriched["action_eligibility"] == "REMEDIATION_SUPPORTED":
+            item = next(f for f in self.findings.open_findings() if f["resource_id"] == normalized["resource_id"] and f["source"] == "AWS EC2" and f["control"] == normalized["control"])
+            self.state["job"] = self.jobs.create(item)
+        self._refresh_backlog()
         return self.state
 
     def check_s3(self) -> dict[str, Any]:
@@ -280,60 +346,13 @@ class PilotService:
     def reject(self) -> dict[str, Any]:
         if self.state.get("workflow") != "sg":
             raise RuntimeError("run the Security Group provider check first")
-        decision = reject_remediation()
-        verification = self._read_finding()
-        self.state["stage"] = "REJECTED"
-        self.state["message"] = "REJECT — no remediation call was made; provider state is unchanged."
-        self.state["explanation"] = (
-            "The human rejected remediation. Gateway and remediation Lambda were not called; "
-            f"the provider still reports {verification['status']}."
-        )
-        self.state["audit"].update(
-            human_decision=decision["human_decision"],
-            policy_decision=decision["gateway_decision"],
-            exact_tool=decision["tool"],
-            provider_verification=verification["status"],
-            changed=False,
-        )
-        self.findings.upsert([normalize_sg(verification)], evidence_origin="AWS_PROVIDER")
-        self._refresh_backlog()
-        return self.state
+        return self.decide_job(self.state.get("job", {}).get("job_id"), "REJECT")
 
     def approve(self, environment: str) -> dict[str, Any]:
         if self.state.get("workflow") != "sg":
             raise RuntimeError("run the Security Group provider check first")
-        if self.state.get("audit", {}).get("action_eligibility") != "REMEDIATION_SUPPORTED":
-            raise RuntimeError("current finding is PLAN_ONLY and cannot invoke AWS mutation")
-
-        def gateway(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-            return self._call_gateway(tool_name, arguments)
-
-        decision = approve_remediation(
-            environment, self.config.remediation_tool_name, gateway
-        )
-        verification = self._read_finding()
-        denied = decision["gateway_decision"] == "DENY"
-        self.state["stage"] = "DENIED" if denied else "COMPLETED"
-        self.state["message"] = (
-            "DENY — Gateway Policy blocked the synthetic prod request; no remediation occurred."
-            if denied
-            else "ALLOW — approved remediation completed and AWS provider verification is COMPLIANT."
-        )
-        self.state["explanation"] = (
-            "Gateway Policy denied the synthetic prod context. The remediation Lambda was not "
-            f"invoked, and the provider still reports {verification['status']}."
-            if denied
-            else "The exact public SSH rule was removed after human approval and Gateway Policy "
-            f"ALLOW. The independent provider re-read now reports {verification['status']}."
-        )
-        self.state["finding"] = verification
-        self.state["audit"].update(
-            human_decision="APPROVE",
-            policy_decision=decision["gateway_decision"],
-            exact_tool=self.config.remediation_tool_name,
-            provider_verification=verification["status"],
-            changed=decision["changed"],
-        )
-        self.findings.upsert([normalize_sg(verification)], evidence_origin="AWS_PROVIDER")
-        self._refresh_backlog()
-        return self.state
+        if environment not in {"dev", "prod"}:
+            raise ValueError("environment must be dev or synthetic prod")
+        if not self.state.get("job"):
+            raise RuntimeError("current finding is PLAN_ONLY or has no pending job")
+        return self.decide_job(self.state["job"]["job_id"], "APPROVE" if environment == "dev" else "DENY_TEST")
