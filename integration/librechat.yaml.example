@@ -1,6 +1,8 @@
 # Add only this entry to an existing mcpServers mapping. Do not replace the file.
 # Co-location prerequisite: this process can reach the ONE loopback backend.
-# This template was NOT installed on the retained remote LibreChat (see proof).
+# Installed on retained EC2 through install-reader.cjs; placeholders below are portable.
+# Also allow only the six exact *_mcp_aws_secops_reader tool names in native
+# toolApproval.allow. install-reader.cjs preserves historical ASK/DENY entries.
 mcpServers:
   aws_secops_reader:
     type: stdio

@@ -2,27 +2,32 @@
 
 ## Current availability
 
-Backend and stdio MCP are tested on WSL. The existing LibreChat v0.8.8-rc1 is
-on the retained EC2, not WSL. **Connected LibreChat acceptance is BLOCKED.**
-Do not paste this configuration into that deployment expecting its localhost
-to reach WSL. No existing LibreChat configuration, agents or chats were changed.
+**Connected acceptance PASS.** LibreChat v0.8.8-rc1 and the sole backend now run
+on the same retained EC2. The original WSL stores are inactive backups. Do not
+run the old local serve command against them: that would fork current state.
+One additive reader entry and native Nova configuration were installed; existing
+agents/chats and governance rules were preserved. SPEC records Amit's approval.
 
 Chosen supported adapter transport: official Python MCP SDK, stdio, six tools.
 It requires co-location/private connectivity to the one backend. No public MCP
 or operator listener is provided. No generic HTTP/SSH/AWS tool is exposed.
 
-## Start and check the available local path
+## Open the retained deployment
 
 From the repository:
 
 ```bash
-uv venv .venv-mcp
-uv pip install --python .venv-mcp/bin/python -r requirements-mcp.txt
-AWS_PROFILE=amit AWS_REGION=ap-southeast-1 ./scripts/pilot-v1.sh serve
+AWS_PROFILE=amit AWS_REGION=ap-southeast-1 \
+PILOT_EC2_NAME='<existing retained EC2 Name tag>' \
+bash scripts/connect-retained-ui.sh
 ```
 
-Use the existing private Pilot state; do not start a second writer. If already
-running, reuse it. Open http://localhost:3340/. **Sync AWS Config** persists
+Keep that terminal open. The script verifies identity and a unique running
+host, refuses occupied ports, and forwards both services via SSM. It creates
+no resources and does not restart the backend. Existing working forwards can
+simply be reused. Idle SSM sessions can expire; reopen with the same command.
+Open http://localhost:13080/ for LibreChat and http://localhost:3340/ for the
+human UI. **Sync AWS Config** persists
 valid evidence without inference. **Explain selected finding (AI)** explicitly
 invokes the retained zero-tool Nova 2 Lite Harness; repeated explanation for
 unchanged evidence uses a process-local cache. A failed explanation leaves the
@@ -56,27 +61,31 @@ and get_job exist in MCP. Neither natural-language consent nor a LibreChat MCP
 approval can authorize a job. Job creation/decisions, plan saving, sync and reset
 remain explicit human UI/API operations and are absent from MCP.
 
-The private default stores are `~/.local/state/aws-secops/backlog.json` and
-`backlog.jobs.json`. Existing PILOT_BACKLOG_FILE chooses both on the server.
+The deployed stores are `/opt/aws-secops/.runtime/backlog.json` and
+`backlog.jobs.json` on EC2. The local-development default remains
+`~/.local/state/aws-secops/backlog.json`; do not resume that stale copy.
+PILOT_BACKLOG_FILE chooses both on the server.
 One process owns them. No store is copied into the adapter. Back up privately
 while the writer is stopped; corrupt stores stop startup and must not be erased.
 LOADED health means load succeeded, not a promise that the next disk write will
 succeed. Source health resets to NOT_SYNCED after process restart; retained
 finding observations, plans and historical jobs remain available.
 
-## LibreChat setup after the topology gate is resolved
+## Your LibreChat login: create the reader once
 
-1. Verify the adapter runtime can reach the same backend/store. Do not expose
-   the approval API or bypass SSRF/CORS/Host validation to satisfy this step.
-2. Back up the private LibreChat YAML. Add only the aws_secops_reader entry from
-   `integration/librechat.yaml.example`, with actual absolute runtime paths.
-   Keep all unrelated mappings. The example has no credentials.
-3. Restart only the identified LibreChat application. Verify six tools are
-   discovered. Create **AWS SecOps Reader**, select the existing approved
-   personal-lab model, attach only those six tools, and save. Do not attach the
-   historical governance mutation tools. Model availability remains unvalidated
-   for this new connection; do not switch to an unapproved external provider.
-4. Agent instruction:
+1. Sign in with your existing account. The isolated acceptance agent belongs
+   to the test account, not your account; **you must create your own reader**.
+   Your old AgentCore Governance Demo agent was not reconfigured.
+2. Agent Builder -> Create New Agent -> **AWS SecOps Reader**. Choose **Bedrock**
+   and **global.amazon.nova-2-lite-v1:0**, Region **ap-southeast-1**.
+3. In model parameters, turn **Prompt Cache OFF** (`promptCache=false`). Keep
+   maxTokens=1500 and temperature=0.2. The installed Nova follow-up rejected
+   cachePoint with caching enabled. `integration/reader-agent.json` is the
+   exact tested API create-agent shape; it contains no credentials.
+4. Tools -> Add -> **aws_secops_reader** -> select its six tools only. Save.
+   Do not attach agentcore_governance or any mutation tools to this reader.
+   Use the instruction below. Existing native read allowances are installed.
+Agent instruction:
 
 ```text
 You are the AWS SecOps Reader. Use only the six aws_secops_reader tools.
@@ -90,7 +99,7 @@ A saved plan, chat consent and a completed historical job are not authorization
 for another action. Do not claim any action happened without backend evidence.
 ```
 
-5. Required connected proof: actual chat tool call returns IDs/provenance;
+Connected proof (passed in this release): actual chat tool call returns IDs/provenance;
    follow exact review link, save an untouched plan deliberately, then ask chat
    to reread that ID and confirm the same plan. A standalone MCP result is not
    this proof. Keep screenshots/real identities private.
@@ -112,13 +121,37 @@ valid provider intake. Terminal or interrupted jobs cannot be replayed.
 
 Remove only aws_secops_reader from the private LibreChat config and detach it
 from the new reader agent, then restart that application. Preserve unrelated
-agents/chats, the backend and both stores. No integration config was applied in
-this pass, so currently there is nothing to remove from LibreChat.
+agents/chats, the backend and both stores. Remove its six exact native allow
+entries if retiring the reader. Private sibling backups exist for YAML and env;
+do not restore an entire old backup over later unrelated changes.
+
+The deployed backend is `aws-secops-backend.service`; restart that one service
+via SSM if required. It uses the EC2 role, not copied keys. Reboot starts it
+automatically. LibreChat retains its pre-existing startup method; its reboot
+autostart was not changed or claimed. No full EC2 reboot was performed.
+
+For an approved rebuild, `scripts/stage-retained-ec2.py --commands-file <private>`
+packages only runtime code/dependencies/configurator for reviewed SSM dispatch.
+It does not migrate state or start services. Stop the old writer first, then
+`scripts/migrate-retained-store.py --pilot-state <private-state> --backlog
+<private-backlog> --commands-file <private>` creates the one-time handoff payload.
+It refuses an existing remote store/service/occupied port. Keep generated
+payloads private: they contain resource references and backlog data.
+The required instance role grants Config DescribeConfigurationRecorderStatus,
+DescribeComplianceByConfigRule and GetComplianceDetailsByConfigRule; exact
+retained Harness/Runtime/Gateway invocation; and InvokeModel/stream for Nova 2
+Lite's exact inference profile and foundation-model family. Do not grant direct
+Runtime command execution. Review identity before any IAM change.
+
+After staging, `node /opt/aws-secops/integration/install-reader.cjs /opt/LibreChat
+--native-bedrock` installs additive config (write it as one command). It validates
+preserved mappings and refuses conflicting settings; restart only the verified
+LibreChat backend. No new EC2 or exposure is needed for the current deployment.
 
 Counters are process-local backend specialist calls/cache/errors/elapsed time;
 token usage may be unavailable. They exclude the LibreChat model, direct SG/S3
 Harness checks and other workers. They are not a bill. No production, multi-user,
-remote authentication, arbitrary remediation or multiwriter guarantee.
+production authentication, arbitrary remediation or multiwriter guarantee.
 
 References: [LibreChat MCP](https://www.librechat.ai/docs/features/mcp),
 [MCP configuration](https://www.librechat.ai/docs/configuration/librechat_yaml/object_structure/mcp_servers),

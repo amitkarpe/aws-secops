@@ -1,6 +1,6 @@
 # Specification
 
-Status: active — integrated Phases 5–7 / Issue #17 / PR #18
+Status: implemented and validated — Phases 5–7 / Issue #17 / PR #18; ready for review
 
 ## Problem
 
@@ -8,6 +8,20 @@ Extend the proven Compliance Agent into a bounded multi-source AWS SecOps
 workflow while retaining one exact governed AWS mutation.
 
 ## Scope
+
+### Amit approval amendment — 2026-09-10
+
+Amit approved completing this release using the home Linux host or reusing
+the retained EC2; creating a suitable personal-lab EC2 is also authorized when
+reuse is insufficient. Scoped hosting, IAM, private connectivity, installation,
+deployment and restart steps needed by this Issue are approved without another
+routine permission request. This supersedes the original no-new-IAM/resources
+restriction for deployment prerequisites, not the application mutation boundary.
+Use `amit` / `ap-southeast-1` for the retained implementation. `vagent` is an
+approved alternative, not an automatic fallback: verify its separate identity,
+Region, available services/quota and cost before using it. Prefer reuse to new
+recurring cost. Keep credentials/private evidence out of Git, avoid public
+operator exposure, and preserve unrelated services, chats and user work.
 
 Preserve merged Phase 4 and deliver Issue #17: bounded backend queries,
 inference-independent intake, cached zero-tool explanations, restricted MCP,
@@ -42,8 +56,8 @@ approve, reject, execute or rearm. No second AWS mutation capability.
 
 ## MUST NOT
 
-- No new AWS resources, IAM or service enablement. Additive identified
-  LibreChat/backend application configuration and restart are in scope.
+- No unrelated AWS resources, IAM or service enablement. Scoped deployment
+  prerequisites are authorized by the amendment above; prefer the retained EC2.
 - Only the retained dedicated demo SG and exact action may be exercised live,
   including rearm to the approved unattached demonstration state.
 - A pending job is consumed durably before network execution. Terminal jobs

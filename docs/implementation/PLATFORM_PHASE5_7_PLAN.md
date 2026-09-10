@@ -1,7 +1,6 @@
 # Integrated release: Phases 5-7
 
-Status: backend/MCP/local operator proof PASS; BLOCKED_INTEGRATION for remote
-LibreChat connectivity. PR #18 remains Draft; full M1–M9 acceptance NOT achieved.
+Status: M1–M9 PASS; connected retained-EC2 LibreChat proof completed; ready for review.
 
 Authority: [Issue #17](https://github.com/amitkarpe/aws-secops/issues/17).
 Base: PR #16 merged at `a65347aee76c39afe33d6acfcbaf7db1bd1ce1da`.
@@ -37,26 +36,25 @@ Human operator UI -> existing job approval -> Gateway/Policy -> exact Lambda
 
 - [x] M4: six exact MCP tools: list_findings, get_finding, get_source_health,
       explain_finding, list_jobs, get_job. No generic proxy or action endpoint.
-- [ ] M5: inspect installed LibreChat/topology, configure one scoped personal-lab
+- [x] M5: inspect installed LibreChat/topology, configure one scoped personal-lab
       integration and prove a real conversation invokes the backend.
-- [ ] M6: chat opens an exact finding/job in the human UI; navigation never
+- [x] M6: chat opens an exact finding/job in the human UI; navigation never
       mutates. Human edits/decisions remain explicit; chat reads their results.
 
 ### Phase 7: integrated acceptance and handover
 
-- [ ] M7: real Config -> chat -> explanation -> operator view/plan -> history ->
+- [x] M7: real Config -> chat -> explanation -> operator view/plan -> history ->
       restart/reload proof; identify reused versus freshly executed evidence.
-- [ ] M8: focused injection/forged-ID/no-mutation/timeout/partial/replay checks,
+- [x] M8: focused injection/forged-ID/no-mutation/timeout/partial/replay checks,
       plus measured invocation/cache/latency and available token counters.
-- [ ] M9: concise topology/config/runbook, five demo prompts, honest limits,
+- [x] M9: concise topology/config/runbook, five demo prompts, honest limits,
       current SPEC/CONTEXT and one exact-head release proof/handoff.
 
-M5: installed EC2 version/topology inspected; no connected private path to WSL.
-M6: exact operator links/plan API/browser pass; chat-to-UI-to-chat unproved.
-M7: Config/MCP/Harness and local restart proof pass; LibreChat segment blocked.
-M8: focused negatives and backend usage measured; chat measurements unavailable.
-M9: runbook/template/proof delivered, but connected release acceptance incomplete.
-See PLATFORM_PHASE5_7_PROOF.md for executed/reused evidence and exact blocker.
+The initial topology gate was resolved by Amit's 2026-09-10 hosting amendment.
+The retained EC2 owns the single backend/store; SSM forwards the local human UI.
+Native Nova used six tools, returned exact links, read a newly saved human plan,
+and refused chat execution. Restart and focused negative proofs passed.
+See PLATFORM_PHASE5_7_PROOF.md for fresh versus reused evidence and limitations.
 
 Issue #17 contains acceptance criteria and controls; do not duplicate its
 full specification into additional documents. Use the official LibreChat/MCP
@@ -69,10 +67,12 @@ retained exact demo SG action as the only AWS mutation capability. MCP cannot
 create/approve/reject/execute jobs, save plans, rearm resources, select arbitrary
 AWS APIs or write the local stores. The adapter calls the single backend.
 
-No new AWS resources/IAM/service enablement, company data, public exposure,
+No unrelated AWS resources/IAM/service enablement, company data, public exposure,
 multi-account work, second remediation, database/workflow framework or new
 frontend. Preserve existing LibreChat agents/chats/configuration. Credentials,
 private identities, local state and raw browser evidence stay outside Git.
+Scoped hosting/IAM/co-location prerequisites are authorized by the dated SPEC
+amendment; the original deployment prohibition no longer blocks this release.
 
 ## Delivery and proof
 

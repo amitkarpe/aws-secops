@@ -1,8 +1,8 @@
 # Phases 5–7 evidence — Issue #17 / PR #18
 
-Overall: **BLOCKED_INTEGRATION**, not a complete release PASS. Final commit SHA
-is in the single PR handoff (avoids a self-referential commit hash). No Ready or
-merge action. Base: merged Phase 4 a65347ae.
+Overall: **PASS — connected M1–M9 acceptance**, ready for review. Final commit
+SHA is in the PR handoff. Base: merged Phase 4 a65347ae. The initial blocked
+pass below is historical; Amit's hosting amendment resolved its prerequisites.
 
 ## Acceptance map
 
@@ -12,17 +12,100 @@ merge action. Base: merged Phase 4 a65347ae.
 | M2 independent intake | PASS | Config/import save without Harness; explicit cached service.explain_finding; timeout/tool-injection tests and real zero-tool Harness |
 | M3 bounded failure | PASS | 90-second Harness subprocess, existing Gateway/Config bounds, 100-second bridge socket timeout, GET Host guard and safe errors; unchanged single-writer jobs |
 | M4 restricted MCP | PASS | mcp_bridge.py; pinned official SDK; real initialize/list/call six tools and rejection of unknown/extra args |
-| M5 LibreChat | BLOCKED | EC2 runtime inspected; no private connection from existing deployment to WSL backend; nothing installed remotely |
-| M6 human handoff | PARTIAL | Exact finding/job links and local browser plan save/reload/API pass; chat leg not performed |
-| M7 connected E2E | BLOCKED | Config → MCP → Harness and operator UI/history/restart pass; no LibreChat conversation proof |
-| M8 negative/usage | PARTIAL | Focused tests, actual MCP negatives and measured specialist/cache/latency; chat metrics unavailable |
-| M9 delivery | PARTIAL | One runbook/config template and this proof; connected release not accepted |
+| M5 LibreChat | PASS | Authenticated native Bedrock Nova conversation visibly used all six reader tools against the retained-EC2 backend |
+| M6 human handoff | PASS | Exact returned finding/job links selected correct records; explicit human plan save returned verbatim through chat; terminal approval disabled |
+| M7 connected E2E | PASS | Real Config → chat → Harness explanation → operator plan → chat readback → remote restart → chat readback |
+| M8 negative/usage | PASS | Forged MCP arguments rejected; chat execution request refused; jobs unchanged; measured specialist/cache and message token counters, billing caveat below |
+| M9 delivery | PASS | Repo-owned staging/migration/connection/config helpers, tested agent template, current runbook/SPEC/CONTEXT |
 
 Paths above are under pilot_v1 unless otherwise stated. Config/import intake is
 now inference-independent; the existing direct SG/S3 guided check path remains
 Harness-based. Ordinary list/detail/history/reload do not call any model.
 
-## Freshly executed evidence
+## Connected acceptance after hosting approval — 2026-09-10
+
+Amit explicitly approved home/retained EC2 reuse and scoped hosting/IAM setup.
+Reused the old AgentCore co-location pattern without editing its source: retained
+LibreChat at /opt/LibreChat; one new /opt/aws-secops backend directory. Stopped
+the verified WSL writer before snapshotting. Private state contains resource
+references, not copied AWS credentials. All four handoff-file SHA-256 checks
+passed. Original WSL stores remain intact and inactive.
+
+Added two scoped instance-role policies: Config read APIs plus exact retained
+Harness/Runtime/Gateway invocation; native Nova 2 Lite inference only. No
+InvokeAgentRuntimeCommand grant. No EC2, Gateway, Harness, Lambda, bucket or SG
+was created or remediated. Installed pinned CLI 0.28.1 and MCP SDK 1.30.0, Python
+venv support, and an enabled systemd backend service. Existing EC2 is retained.
+Both approval API and MCP backend stay loopback-only; browser access uses SSM.
+
+Remote provider/SDK proof:
+
+```text
+CONFIG_SYNC=SUCCESS FINDINGS=3 INTAKE_INFERENCE=0
+RESTRICTED_MCP=PASS TOOLS=6 INITIALIZE_LIST_CALL=PASS FORGED_ARGUMENTS=REJECTED
+CONFIG_DETAIL=PASS SPECIALIST=READY TOOLS=0 CACHE=PASS HISTORY=PASS
+MODEL_DELTA=1 CACHE_HIT_DELTA=1 ELAPSED_SECONDS=10.191
+SPECIALIST_ELAPSED_SECONDS=8.891 ERRORS=0 TOKEN_USAGE=UNAVAILABLE
+```
+
+An isolated demo account logged in through the real LibreChat UI using the
+existing registration/login flow. Existing accounts, agents and chats were not
+altered. Three disposable acceptance accounts were created while diagnosing
+selectors/authentication; only the final one owns the acceptance agent/chats.
+No normal browser/keyring settings or credentials were changed or published.
+
+The first existing Codex subscription agent returned text claiming no tools;
+this was NOT counted as success or repaired with a new adapter. Native Bedrock
+Nova then called tools but its follow-up rejected cachePoint. Setting the new
+reader agent's **promptCache=false** fixed that failure without changing
+LibreChat source or historical agent settings. Native Bedrock endpoint/Region
+and exact model were enabled using instance-role authentication.
+[LibreChat documents the setting](https://www.librechat.ai/docs/configuration/librechat_yaml/object_structure/model_specs).
+
+The completed browser conversation used get_source_health, list_findings,
+get_finding, explain_finding, list_jobs and get_job. The visible card said
+**Used 6 tools · aws_secops_reader**. It showed recorded Config evidence,
+PLAN_ONLY explanation, historical job outcome and exact localhost review URLs.
+Both returned links selected the correct record. Terminal job approval was
+disabled. Saved one previously untouched Config plan through the human UI;
+chat fetched and quoted its exact owner/plan. A request to ignore restrictions
+and approve/execute was refused; the versioned job-history response stayed
+identical. No action tool exists in this agent's six-tool surface.
+
+```text
+AUTHENTICATED_LIBRECHAT=PASS NATIVE_NOVA_TOOLS=6
+CHAT_LINK_EXACT=PASS HUMAN_PLAN_SAVE=PASS CHAT_PLAN_READBACK=PASS
+EXACT_JOB_LINK=PASS TERMINAL_APPROVE_DISABLED=TRUE
+CHAT_EXECUTION_REQUEST=REFUSED JOB_HISTORY_UNCHANGED=TRUE
+DURABLE_STORES_RESTART_HASHES=PASS RESTART_READINESS=PASS
+POST_RESTART_CHAT_READBACK=PASS BACKEND_INFERENCE=0
+```
+
+Restarted only aws-secops-backend.service. Both stores were byte-identical;
+source status reset to NOT_SYNCED, counters to zero. The same authenticated
+conversation then called two reader tools and confirmed the saved plan survived,
+explicitly saying no fresh AWS verification had occurred. No automatic retry,
+inference, job execution or AWS remediation happened on restart.
+
+Before restart, remote specialist counters were 1 model call, 2 cache hits,
+0 errors, 8.891 seconds. Successful chat's first two exchanges recorded message
+tokenCount values 137/681 and 118/235 (user/assistant). These are LibreChat message
+counters, **not billable inference totals**: tool schemas/results, title inference,
+diagnostic attempts and provider accounting are not reconstructed from them.
+One further post-restart exchange used two read tools and no backend inference.
+No new instance means no additional instance allocation; existing t3.medium
+charges continue. Incremental Bedrock/Runtime/Config/log usage is metered and
+not reconciled to a bill here; do not call this a zero-cost deployment.
+
+The one-command SSM connector reached both UIs. Its initial attempt correctly
+rejected an inherited non-approved profile before AWS access; rerunning with
+explicit amit/Singapore passed. An earlier idle forward expired normally; the
+connector can reopen it without restarting the backend or duplicating stores.
+Private screenshots were visually reviewed; they contain real lab identities
+and are intentionally not committed. Final SG read: NON_COMPLIANT, attachments 0.
+SG mutation-cycle evidence remains the explicitly reused PR #16 evidence below.
+
+## Initial pre-amendment pass (historical, not current deployment state)
 
 Personal amit / ap-southeast-1 identity matched the retained private Pilot state.
 One real Config sync returned SUCCESS and three recorded findings, with no
