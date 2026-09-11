@@ -37,6 +37,7 @@ const reads = [
   'get_config_summary_mcp_aws_compliance','list_config_findings_mcp_aws_compliance',
   'list_sg_batches_mcp_aws_compliance','get_sg_batch_mcp_aws_compliance',
   'get_remediation_plan_mcp_aws_compliance_planner','prepare_remediation_batch_mcp_aws_compliance_planner',
+  'prepare_eligible_remediation_batches_mcp_aws_compliance_planner',
 ];
 for (const name of reads) {
   if (!approval.allow.includes(name)) approval.allow.push(name);

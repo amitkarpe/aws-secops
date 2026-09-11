@@ -26,6 +26,8 @@ class ComplianceAgentSpecTests(unittest.TestCase):
         self.assertIn("prepare_eligible_remediation_batches exactly once", instructions)
         self.assertIn("emit EVERY returned next_executions entry", instructions)
         self.assertIn("do not claim AgentCore Harness is used", instructions)
+        installer = (root / "integration" / "install-compliance.cjs").read_text()
+        self.assertIn("'prepare_eligible_remediation_batches_mcp_aws_compliance_planner'", installer)
         self.assertNotIn("WAF exact remediation", instructions)
         self.assertFalse((root / "pilot_v1" / "static" / "bulk-s3-demo.html").exists())
 
