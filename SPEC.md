@@ -1,6 +1,6 @@
 # Specification
 
-Status: implemented and validated — Phases 5–7 / Issue #17 / PR #18; ready for review
+Status: active — Phases 8–10 / Issue #20 / PR #21
 
 ## Problem
 
@@ -8,6 +8,23 @@ Extend the proven Compliance Agent into a bounded multi-source AWS SecOps
 workflow while retaining one exact governed AWS mutation.
 
 ## Scope
+
+### Phases 8–10 authority
+
+Issue #20 supersedes the single-action restriction only for one exact S3
+bucket-level Block Public Access batch action. New empty demo resources belong
+only to verified vagent in Singapore. Preserve the existing amit deployment and
+SG action. No generic write tool, credential copying, account-protection change,
+Config enablement or silent runtime identity switch. Start 5–10 live buckets
+only after readiness; current preflight ceiling 10, no automatic escalation.
+
+Use separate bounded batch state (up to 1,000 items), immutable preview hash,
+single-use human approval and per-item provider readback. Restarted RUNNING
+items become UNKNOWN and need read-only reconciliation; no blind replay.
+Existing 100-finding/import/job limits remain unchanged. Chat batch queries
+are read-only and cannot prepare, approve, step, reset or execute. Offline
+fixtures cannot select a live provider. Current-phase exceptions take precedence
+over the historical single-SG-only statements below; all other boundaries remain.
 
 ### Approved named UI entry points — 2026-09-10
 

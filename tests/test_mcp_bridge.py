@@ -25,7 +25,7 @@ class McpBoundaryTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({t.name for t in tools}, OPERATIONS)
         self.assertTrue(all(t.inputSchema["additionalProperties"] is False for t in tools))
         with patch("pilot_v1.mcp_bridge.build_opener") as opener:
-            for name, arguments in [("approve", {}), ("list_jobs", {"execute": True}),
+            for name, arguments in [("approve", {}), ('approve_batch', {}), ('get_batch', {'batch_id': 'a'*64, 'execute': True}), ("list_jobs", {"execute": True}),
                                     ("list_jobs", {"limit": "1"}), ("get_source_health", {"url": "http://localhost:3340/api/approve"}),
                                     ("get_finding", {"finding_id": "../api/approve"}),
                                     ("get_job", {"job_id": "a" * 32, "decision": "APPROVE"})]:

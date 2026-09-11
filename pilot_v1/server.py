@@ -95,6 +95,20 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+        elif parsed.path == '/bulk':
+            body = self.page.with_name('bulk.html').read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers(); self.wfile.write(body)
+        elif parsed.path == '/api/bulk/export':
+            try:
+                query = parse_qs(parsed.query, strict_parsing=True)
+                if set(query) != {'batch_id'} or len(query['batch_id']) != 1 or not self.service.bulk:
+                    raise ValueError('invalid batch')
+                self._download('text/csv; charset=utf-8', 'batch-results.csv', self.service.bulk.export(query['batch_id'][0]))
+            except ValueError:
+                self._json(400, {'error': 'unknown batch'})
         elif self.path == "/api/state":
             self._json(200, self.service.state)
         elif self.path == "/api/backlog":
@@ -145,7 +159,22 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
             if not isinstance(payload, dict):
                 raise ValueError("JSON action must be an object")
-            if self.path == "/api/v1/explain_finding":
+            if self.path.startswith('/api/bulk/'):
+                bulk = self.service.bulk
+                if not bulk:
+                    raise ValueError('bulk provider not configured')
+                operation = self.path.removeprefix('/api/bulk/')
+                fields = {'preview': set(), 'new-preview': set(), 'decision': {'batch_id', 'approval_hash', 'decision'},
+                          'step': {'batch_id'}, 'reconcile': {'batch_id'}}
+                if operation not in fields or set(payload) != fields[operation]:
+                    raise ValueError('only exact server-owned bulk parameters accepted')
+                if operation in {'preview', 'new-preview'}:
+                    result = bulk.preview(renew=operation == 'new-preview')
+                elif operation == 'decision':
+                    result = bulk.decide(**payload)
+                else:
+                    result = getattr(bulk, operation)(**payload)
+            elif self.path == "/api/v1/explain_finding":
                 result = self.service.query("explain_finding", payload)
             elif self.path == "/api/sync-provider":
                 if payload != {}:
@@ -192,6 +221,15 @@ def main() -> int:
         parser.error("Pilot v1 binds to loopback only")
     backlog_path = os.environ.get("PILOT_BACKLOG_FILE", str(Path.home() / ".local/state/aws-secops/backlog.json"))
     Handler.service = PilotService(PilotConfig.from_env(), backlog_path=backlog_path)
+    if os.environ.get('SECOPS_BULK_STATE'):
+        from .bulk import BulkStore, OfflineProvider
+        bulk_path = os.environ['SECOPS_BULK_STATE']
+        if os.environ.get('SECOPS_BULK_MANIFEST'):
+            from .bulk_s3 import S3Provider
+            provider = S3Provider(os.environ['SECOPS_BULK_MANIFEST'])
+        else:
+            provider = OfflineProvider(bulk_path+'.provider.json')
+        Handler.service.bulk = BulkStore(bulk_path, provider)
     server = HTTPServer((args.host, args.port), Handler)
     print(f"PILOT_V1_URL=http://localhost:{server.server_port}/", flush=True)
     server.serve_forever()

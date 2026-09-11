@@ -24,7 +24,7 @@ if (reviewOrigin) {
     throw Error('SECOPS_REVIEW_ORIGIN must be an HTTPS origin');
   entry.env.SECOPS_REVIEW_ORIGIN = reviewOrigin;
 }
-const readTools = ['list_findings','get_finding','get_source_health','explain_finding','list_jobs','get_job'];
+const readTools = ['list_findings','get_finding','get_source_health','explain_finding','list_jobs','get_job','list_batches','get_batch'];
 const allowNames = readTools.map(name => name + '_mcp_aws_secops_reader');
 if (!config.mcpServers) throw Error('existing mcpServers mapping required');
 let after = before;
@@ -58,7 +58,7 @@ if (after !== before) {
     fs.writeFileSync(file + '.before-secops-reader', before, {mode: 0o600, flag: 'wx'});
   fs.writeFileSync(file + '.secops-new', after, {mode: fs.statSync(file).mode & 0o777, flag: 'wx'});
   fs.renameSync(file + '.secops-new', file);
-  console.log('READER_CONFIG=UPDATED READ_TOOLS=6 EXISTING_CONFIG=PRESERVED');
+  console.log('READER_CONFIG=UPDATED READ_TOOLS=8 EXISTING_CONFIG=PRESERVED');
 } else {
   console.log('READER_CONFIG=UNCHANGED');
 }

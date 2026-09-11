@@ -1,8 +1,22 @@
 # Context
 
-Status: Phases 5–7 / Issue #17 / PR #18 — connected acceptance PASS; ready for review
+Status: Phases 8–10 / Issue #20 / PR #21 — local meeting demo tested; integrated release incomplete
 
 ## Current Truth
+
+- Five manifest-owned empty vagent S3 buckets created for the 2026-09-11 demo.
+  Actual Playwright Reject -> fresh preview -> Approve/Run -> 5/5 provider
+  verified -> CSV/reload PASS. Offline 1,000-item durability/page/export PASS;
+  61 deterministic tests PASS. See PLATFORM_PHASE8_10_PROOF.md and the operator
+  BULK_S3_DEMO.md guide. No remote LibreChat batch integration claim yet.
+- Local bulk server on localhost:4444 owns only its separate demo-batch journal;
+  existing retained amit backend and WSL tunnels remain unchanged. Do not copy
+  credentials or start a second writer on either store.
+
+- PR #18 merged. Active authority is Issue #20 and PLATFORM_PHASE8_10_PLAN.md.
+  M0: vagent quota 10,000 / used 3; Config absent; account BPA absent;
+  Free Tier FREE/ACTIVE, remaining credits not proved. Live ceiling 10,
+  start 5 only after safe provider/deployment readiness. No fleet created.
 
 - Approved named UI extension is deployed on the retained EC2: one Nginx,
   HTTPS chat plus separately authenticated operator entry, and unchanged legacy
@@ -96,6 +110,7 @@ Status: Phases 5–7 / Issue #17 / PR #18 — connected acceptance PASS; ready f
 
 ## Next Action
 
-- ChatGPT review the final connected M1–M9 evidence and full PR #18 diff, then
-  merge if clean. No next scope is invented here. Preserve the retained backend
-  and its sole store; Amit can create his reader using the tested agent template.
+- Present the tested five-bucket local demo using BULK_S3_DEMO.md. PR #21
+  remains Draft; complete the credential-safe remote reader/local operator
+  batch round-trip before final release acceptance. Do not claim the standalone
+  UI proof establishes remote chat integration. Preserve both owned stores.

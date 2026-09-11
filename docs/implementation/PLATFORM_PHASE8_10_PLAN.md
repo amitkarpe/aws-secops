@@ -2,7 +2,8 @@
 
 Authority: Issue #20
 Base: main after PR #18 merge `d44c0a339ae1ca79f63ff8adbdd18bcc800dd9ae`
-Status: seed plan — implementation not started
+Status: local five-bucket meeting demo and offline 1,000 proof implemented;
+remote chat batch integration and final release acceptance remain open.
 
 ## Outcome
 
