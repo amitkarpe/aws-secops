@@ -1,6 +1,6 @@
 # Specification
 
-Status: active — Phases 8–10 / Issue #20 / PR #21
+Status: implemented and validated — Phases 11–13 / Issue #22 / PR #23, ready for review
 
 ## Problem
 
@@ -8,6 +8,26 @@ Extend the proven Compliance Agent into a bounded multi-source AWS SecOps
 workflow while retaining one exact governed AWS mutation.
 
 ## Scope
+
+### Phases 11–13 authority (supersedes historical read-only chat/direct S3 path)
+
+Issue #22 authorizes one native LibreChat ASK execution-intent tool taking only
+the current immutable batch ID and approval hash. Reject never dispatches;
+Approve starts this exact batch once. No session-wide approval. The existing
+reader stays read-only; the Operator UI becomes optional audit/debug fallback.
+
+Route approved S3 writes through a dedicated vagent/Singapore Gateway in
+ENFORCE mode, Policy and one narrow Lambda. Exact allowlisted empty demo buckets
+only; independent S3 readback determines completion. Preserve old amit SG and
+hosting services. New scoped Gateway/Policy/Lambda/IAM resources are authorized.
+The existing retained EC2's ssm-user profiles were supplied by Amit; verify
+identity before use, never copy credentials or silently change service identity.
+
+One journal writer, durable async progress, bounded concurrency, terminal replay
+rejection and UNKNOWN reconciliation without blind writes. Live ladder is
+10 -> 50 -> 100 maximum, with quota/cost/readiness gates before each level.
+No 1,000-live run. No generic AWS tool, cross-account write path or unrelated
+resources. Report partial live proof honestly rather than bypassing a gate.
 
 ### Phases 8–10 authority
 

@@ -165,7 +165,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError('bulk provider not configured')
                 operation = self.path.removeprefix('/api/bulk/')
                 fields = {'preview': set(), 'new-preview': set(), 'decision': {'batch_id', 'approval_hash', 'decision'},
-                          'step': {'batch_id'}, 'reconcile': {'batch_id'}}
+                          'step': {'batch_id'}, 'reconcile': {'batch_id'}, 'start': {'batch_id', 'approval_hash'}}
                 if operation not in fields or set(payload) != fields[operation]:
                     raise ValueError('only exact server-owned bulk parameters accepted')
                 if operation in {'preview', 'new-preview'}:

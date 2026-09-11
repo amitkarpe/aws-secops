@@ -1,0 +1,2 @@
+# S3/STS client reuse for the bounded bulk worker; control-plane setup stays CLI.
+boto3==1.40.0

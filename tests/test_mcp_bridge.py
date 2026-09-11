@@ -6,6 +6,18 @@ from unittest.mock import patch
 
 @unittest.skipUnless(importlib.util.find_spec("mcp"), "install requirements-mcp.txt for MCP boundary tests")
 class McpBoundaryTest(unittest.IsolatedAsyncioTestCase):
+    async def test_exact_executor_rejects_scope_expansion(self):
+        from pilot_v1.mcp_executor import server
+        tools = await server.list_tools()
+        self.assertEqual([t.name for t in tools], ['start_batch_execution'])
+        self.assertFalse(tools[0].inputSchema['additionalProperties'])
+        with patch('pilot_v1.mcp_executor.build_opener') as opener:
+            for arguments in [{'batch_id':'a'*64,'approval_hash':'a'*64,'bucket':'other'},
+                              {'batch_id':'../path','approval_hash':'a'*64},
+                              {'batch_id':42,'approval_hash':'a'*64}]:
+                with self.assertRaises(Exception): await server.call_tool('start_batch_execution',arguments)
+            opener.assert_not_called()
+
     def test_bulk_bridge_cannot_redirect_other_queries_or_escape_loopback(self):
         from pilot_v1.mcp_bridge import backend_url
         with patch.dict('os.environ', {'SECOPS_BACKEND_URL': 'http://localhost:3340',

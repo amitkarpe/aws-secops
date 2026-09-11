@@ -1,4 +1,4 @@
-"""One bounded batch journal. No AWS credentials, background dispatch or model calls."""
+"""One bounded durable batch journal and explicitly approved async worker."""
 from collections import Counter
 from copy import deepcopy
 import csv
@@ -11,11 +11,16 @@ from pathlib import Path
 from datetime import datetime, timezone
 import tempfile
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 ACTION = 'set_bucket_bpa'
 KEYS = ('BlockPublicAcls', 'IgnorePublicAcls', 'BlockPublicPolicy', 'RestrictPublicBuckets')
 TARGET = dict.fromkeys(KEYS, True)
 STATES = {'PENDING', 'APPROVED', 'RUNNING', 'COMPLETED', 'SKIPPED', 'DENIED', 'FAILED', 'UNKNOWN'}
+
+
+class PolicyDenied(PermissionError):
+    """Only an explicit independent Gateway Policy denial, never a generic error."""
 
 
 def digest(value):
@@ -41,6 +46,7 @@ class BulkStore:
             self.lease.close()
             raise RuntimeError('batch store already has a writer') from None
         self.provider = provider
+        self.worker = None
         self.data = None
         if self.path.exists():
             try:
@@ -62,6 +68,8 @@ class BulkStore:
                 raise RuntimeError('batch store corrupt or unreadable; not overwritten') from None
 
     def close(self):
+        if self.worker and self.worker.is_alive():
+            self.worker.join()
         self.lease.close()
 
     def validate(self):
@@ -159,39 +167,86 @@ class BulkStore:
             return self.summary()
 
     def step(self, batch_id):
-        """At most one item per human-UI tick. Unknown/terminal items never replay."""
+        """Claim durably under the lock; provider I/O must not block progress reads."""
         with self.lock:
             self.require(batch_id)
             if self.data['decision'] != 'APPROVE':
                 raise ValueError('human approval required')
+            if any(i['state'] == 'UNKNOWN' for i in self.data['items']):
+                raise ValueError('reconcile unknown outcomes before continuing')
             item = next((i for i in self.data['items'] if i['state'] == 'APPROVED'), None)
             if item is None:
                 return self.summary()
             resource = next(r for r in self.data['manifest']['resources'] if r['resource'] == item['resource'])
-            try:
-                current = bpa(self.provider.read(item['resource']))
-            except Exception:
-                item.update(state='FAILED', message='Pre-read failed; no dispatch')
-                self.save(); return self.summary()
-            if current == TARGET:
-                item.update(state='SKIPPED', after=current, message='Provider already compliant; no dispatch')
-                self.save(); return self.summary()
-            if current != resource['before']:
-                item.update(state='DENIED', after=current, message='Evidence drift; stale approval blocked')
-                self.save(); return self.summary()
-            item.update(state='RUNNING', changed=None, message='Dispatch outcome not yet known')
+            item.update(state='RUNNING', changed=None, message='Claimed durably; outcome not yet known')
             self.save()  # failure here cannot dispatch
-            try:
-                self.provider.apply(item['resource'], current)
+        update = {}
+        dispatched = False
+        try:
+            current = bpa(self.provider.read(item['resource']))
+            if current == TARGET:
+                update = dict(state='SKIPPED', after=current, changed=False, message='Provider already compliant; no dispatch')
+            elif current != resource['before']:
+                update = dict(state='DENIED', after=current, changed=False, message='Evidence drift; stale approval blocked')
+            else:
+                dispatched = True
+                audit = self.provider.apply(item['resource'], current)
                 after = bpa(self.provider.read(item['resource']))
-                item.update(state='COMPLETED' if after == TARGET else 'FAILED', after=after,
-                            changed=after != current, message='Provider verified compliant' if after == TARGET else 'Provider postcondition not met')
-            except PermissionError:
-                item.update(state='DENIED', message='Scope/access denied; reconcile before new approval', changed=None)
-            except Exception:
-                item.update(state='UNKNOWN', message='Dispatch/readback uncertain; reconcile, do not replay', changed=None)
+                update = dict(state='COMPLETED' if after == TARGET else 'FAILED', after=after,
+                              changed=after != current, message='Provider verified compliant' if after == TARGET else 'Provider postcondition not met')
+                if isinstance(audit, dict):
+                    update['audit'] = audit
+        except PolicyDenied:
+            update = dict(state='DENIED', changed=False, message='Gateway Policy DENY; target not dispatched',
+                          audit={'gateway_decision': 'DENY', 'target_calls': 0})
+        except Exception:
+            update = dict(state='UNKNOWN' if dispatched else 'FAILED', changed=None if dispatched else False,
+                          message='Dispatch/readback uncertain; reconcile, do not replay' if dispatched else 'Pre-read failed; no dispatch')
+        with self.lock:
+            item.update(update)
             self.save()
             return self.summary()
+
+    def start(self, batch_id, approval_hash):
+        """Called only after native ASK or the existing trusted human UI boundary."""
+        with self.lock:
+            self.require(batch_id)
+            if approval_hash != self.data['id']:
+                raise ValueError('approval scope mismatch')
+            if self.worker and self.worker.is_alive():
+                raise ValueError('execution already active')
+            if any(i['state'] in {'UNKNOWN', 'RUNNING'} for i in self.data['items']):
+                raise ValueError('read-only reconciliation required')
+            if self.data['decision'] == 'PENDING':
+                if hasattr(self.provider, 'authorize'):
+                    self.provider.authorize(batch_id)
+                self.decide(batch_id, approval_hash, 'APPROVE')
+            elif self.data['decision'] != 'APPROVE' or not any(i['state'] == 'APPROVED' for i in self.data['items']):
+                raise ValueError('terminal/rejected batch cannot replay')
+            elif hasattr(self.provider, 'authorize'):
+                self.provider.authorize(batch_id)
+            self.worker = threading.Thread(target=self._run, args=(batch_id,), daemon=False)
+            self.worker.start()
+            return self.summary()
+
+    def _run(self, batch_id):
+        # Bounded groups; never replay failed/unknown calls. No model per resource.
+        concurrency = getattr(self.provider, 'concurrency', 1)
+        try:
+            with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                while True:
+                    with self.lock:
+                        if any(i['state'] == 'UNKNOWN' for i in self.data['items']):
+                            return
+                        count = sum(i['state'] == 'APPROVED' for i in self.data['items'])
+                    if not count:
+                        return
+                    futures = [pool.submit(self.step, batch_id) for _ in range(min(count, concurrency))]
+                    for future in futures:
+                        future.result()
+        except Exception:
+            # Journal stays authoritative. Recovery is explicit, not automatic.
+            return
 
     def reconcile(self, batch_id):
         with self.lock:
@@ -219,6 +274,7 @@ class BulkStore:
                         total=len(self.data['items']), exclusions=0, decision=self.data['decision'], counts=counts,
                         verified=counts.get('COMPLETED', 0)+counts.get('SKIPPED', 0),
                         observed_at=self.data.get('created_at', 'not recorded in initial demo journal'),
+                        execution_active=bool(self.worker and self.worker.is_alive()),
                         usage=deepcopy(self.data.get('usage', {'scope': 'not recorded'})),
                         review_path='/bulk?batch_id='+self.data['id'],
                         message='Per-item provider evidence; UNKNOWN is not zero change')
