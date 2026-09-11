@@ -21,7 +21,7 @@ def run(*args, **kwargs):
     return subprocess.run(args, check=True, text=True, **kwargs)
 
 
-def nginx(chat, ops, legacy, tls=False):
+def nginx(chat, ops, legacy, tls=False, bulk=False):
     proxy = '''proxy_pass http://127.0.0.1:3333;
       proxy_http_version 1.1;
       proxy_set_header Host $host;
@@ -78,12 +78,29 @@ server {{ listen 443 ssl; server_name {ops};
   }}
 }}
 '''
+    if bulk:
+        locations = ''
+        for route in ['= /bulk', '^~ /api/bulk/', '= /api/v1/list_batches', '= /api/v1/get_batch']:
+            locations += '''  location ''' + route + ''' {
+    if ($secops_write_ok = 0) { return 403; }
+    proxy_pass http://127.0.0.1:4444;
+    proxy_set_header Host localhost:4444;
+    proxy_set_header Origin http://localhost:4444;
+    proxy_set_header Authorization "";
+    proxy_buffering off;
+    proxy_read_timeout 180s;
+  }
+'''
+        marker = '  location / {\n    if ($secops_write_ok = 0)'
+        if result.count(marker) != 1:
+            raise ValueError('expected exact authenticated operator location')
+        result = result.replace(marker, locations + marker)
     return result
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('phase', choices=['prepare', 'handoff', 'tls', 'rollback'])
+    p.add_argument('phase', choices=['prepare', 'handoff', 'tls', 'bulk', 'rollback'])
     p.add_argument('--config', type=Path, required=True)
     a = p.parse_args()
     os.umask(0o077)
@@ -154,7 +171,7 @@ WantedBy=multi-user.target
             '--register-unsafely-without-email', '--cert-name', 'aws-secops-ui',
             '-d', c['chat'], '-d', c['ops'])
         before = SITE.read_text()
-        SITE.write_text(nginx(c['chat'], c['ops'], c['legacy'], tls=True))
+        SITE.write_text(nginx(c['chat'], c['ops'], c['legacy'], tls=True, bulk=c.get('bulk', False)))
         try:
             run('nginx', '-t')
         except Exception:
@@ -166,6 +183,27 @@ WantedBy=multi-user.target
         hook.chmod(0o700)
         run('systemctl', 'enable', '--now', 'certbot.timer')
         print('HTTPS_EDGE=READY')
+    elif a.phase == 'bulk':
+        before = SITE.read_text()
+        expected = nginx(c['chat'], c['ops'], c['legacy'], tls=True)
+        updated = nginx(c['chat'], c['ops'], c['legacy'], tls=True, bulk=True)
+        if before not in {expected, updated}:
+            raise RuntimeError('edge drift; review before adding bulk routes')
+        run('curl', '--max-time', '5', '-fsS', '-o', '/dev/null',
+            'http://localhost:4444/api/v1/list_batches')
+        backup = PRIVATE / 'nginx.before-bulk'
+        if not backup.exists():
+            backup.write_text(before)
+        SITE.write_text(updated)
+        try:
+            run('nginx', '-t')
+            run('systemctl', 'reload', 'nginx')
+        except Exception:
+            SITE.write_text(before)
+            raise
+        c['bulk'] = True
+        a.config.write_text(json.dumps(c))
+        print('BULK_EDGE=READY; existing auth/origin/legacy routes preserved')
     else:
         # Leaves certificates, accounts, stores and DNS intact. Closes the new edge.
         run('systemctl', 'stop', 'nginx', 'aws-secops-librechat')

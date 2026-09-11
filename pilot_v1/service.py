@@ -39,6 +39,7 @@ class PilotService:
         if not config.read_tool_name or not config.remediation_tool_name:
             raise ValueError("exact Pilot v1 Gateway tool names are required")
         self.config = config
+        self.bulk = None
         self.profile = profile
         self.harness_call = harness_call
         self.gateway_call = gateway_call
@@ -146,6 +147,14 @@ class PilotService:
     def query(self, operation, arguments):
         if not isinstance(arguments, dict):
             raise ValueError("arguments must be an object")
+        if operation == 'list_batches':
+            if arguments:
+                raise ValueError('no batch list parameters')
+            return {'version': 1, 'items': [self.bulk.summary()] if self.bulk and self.bulk.data else []}
+        if operation == 'get_batch':
+            if not self.bulk or set(arguments)-{'batch_id', 'offset', 'limit', 'state'} or 'batch_id' not in arguments:
+                raise ValueError('batch unavailable or invalid query')
+            return self.bulk.page(**arguments)
         if operation == "list_findings":
             return page([self._finding_view(f) for f in self.findings.all_findings()], arguments, findings=True)
         if operation in {"get_finding", "explain_finding"}:

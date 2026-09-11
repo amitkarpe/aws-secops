@@ -6,6 +6,19 @@ from unittest.mock import patch
 
 @unittest.skipUnless(importlib.util.find_spec("mcp"), "install requirements-mcp.txt for MCP boundary tests")
 class McpBoundaryTest(unittest.IsolatedAsyncioTestCase):
+    def test_bulk_bridge_cannot_redirect_other_queries_or_escape_loopback(self):
+        from pilot_v1.mcp_bridge import backend_url
+        with patch.dict('os.environ', {'SECOPS_BACKEND_URL': 'http://localhost:3340',
+                                      'SECOPS_BULK_BACKEND_URL': 'http://localhost:4444'}):
+            self.assertEqual(backend_url('list_batches'), 'http://localhost:4444')
+            self.assertEqual(backend_url('get_batch'), 'http://localhost:4444')
+            self.assertEqual(backend_url('list_findings'), 'http://localhost:3340')
+        for value in ['https://external.invalid', 'http://user:pass@localhost:4444',
+                      'http://localhost:4444/api/bulk/step']:
+            with patch.dict('os.environ', {'SECOPS_BULK_BACKEND_URL': value}):
+                with self.assertRaises(ValueError):
+                    backend_url('get_batch')
+
     def test_review_origin_is_display_only_and_https(self):
         from pilot_v1.mcp_bridge import review_origin, backend_url
         with patch.dict('os.environ', {'SECOPS_REVIEW_ORIGIN': 'https://ops.example.test',
@@ -25,7 +38,7 @@ class McpBoundaryTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({t.name for t in tools}, OPERATIONS)
         self.assertTrue(all(t.inputSchema["additionalProperties"] is False for t in tools))
         with patch("pilot_v1.mcp_bridge.build_opener") as opener:
-            for name, arguments in [("approve", {}), ("list_jobs", {"execute": True}),
+            for name, arguments in [("approve", {}), ('approve_batch', {}), ('get_batch', {'batch_id': 'a'*64, 'execute': True}), ("list_jobs", {"execute": True}),
                                     ("list_jobs", {"limit": "1"}), ("get_source_health", {"url": "http://localhost:3340/api/approve"}),
                                     ("get_finding", {"finding_id": "../api/approve"}),
                                     ("get_job", {"job_id": "a" * 32, "decision": "APPROVE"})]:

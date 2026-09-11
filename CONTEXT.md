@@ -1,8 +1,35 @@
 # Context
 
-Status: Phases 5–7 / Issue #17 / PR #18 — connected acceptance PASS; ready for review
+Status: Phases 8–10 / Issue #20 / PR #21 — connected five-bucket demo validated; review pending
 
 ## Current Truth
+
+- Named LibreChat S3 Compliance Demo -> authenticated HTTPS bulk review ->
+  Reject -> fresh approval/run -> five provider-verified fixes -> chat COMPLIANT
+  readback passed on 2026-09-11. Private viewer access granted to Amit's exact
+  existing account; no public grant or change to old agents. Actual operator
+  process restart preserved the verified journal byte-for-byte. 63 tests PASS.
+- Existing EC2 edge/reader now route only bulk paths to the WSL single writer
+  over restricted loopback SSH through SSM. AWS credentials remain on WSL;
+  old amit backend and legacy routes remain unchanged. Keep WSL and the
+  aws-secops-bulk-demo operator/bridge tmux windows running. The new bridge is
+  not evidence of Gateway Policy enforcement for S3.
+- Use docs/operations/LIBRECHAT_BULK_DEMO.md for exact prompts and buttons.
+  The original local-only proof below is historical, not the current blocker.
+
+- Five manifest-owned empty vagent S3 buckets created for the 2026-09-11 demo.
+  Actual Playwright Reject -> fresh preview -> Approve/Run -> 5/5 provider
+  verified -> CSV/reload PASS. Offline 1,000-item durability/page/export PASS;
+  61 deterministic tests PASS. See PLATFORM_PHASE8_10_PROOF.md and the operator
+  BULK_S3_DEMO.md guide. No remote LibreChat batch integration claim yet.
+- Local bulk server on localhost:4444 owns only its separate demo-batch journal;
+  existing retained amit backend and WSL tunnels remain unchanged. Do not copy
+  credentials or start a second writer on either store.
+
+- PR #18 merged. Active authority is Issue #20 and PLATFORM_PHASE8_10_PLAN.md.
+  M0: vagent quota 10,000 / used 3; Config absent; account BPA absent;
+  Free Tier FREE/ACTIVE, remaining credits not proved. Live ceiling 10,
+  start 5 only after safe provider/deployment readiness. No fleet created.
 
 - Approved named UI extension is deployed on the retained EC2: one Nginx,
   HTTPS chat plus separately authenticated operator entry, and unchanged legacy
@@ -96,6 +123,7 @@ Status: Phases 5–7 / Issue #17 / PR #18 — connected acceptance PASS; ready f
 
 ## Next Action
 
-- ChatGPT review the final connected M1–M9 evidence and full PR #18 diff, then
-  merge if clean. No next scope is invented here. Preserve the retained backend
-  and its sole store; Amit can create his reader using the tested agent template.
+- Present the connected five-bucket demo with S3 Compliance Demo, not the old
+  AgentCore Governance Demo. Preserve both owned stores and the private bridge.
+  PR #21 remains Draft for ChatGPT's full-diff review. No 1,000-live claim;
+  cleanup is documented but not executed on the retained demonstration fleet.
