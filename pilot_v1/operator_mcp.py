@@ -10,9 +10,15 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 from mcp.server.fastmcp import FastMCP
 from pydantic import ConfigDict
 
+from .queries import identity
+
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
 CONTROLS = {"all", S3_CONTROL, SG_CONTROL}
+EXECUTOR_BY_CONTROL = {
+    S3_CONTROL: "start_batch_execution_mcp_aws_secops_executor",
+    SG_CONTROL: "start_sg_batch_execution_mcp_aws_compliance",
+}
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -58,11 +64,36 @@ def call(operation: str, control: str) -> dict:
         raise ValueError("Remediation plan unavailable; no AWS change requested.") from None
 
 
+def with_next_execution(control: str, value: dict) -> dict:
+    """Add a server-derived executor hint. This does not approve or invoke execution."""
+    batch = value.get("batch")
+    if not isinstance(batch, dict):
+        raise ValueError("prepared batch metadata missing")
+    batch_id = batch.get("batch_id")
+    approval_hash = batch.get("approval_hash")
+    if not isinstance(batch_id, str) or not isinstance(approval_hash, str):
+        raise ValueError("prepared batch identifiers missing")
+    identity(batch_id)
+    identity(approval_hash)
+    result = dict(value)
+    result["next_execution"] = {
+        "tool": EXECUTOR_BY_CONTROL[control],
+        "arguments": {"batch_id": batch_id, "approval_hash": approval_hash},
+        "native_ask_required": True,
+        "instruction": (
+            "If the current user request explicitly asked to fix/apply/execute, invoke this exact executor now in the same assistant turn. "
+            "The LibreChat Approve/Reject card appears only after that executor tool call. Do not answer with approval instructions instead."
+        ),
+    }
+    return result
+
+
 server = FastMCP(
     "AWS Compliance Planner",
     instructions=(
         "Server-owned planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
-        "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution."
+        "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution. "
+        "For an explicit fix/apply request, the prepare result includes the exact next executor and arguments; invoking that executor is what opens native ASK."
     ),
 )
 
@@ -75,8 +106,8 @@ def get_remediation_plan(control: Literal["all", "s3-bucket-level-public-access-
 
 @server.tool()
 def prepare_remediation_batch(control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"]) -> dict:
-    """Freeze one exact server-owned batch from current eligible evidence. No AWS mutation; native ASK is still required to execute."""
-    return call("prepare", control)
+    """Freeze one exact server-owned batch. On explicit fix intent, immediately invoke returned next_execution so native ASK can appear."""
+    return with_next_execution(control, call("prepare", control))
 
 
 for tool in server._tool_manager.list_tools():
