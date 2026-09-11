@@ -15,8 +15,14 @@ class ComplianceAgentSpecTests(unittest.TestCase):
         self.assertIn("list_config_findings_mcp_aws_compliance", tools)
         self.assertIn("list_batches_mcp_aws_secops_reader", tools)
         self.assertIn("list_sg_batches_mcp_aws_compliance", tools)
-        self.assertIn("Never combine S3 and SG into one approval", value["instructions"])
-        self.assertNotIn("WAF exact remediation", value["instructions"])
+        instructions = value["instructions"]
+        self.assertIn("Never combine S3 and SG into one approval", instructions)
+        self.assertIn("FIX-ALL CONTINUATION", instructions)
+        self.assertIn("S3 first, then SG", instructions)
+        self.assertIn("Never require another user message", instructions)
+        planner = (root / "pilot_v1" / "operator_mcp.py").read_text()
+        self.assertIn("keep that fix-all intent active across the native ASK pause", planner)
+        self.assertNotIn("WAF exact remediation", instructions)
         self.assertFalse((root / "pilot_v1" / "static" / "bulk-s3-demo.html").exists())
 
 

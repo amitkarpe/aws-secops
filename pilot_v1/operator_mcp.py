@@ -82,7 +82,9 @@ def with_next_execution(control: str, value: dict) -> dict:
         "native_ask_required": True,
         "instruction": (
             "If the current user request explicitly asked to fix/apply/execute, invoke this exact executor now in the same assistant turn. "
-            "The LibreChat Approve/Reject card appears only after that executor tool call. Do not answer with approval instructions instead."
+            "The LibreChat Approve/Reject card appears only after that executor tool call. Do not answer with approval instructions instead. "
+            "If this is part of a fix-all request, keep that fix-all intent active across the native ASK pause: after this executor result returns, "
+            "do not finish with text while another supported family remains unresolved; continue to its separate executor ASK without another user message."
         ),
     }
     return result
@@ -93,7 +95,8 @@ server = FastMCP(
     instructions=(
         "Server-owned planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution. "
-        "For an explicit fix/apply request, the prepare result includes the exact next executor and arguments; invoking that executor is what opens native ASK."
+        "For an explicit fix/apply request, the prepare result includes the exact next executor and arguments; invoking that executor is what opens native ASK. "
+        "A fix-all request persists across ASK pause/resume and must continue to the other separately approved family unless an UNKNOWN outcome requires reconciliation."
     ),
 )
 
