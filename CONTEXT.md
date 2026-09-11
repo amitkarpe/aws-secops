@@ -1,8 +1,27 @@
 # Context
 
-Status: Phases 8–10 / Issue #20 / PR #21 — connected five-bucket demo validated; review pending
+Status: Phases 11–13 / Issue #22 / PR #23 — M1–M9 PASS, ready for review
 
 ## Current Truth
+
+- PR #21 merged. PR #23 adds native exact-batch ASK, independent Gateway Policy
+  enforcement and durable execution. Architecture: narrow Lambda target in
+  vagent/Singapore; no first-class SSM Document target is documented. Existing
+  read-only tools and old SG demo remain unchanged.
+- The authoritative bulk worker is now aws-secops-bulk.service on retained EC2,
+  under ssm-user with its existing vagent profile. The old WSL bulk writer and
+  bridge are stopped; its manifest is marked retired. Do not restart them.
+- Native LibreChat Reject (zero dispatch), fresh Approve (five governed fixes)
+  and same-conversation verified 5/5 readback passed. Independent Policy DENY
+  gave zero Lambda START records; ALLOW gave one already-compliant/no-change
+  target call. Ten-bucket interruption/reconciliation/continuation passed.
+- Live 50-bucket API/provider execution and 100-bucket native LibreChat
+  Reject/Approve/verified-readback passed. Final-scope Policy DENY/ALLOW had
+  Lambda counts 0/1. All 69 tests passed. See PLATFORM_PHASE11_13_PROOF.md.
+- Final fleet is reset to 100 NON_COMPLIANT / PENDING for Amit's next demo;
+  successful journals are archived. Three retained services are active.
+
+## Historical milestones (superseded deployment instructions are not current)
 
 - Named LibreChat S3 Compliance Demo -> authenticated HTTPS bulk review ->
   Reject -> fresh approval/run -> five provider-verified fixes -> chat COMPLIANT
@@ -123,7 +142,6 @@ Status: Phases 8–10 / Issue #20 / PR #21 — connected five-bucket demo valida
 
 ## Next Action
 
-- Present the connected five-bucket demo with S3 Compliance Demo, not the old
-  AgentCore Governance Demo. Preserve both owned stores and the private bridge.
-  PR #21 remains Draft for ChatGPT's full-diff review. No 1,000-live claim;
-  cleanup is documented but not executed on the retained demonstration fleet.
+- ChatGPT reviews the full PR #23 diff and exact-HEAD evidence. No new milestone
+  or self-merge. Amit can use the existing S3 Compliance Demo agent without
+  reconfiguration. Preserve the sole EC2 writer and history. No 1,000-live claim.

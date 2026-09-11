@@ -1,14 +1,9 @@
-"""Isolated local bulk operator, reusing the existing HTTP/origin boundary.
-
-No second writer for the retained SG/backlog service; no model or Gateway config
-needed. New vagent credentials remain on the operator host, never copied to EC2.
-"""
+"""Single-writer governed bulk service, separate from the SG/backlog journal."""
 import argparse
 from http.server import HTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 from .bulk import BulkStore, OfflineProvider
-from .bulk_s3 import S3Provider
 from .server import Handler
 
 
@@ -41,12 +36,19 @@ class BulkHandler(Handler):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--manifest', type=Path)
+    p.add_argument('--gateway-state', type=Path)
     p.add_argument('--state', type=Path, required=True)
     p.add_argument('--port', type=int, default=4444)
     a = p.parse_args()
     if not 1024 <= a.port <= 65535:
         p.error('invalid local port')
-    provider = S3Provider(a.manifest) if a.manifest else OfflineProvider(str(a.state)+'.provider.json')
+    if a.manifest:
+        if not a.gateway_state:
+            p.error('live writes require --gateway-state; no direct CLI fallback')
+        from .bulk_gateway import GovernedS3Provider
+        provider = GovernedS3Provider(a.manifest, a.gateway_state)
+    else:
+        provider = OfflineProvider(str(a.state)+'.provider.json')
     store = BulkStore(a.state, provider)
     BulkHandler.service = BulkService(store)
     try:

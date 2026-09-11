@@ -2,7 +2,7 @@
 
 Authority: Issue #22
 Base: main after PR #21 merge `6c6f80722e7538eab38bb6fdc508b82ea25f2aec`
-Status: seed plan only; implementation not started
+Status: M1–M9 PASS, ready for review. See PLATFORM_PHASE11_13_PROOF.md.
 
 ## Outcome
 
