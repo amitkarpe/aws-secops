@@ -101,7 +101,38 @@ theme and no-network checks. The stock HTML scanner flagged embedded PNG bytes
 and the explicit navigation link; visible-text/DOM/network checks ruled out
 those false positives. Raw evidence is deliberately not committed.
 
-Final retained state: **100 NON_COMPLIANT, PENDING**, prepared for Amit's next
+Initial delivery retained state: **100 NON_COMPLIANT, PENDING**, prepared for Amit's next
 native approval demo. The successful completed journal is archived, not erased.
 Reset did not alter objects, bucket policies, ACL ownership or account-level BPA.
 Final HEAD is recorded in the PR handoff rather than self-referenced here.
+
+## Approval-copy follow-up — 2026-09-11
+
+Amit reported successful completion of all five prompts, but shared a confusing
+S3 approval card with the old SSH-removal description. Live configuration
+confirmed that `endpoints.agents.toolApproval.reason` was endpoint-wide and
+still described the SG demo. The installer now replaces that recognized legacy
+copy with resource-neutral text, preserving ASK/ALLOW/DENY matchers and hooks.
+It refuses an unrecognized custom reason rather than overwriting it silently.
+The S3 agent separately describes only its own action; SG tools are unchanged.
+
+S3 instructions now explicitly stop after read-only requests, require a fresh
+explicit fix request for execution intent, distinguish blocked/cancelled tools
+from an evidenced Gateway DENY, and prohibit speculative verified results or
+policy-exception advice. These are model instructions, not a replacement for
+native approval or Gateway authorization.
+
+Fresh authenticated browser check using Amit's exact prompt, "Read only the
+selected demo buckets. No changes.": two reader tools, no executor call, no
+approval card, no SG wording, unchanged summary, zero browser errors. The
+existing journal reported **100 COMPLETED / verified 100**. This was preserved;
+no reset, remediation, IAM or Gateway policy change was performed. A new pending
+ASK card was not exercised because that would require resetting the completed
+fleet; live configuration readback plus the focused installer regression test
+cover the shared-copy correction. Previous 100-bucket ASK/Approve proof remains
+the execution evidence, supplemented by Amit's own successful run report.
+
+Final follow-up check: **70 tests PASS, no skips**, plus diff/syntax checks.
+Only LibreChat was restarted to load configuration; the batch journal hash was
+unchanged and all three services remained active. Start a new chat to use the
+updated S3 instructions; historical messages/cards are not rewritten.

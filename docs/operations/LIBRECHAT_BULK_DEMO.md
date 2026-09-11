@@ -4,6 +4,12 @@ Open the existing **S3 Compliance Demo** agent in LibreChat, not the separate
 **AgentCore Governance Demo** Security Group agent. The S3 agent is updated
 centrally; Amit does not need to recreate it. Private URLs stay in the meeting copy.
 
+After the approval-copy update, refresh LibreChat and start a **new chat** with
+S3 Compliance Demo. Existing messages/cards are historical and are not rewritten.
+Read-only requests must not prepare an execution request. The shared ASK message
+is deliberately resource-neutral; the selected agent explains its own S3 or SG
+action. A cancelled/blocked tool is not proof that Gateway Policy was invoked.
+
 ## Five prompts — stay in the same chat
 
 Use a prepared non-compliant batch. Answers must show the actual fleet size.

@@ -18,8 +18,11 @@ Status: Phases 11–13 / Issue #22 / PR #23 — M1–M9 PASS, ready for review
 - Live 50-bucket API/provider execution and 100-bucket native LibreChat
   Reject/Approve/verified-readback passed. Final-scope Policy DENY/ALLOW had
   Lambda counts 0/1. All 69 tests passed. See PLATFORM_PHASE11_13_PROOF.md.
-- Final fleet is reset to 100 NON_COMPLIANT / PENDING for Amit's next demo;
-  successful journals are archived. Three retained services are active.
+- After Amit's successful demo, latest saved fleet result is 100 COMPLETED /
+  verified 100. The approval-copy follow-up preserved that state without reset.
+  Shared ASK text is now resource-neutral; S3 instructions stop on read-only
+  intent and do not invent Gateway denials. Fresh read-only browser proof and
+  70 tests passed. Refresh and start a new S3 chat; no agent recreation needed.
 
 ## Historical milestones (superseded deployment instructions are not current)
 

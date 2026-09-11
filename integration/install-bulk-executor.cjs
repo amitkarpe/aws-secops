@@ -12,6 +12,14 @@ const approval = config.endpoints?.agents?.toolApproval;
 if (!approval?.enabled || approval.mode !== 'default' || !Array.isArray(approval.ask) || !Array.isArray(approval.allow))
   throw Error('expected existing native approval configuration');
 const names = ['start_batch_execution_mcp_aws_secops_executor','mcp:aws_secops_executor:start_batch_execution'];
+// This field is endpoint-wide, not agent-specific. Never put SG or S3
+// instructions here: native static ASK can supply this text before tool hooks.
+const neutralReason = 'ASK - Review {tool}. Review the exact parameters and the selected agent\'s recommendation. Reject + Submit = do not run this request. Approve + Submit = run only this exact request, subject to independent policy checks. Approval is not proof of success; read the verified result afterward.';
+if (approval.reason !== neutralReason) {
+  if (typeof approval.reason !== 'string' || !approval.reason.includes('action=remove_unrestricted_ssh, target=demo-security-group'))
+    throw Error('unrecognized shared approval reason; review before replacing');
+  approval.reason = neutralReason;
+}
 if (approval.allow.some(x=>names.includes(x) || /[*]/.test(x))) throw Error('execution must not be statically allowed');
 const entry = {type:'stdio', command:'/opt/aws-secops/.venv-mcp/bin/python', args:['-m','pilot_v1.mcp_executor'],
   env:{PYTHONPATH:'/opt/aws-secops',SECOPS_BULK_BACKEND_URL:'http://localhost:4444'},
@@ -28,6 +36,8 @@ for (const name of names) {
   if (!existing) approval.hooks.push(hook);
 }
 if (!isDeepStrictEqual(original, config)) {
+  const wordingBackup = file+'.before-neutral-approval-wording';
+  if (!fs.existsSync(wordingBackup)) fs.writeFileSync(wordingBackup,raw,{mode:0o600,flag:'wx'});
   const backup = file+'.before-inline-bulk';
   if (!fs.existsSync(backup)) fs.writeFileSync(backup,raw,{mode:0o600,flag:'wx'});
   const rendered = yaml.dump(config,{lineWidth:-1,noRefs:true});
