@@ -6,6 +6,19 @@ from unittest.mock import patch
 
 @unittest.skipUnless(importlib.util.find_spec("mcp"), "install requirements-mcp.txt for MCP boundary tests")
 class McpBoundaryTest(unittest.IsolatedAsyncioTestCase):
+    def test_bulk_bridge_cannot_redirect_other_queries_or_escape_loopback(self):
+        from pilot_v1.mcp_bridge import backend_url
+        with patch.dict('os.environ', {'SECOPS_BACKEND_URL': 'http://localhost:3340',
+                                      'SECOPS_BULK_BACKEND_URL': 'http://localhost:4444'}):
+            self.assertEqual(backend_url('list_batches'), 'http://localhost:4444')
+            self.assertEqual(backend_url('get_batch'), 'http://localhost:4444')
+            self.assertEqual(backend_url('list_findings'), 'http://localhost:3340')
+        for value in ['https://external.invalid', 'http://user:pass@localhost:4444',
+                      'http://localhost:4444/api/bulk/step']:
+            with patch.dict('os.environ', {'SECOPS_BULK_BACKEND_URL': value}):
+                with self.assertRaises(ValueError):
+                    backend_url('get_batch')
+
     def test_review_origin_is_display_only_and_https(self):
         from pilot_v1.mcp_bridge import review_origin, backend_url
         with patch.dict('os.environ', {'SECOPS_REVIEW_ORIGIN': 'https://ops.example.test',

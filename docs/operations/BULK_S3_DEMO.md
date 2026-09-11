@@ -1,5 +1,10 @@
 # Five-bucket governed compliance demo
 
+**Connected LibreChat demo is now available.** Use the dedicated **S3 Compliance
+Demo** agent and follow [the simple chat-to-approval walkthrough](LIBRECHAT_BULK_DEMO.md).
+The named HTTPS operator now routes bulk requests to this same local writer;
+the local steps below remain useful for preparation and recovery.
+
 ## The story to tell your team
 
 “We identify an exact configuration gap, show the affected resources, ask a
@@ -96,7 +101,7 @@ TTL is a review deadline, not an automatic deletion instruction.
 - `vagent` credits do not establish zero cost. Track request counts and actual
   cost visibility; do not extrapolate billing from a small demo.
 - The remote `amit` deployment and existing SG workflow stay unchanged.
-- The new local batch UI is not yet proof of an integrated LibreChat batch
-  conversation. Report that acceptance separately in PR #21.
+- The connected LibreChat batch proof is recorded separately in PR #21's
+  PLATFORM_PHASE8_10_PROOF.md. Local screenshots alone are not that proof.
 - Resource identifiers and real screenshots belong only in the private meeting
   packet, not this public repository.

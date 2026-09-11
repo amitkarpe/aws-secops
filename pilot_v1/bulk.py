@@ -229,8 +229,12 @@ class BulkStore:
             if type(offset) is not int or type(limit) is not int or not 0 <= offset <= 1000 or not 1 <= limit <= 50 or state not in STATES | {None}:
                 raise ValueError('pagination/filter bounds')
             items = [i for i in self.data['items'] if state is None or i['state'] == state]
+            selected = deepcopy(items[offset:offset+limit])
+            before = {r['resource']: r['before'] for r in self.data['manifest']['resources']}
+            for item in selected:
+                item['before'] = deepcopy(before[item['resource']])
             return dict(version=1, summary=self.summary(), total=len(items), offset=offset,
-                        items=deepcopy(items[offset:offset+limit]))
+                        items=selected)
 
     def export(self, batch_id):
         with self.lock:

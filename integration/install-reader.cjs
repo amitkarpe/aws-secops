@@ -25,17 +25,30 @@ if (reviewOrigin) {
   entry.env.SECOPS_REVIEW_ORIGIN = reviewOrigin;
 }
 const readTools = ['list_findings','get_finding','get_source_health','explain_finding','list_jobs','get_job','list_batches','get_batch'];
+const bulkOrigin = process.env.SECOPS_BULK_BACKEND_URL;
+if (bulkOrigin) {
+  if (bulkOrigin !== 'http://localhost:4444') throw Error('bulk bridge must use fixed loopback port 4444');
+  entry.env.SECOPS_BULK_BACKEND_URL = bulkOrigin;
+}
 const allowNames = readTools.map(name => name + '_mcp_aws_secops_reader');
 if (!config.mcpServers) throw Error('existing mcpServers mapping required');
 let after = before;
 if (config.mcpServers.aws_secops_reader) {
   const previous = structuredClone(entry);
   delete previous.env.SECOPS_REVIEW_ORIGIN;
+  delete previous.env.SECOPS_BULK_BACKEND_URL;
+  const withReview = structuredClone(previous);
+  if (reviewOrigin) withReview.env.SECOPS_REVIEW_ORIGIN = reviewOrigin;
   if (!isDeepStrictEqual(config.mcpServers.aws_secops_reader, entry)) {
-    if (!reviewOrigin || !isDeepStrictEqual(config.mcpServers.aws_secops_reader, previous))
+    if (!isDeepStrictEqual(config.mcpServers.aws_secops_reader, previous) &&
+        !isDeepStrictEqual(config.mcpServers.aws_secops_reader, withReview))
       throw Error('existing reader differs; review before replacing');
+    const additions = [];
+    if (reviewOrigin && !config.mcpServers.aws_secops_reader.env.SECOPS_REVIEW_ORIGIN)
+      additions.push('      SECOPS_REVIEW_ORIGIN: ' + reviewOrigin);
+    if (bulkOrigin) additions.push('      SECOPS_BULK_BACKEND_URL: ' + bulkOrigin);
     after = before.replace(/^      SECOPS_BACKEND_URL: http:\/\/localhost:3340[ \t]*$/m,
-      '$&\n      SECOPS_REVIEW_ORIGIN: ' + reviewOrigin);
+      '$&\n' + additions.join('\n'));
   }
 } else {
   if (!/^mcpServers:\s*$/m.test(before)) throw Error('unsupported YAML layout');

@@ -28,6 +28,14 @@ over the historical single-SG-only statements below; all other boundaries remain
 
 ### Approved named UI entry points — 2026-09-10
 
+Amit's 2026-09-11 request explicitly authorizes making the bulk demonstration
+usable from the named LibreChat GUI. Reuse its existing authenticated operator
+entry for exact batch approval. A loopback-only SSM/SSH transport may connect
+the WSL-owned vagent writer to the retained amit host; no AWS credential copying,
+runtime identity switch, second writer, public backend port or chat write tool.
+Preserve the old agent and grant the new read-only demo agent only to the intended
+operator. Record the WSL uptime dependency and five-bucket live scale honestly.
+
 Amit selected option 1: reuse the retained EC2 with one reverse proxy and TLS,
 preserve the legacy AgentCore DNS/service, add separate chat/operator subdomains,
 and protect the Operator UI with its own login. Scoped DNS, certificate renewal

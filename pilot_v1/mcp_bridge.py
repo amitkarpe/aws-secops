@@ -17,8 +17,9 @@ class NoRedirect(HTTPRedirectHandler):
         raise ValueError("backend redirects prohibited")
 
 
-def backend_url():
-    value = os.environ.get("SECOPS_BACKEND_URL", "http://localhost:3340").rstrip("/")
+def backend_url(operation=None):
+    setting = "SECOPS_BULK_BACKEND_URL" if operation in {'list_batches', 'get_batch'} else "SECOPS_BACKEND_URL"
+    value = os.environ.get(setting, os.environ.get("SECOPS_BACKEND_URL", "http://localhost:3340")).rstrip("/")
     parsed = urlsplit(value)
     if parsed.scheme != "http" or parsed.hostname not in {"localhost", "127.0.0.1"} or not parsed.port or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment:
         raise ValueError("backend must be an operator-configured loopback origin")
@@ -64,7 +65,7 @@ def dispatch(operation, arguments):
         if set(arguments) != {field}:
             raise ValueError("only the existing ID is accepted")
         identity(arguments[field], 32 if field == "job_id" else 64)
-    base = backend_url()
+    base = backend_url(operation)
     url = base + "/api/v1/" + operation
     headers = {"Origin": base, "Content-Type": "application/json"}
     data = None

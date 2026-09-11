@@ -1,8 +1,21 @@
 # Context
 
-Status: Phases 8–10 / Issue #20 / PR #21 — local meeting demo tested; integrated release incomplete
+Status: Phases 8–10 / Issue #20 / PR #21 — connected five-bucket demo validated; review pending
 
 ## Current Truth
+
+- Named LibreChat S3 Compliance Demo -> authenticated HTTPS bulk review ->
+  Reject -> fresh approval/run -> five provider-verified fixes -> chat COMPLIANT
+  readback passed on 2026-09-11. Private viewer access granted to Amit's exact
+  existing account; no public grant or change to old agents. Actual operator
+  process restart preserved the verified journal byte-for-byte. 63 tests PASS.
+- Existing EC2 edge/reader now route only bulk paths to the WSL single writer
+  over restricted loopback SSH through SSM. AWS credentials remain on WSL;
+  old amit backend and legacy routes remain unchanged. Keep WSL and the
+  aws-secops-bulk-demo operator/bridge tmux windows running. The new bridge is
+  not evidence of Gateway Policy enforcement for S3.
+- Use docs/operations/LIBRECHAT_BULK_DEMO.md for exact prompts and buttons.
+  The original local-only proof below is historical, not the current blocker.
 
 - Five manifest-owned empty vagent S3 buckets created for the 2026-09-11 demo.
   Actual Playwright Reject -> fresh preview -> Approve/Run -> 5/5 provider
@@ -110,7 +123,7 @@ Status: Phases 8–10 / Issue #20 / PR #21 — local meeting demo tested; integr
 
 ## Next Action
 
-- Present the tested five-bucket local demo using BULK_S3_DEMO.md. PR #21
-  remains Draft; complete the credential-safe remote reader/local operator
-  batch round-trip before final release acceptance. Do not claim the standalone
-  UI proof establishes remote chat integration. Preserve both owned stores.
+- Present the connected five-bucket demo with S3 Compliance Demo, not the old
+  AgentCore Governance Demo. Preserve both owned stores and the private bridge.
+  PR #21 remains Draft for ChatGPT's full-diff review. No 1,000-live claim;
+  cleanup is documented but not executed on the retained demonstration fleet.

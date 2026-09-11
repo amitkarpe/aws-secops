@@ -24,6 +24,10 @@ class BulkTests(unittest.TestCase):
 
     def test_reject_new_preview_hash_replay_and_scope(self):
         view = self.store.preview()
+        page = self.store.page(view['batch_id'])
+        self.assertFalse(page['items'][0]['before']['BlockPublicAcls'])
+        page['items'][0]['before']['BlockPublicAcls'] = True
+        self.assertFalse(self.store.page(view['batch_id'])['items'][0]['before']['BlockPublicAcls'])
         with self.assertRaises(ValueError):
             self.store.decide(view['batch_id'], 'forged', 'APPROVE')
         self.store.decide(view['batch_id'], view['approval_hash'], 'REJECT')

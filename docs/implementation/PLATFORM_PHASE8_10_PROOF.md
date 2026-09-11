@@ -1,6 +1,6 @@
 # Phases 8–10 proof — PR #21
 
-Status: meeting demo implemented; integrated release not yet complete.
+Status: connected five-bucket demonstration validated; full-diff review pending.
 Evidence date: 2026-09-11. No production-readiness claim.
 
 ## M0 decisions
@@ -62,15 +62,57 @@ Guide: `docs/operations/BULK_S3_DEMO.md`. Four actual Playwright screenshots
 (preview/reject/approve/verified) and the meeting copy remain private, outside
 Git. Do not publish screenshots containing real bucket identities.
 
-## Remaining release gates
+## Connected LibreChat acceptance — 2026-09-11
 
-- Integrated remote LibreChat batch read/explain -> local vagent approval ->
-  remote chat readback is NOT proven. The local bulk UI/provider is proven.
-  Never copy vagent credentials onto the amit host or silently change identity.
-- New read-only batch MCP methods/template are implemented but not deployed to
-  the retained chat server. No claim of native Gateway enforcement for S3:
+- Actual named HTTPS LibreChat login, dedicated S3 Compliance Demo agent,
+  native Bedrock Nova -> two read-only MCP tools -> five saved NON_COMPLIANT
+  findings, recommendation and exact HTTPS batch-review link: PASS.
+- Link opened the authenticated named operator page at the same batch ID.
+  Unauthenticated access 401; missing/cross-origin/spoofed loopback Origin
+  writes 403. Existing operator login and original six reader paths preserved.
+- Actual browser Reject -> DENIED 5/no fix dispatch; fresh preview ->
+  Approve -> Run -> COMPLETED 5, changed=true for each, four BPA flags true
+  after each independent provider read: PASS.
+- Same LibreChat conversation called the two batch tools again and displayed
+  Count 5, all five updated, Result COMPLIANT, and the latest review link: PASS.
+  This is real GUI evidence, not just standalone MCP/API proof.
+- Browser reload retained results. Stopped/restarted the exact sole local
+  writer; journal SHA-256 unchanged and verified 5/5 after startup: PASS.
+- 63 deterministic tests PASS; offline 1,000 items completed in 50.733 seconds
+  in the final suite. No browser JavaScript errors in the connected run.
+- Dedicated agent's native viewer permission granted only to the unique
+  existing Amit user. No public permission or global role change. Amit's
+  own browser clicks were not impersonated or claimed as independently tested.
+- A standalone non-browser API sharing probe caused LibreChat's expected
+  non_browser ban. Exact test-user/IP ban was removed after inspecting its
+  native record; global protection remained enabled. Continued with real
+  browser login. No replacement account was created to evade the restriction.
+
+Deployment changes: one restricted SSH transport public key on the retained
+host; SSH through SSM to EC2 loopback 4444; four exact Nginx bulk routes using
+the existing authentication/origin boundary; optional loopback batch MCP origin;
+dedicated agent. No AWS credentials copied, new compute, new IAM, DNS or ingress
+change. SSM does not log forwarded payloads; the application journal is the
+decision/result evidence. WSL uptime is required; no second writer is created.
+
+Private screenshots 05–10 show actual chat findings, HTTPS review/reject/approve,
+verified results and chat readback. The connected terminal journal is retained
+privately before resetting the fleet for the next demonstration. No real names,
+credentials, account IDs or screenshots are committed.
+
+Final ready state: reset five buckets and verified the reset (81 API calls,
+0 errors, 58.170 seconds, no model calls). Restarted the sole writer and prepared
+a fresh AWS-read preview: five NON_COMPLIANT before settings, PENDING 5,
+verified 0, no approval. The connected terminal proof is archived privately.
+Nginx, LibreChat and the original backend were active after the final edge check.
+
+## Scope limits and review
+
+- Integrated remote chat -> authenticated operator -> provider -> chat is
+  now proven at five live buckets. Never silently switch the runtime identity.
+- New batch MCP methods are deployed. No claim of native Gateway enforcement:
   this exact S3 executor uses explicit operator approval and direct CLI.
 - No 50/100/1000 live fleet; no account protection/Config service enablement.
 - Cleanup implementation is not live-exercised against the retained meeting
   fleet. No batch-wide rollback claim; reset is explicit and demo-only.
-- Full PR remains Draft pending the remaining integrated acceptance and review.
+- Full PR remains Draft for ChatGPT's actual-diff and evidence review.
