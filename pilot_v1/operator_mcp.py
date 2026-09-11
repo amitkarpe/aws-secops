@@ -1,4 +1,4 @@
-"""Two bounded planning tools; neither can choose resources or authorize AWS writes."""
+"""Three bounded planning tools; none can choose resources or authorize AWS writes."""
 from __future__ import annotations
 
 import json
@@ -14,7 +14,8 @@ from .queries import identity
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
-CONTROLS = {"all", S3_CONTROL, SG_CONTROL}
+ORDERED_CONTROLS = (S3_CONTROL, SG_CONTROL)
+CONTROLS = {"all", *ORDERED_CONTROLS}
 EXECUTOR_BY_CONTROL = {
     S3_CONTROL: "start_batch_execution_mcp_aws_secops_executor",
     SG_CONTROL: "start_sg_batch_execution_mcp_aws_compliance",
@@ -76,18 +77,70 @@ def with_next_execution(control: str, value: dict) -> dict:
     identity(batch_id)
     identity(approval_hash)
     result = dict(value)
+    result["control"] = control
     result["next_execution"] = {
         "tool": EXECUTOR_BY_CONTROL[control],
         "arguments": {"batch_id": batch_id, "approval_hash": approval_hash},
         "native_ask_required": True,
         "instruction": (
-            "If the current user request explicitly asked to fix/apply/execute, invoke this exact executor now in the same assistant turn. "
-            "The LibreChat Approve/Reject card appears only after that executor tool call. Do not answer with approval instructions instead. "
-            "If this is part of a fix-all request, keep that fix-all intent active across the native ASK pause: after this executor result returns, "
-            "do not finish with text while another supported family remains unresolved; continue to its separate executor ASK without another user message."
+            "For an explicit fix/apply/execute request, invoke this exact executor now. "
+            "The LibreChat Approve/Reject card appears only after that executor tool call."
         ),
     }
     return result
+
+
+def _all_plans(value: dict) -> dict[str, dict]:
+    plans = value.get("plans")
+    if not isinstance(plans, list):
+        raise ValueError("all-controls plan missing")
+    result: dict[str, dict] = {}
+    for item in plans:
+        if not isinstance(item, dict):
+            raise ValueError("invalid control plan")
+        control = item.get("control")
+        ready = item.get("ready_to_prepare")
+        if control not in ORDERED_CONTROLS or control in result or type(ready) is not bool:
+            raise ValueError("invalid all-controls plan")
+        result[control] = item
+    if set(result) != set(ORDERED_CONTROLS):
+        raise ValueError("incomplete all-controls plan")
+    return result
+
+
+def prepare_eligible() -> dict:
+    """Prepare only currently eligible families for fix-all; skip completed/ineligible families."""
+    plans = _all_plans(call("plan", "all"))
+    prepared = []
+    skipped = []
+    for control in ORDERED_CONTROLS:
+        plan = plans[control]
+        if not plan["ready_to_prepare"]:
+            batch = plan.get("current_batch")
+            skipped.append({
+                "control": control,
+                "reason": "not_currently_eligible",
+                "current_decision": batch.get("decision") if isinstance(batch, dict) else None,
+                "verified": batch.get("verified") if isinstance(batch, dict) else None,
+            })
+            continue
+        try:
+            prepared.append(with_next_execution(control, call("prepare", control)))
+        except ValueError:
+            skipped.append({"control": control, "reason": "preparation_rejected"})
+    next_executions = [item["next_execution"] for item in prepared]
+    return {
+        "version": 1,
+        "mode": "fix_all",
+        "prepared": prepared,
+        "skipped": skipped,
+        "next_executions": next_executions,
+        "native_ask_required": bool(next_executions),
+        "instruction": (
+            "For the current explicit fix-all request, immediately emit every entry in next_executions as a separate executor tool call in this same assistant turn, before text. "
+            "Each executor must retain its own native Approve/Reject decision. Do not call prepare_remediation_batch for controls listed in skipped."
+        ),
+    }
 
 
 server = FastMCP(
@@ -95,8 +148,7 @@ server = FastMCP(
     instructions=(
         "Server-owned planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution. "
-        "For an explicit fix/apply request, the prepare result includes the exact next executor and arguments; invoking that executor is what opens native ASK. "
-        "A fix-all request persists across ASK pause/resume and must continue to the other separately approved family unless an UNKNOWN outcome requires reconciliation."
+        "Single-family prepare returns one exact executor hint. Fix-all uses prepare_eligible_remediation_batches so completed or ineligible families are skipped server-side."
     ),
 )
 
@@ -109,8 +161,14 @@ def get_remediation_plan(control: Literal["all", "s3-bucket-level-public-access-
 
 @server.tool()
 def prepare_remediation_batch(control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"]) -> dict:
-    """Freeze one exact server-owned batch. On explicit fix intent, immediately invoke returned next_execution so native ASK can appear."""
+    """Freeze one exact server-owned batch. On explicit single-family fix intent, invoke returned next_execution."""
     return with_next_execution(control, call("prepare", control))
+
+
+@server.tool()
+def prepare_eligible_remediation_batches() -> dict:
+    """Fix-all planner: skip completed/ineligible families and return separate exact ASK executor calls for only eligible families."""
+    return prepare_eligible()
 
 
 for tool in server._tool_manager.list_tools():
