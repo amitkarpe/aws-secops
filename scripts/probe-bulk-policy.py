@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""No-change live Policy probe: existing compliant resources only."""
+"""No-change live Policy probe: existing compliant S3 resources only."""
 import argparse
-import json
 from pathlib import Path
 import sys
 import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pilot_v1.bulk import PolicyDenied, TARGET, digest
 from pilot_v1.bulk_gateway import GovernedS3Provider
+from pilot_v1.log_proof import count_lambda_starts
 
 p = argparse.ArgumentParser()
 p.add_argument('--manifest', type=Path, required=True)
@@ -35,17 +35,20 @@ if allowed['target_result'] != 'ALREADY_COMPLIANT' or provider.read(resource) !=
 print('POLICY_ALLOW=PASS TARGET=ALREADY_COMPLIANT AWS_MUTATION=NONE', flush=True)
 end_ms = int(time.time()*1000)
 if a.verify_logs:
-    def starts(begin, end):
-        result = provider.call('logs','filter-log-events',log_group_name=provider.deployment['logGroup'],
-                               start_time=begin,end_time=end,filter_pattern='"START RequestId:"')
-        if result.get('nextToken'): raise RuntimeError('unexpected paginated probe logs')
-        return len(result.get('events',[]))
+    import boto3
+    from botocore.config import Config
+    logs = boto3.Session(profile_name='vagent').client(
+        'logs', region_name='ap-southeast-1',
+        config=Config(connect_timeout=5, read_timeout=15, retries={'total_max_attempts': 2}),
+    )
     for _ in range(12):
-        denied_calls, allowed_calls = starts(start_ms,denied_window_end), starts(denied_window_end,end_ms)
-        if denied_calls or allowed_calls > 1: raise RuntimeError('unexpected Lambda execution count')
-        if allowed_calls == 1: break
+        denied_calls = count_lambda_starts(logs, provider.deployment['logGroup'], start_ms, denied_window_end)
+        allowed_calls = count_lambda_starts(logs, provider.deployment['logGroup'], denied_window_end, end_ms)
+        if denied_calls or allowed_calls > 1:
+            raise RuntimeError('unexpected Lambda execution count')
+        if allowed_calls == 1:
+            break
         time.sleep(5)
-    else: raise RuntimeError('bounded Lambda log evidence unavailable')
+    else:
+        raise RuntimeError('bounded Lambda log evidence unavailable')
     print('LAMBDA_START_RECORDS DENY=0 ALLOW=1; bounded independent log proof',flush=True)
-print(json.dumps({'start_ms': start_ms, 'denied_window_end_ms': denied_window_end,
-                  'end_ms': end_ms, 'metrics': provider.metrics}))
