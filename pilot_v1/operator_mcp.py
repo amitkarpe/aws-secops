@@ -1,4 +1,4 @@
-"""Three bounded planning tools; none can choose resources or authorize AWS writes."""
+"""Two bounded planning tools; none can choose resources or authorize AWS writes."""
 from __future__ import annotations
 
 import json
@@ -108,6 +108,12 @@ def _all_plans(value: dict) -> dict[str, dict]:
     return result
 
 
+def prepare_one(control: str) -> dict:
+    if control not in ORDERED_CONTROLS:
+        raise ValueError("one exact control required")
+    return with_next_execution(control, call("prepare", control))
+
+
 def prepare_eligible() -> dict:
     """Prepare only currently eligible families for fix-all; skip completed/ineligible families."""
     plans = _all_plans(call("plan", "all"))
@@ -125,7 +131,7 @@ def prepare_eligible() -> dict:
             })
             continue
         try:
-            prepared.append(with_next_execution(control, call("prepare", control)))
+            prepared.append(prepare_one(control))
         except ValueError:
             skipped.append({"control": control, "reason": "preparation_rejected"})
     next_executions = [item["next_execution"] for item in prepared]
@@ -138,7 +144,7 @@ def prepare_eligible() -> dict:
         "native_ask_required": bool(next_executions),
         "instruction": (
             "For the current explicit fix-all request, immediately emit every entry in next_executions as a separate executor tool call in this same assistant turn, before text. "
-            "Each executor must retain its own native Approve/Reject decision. Do not call prepare_remediation_batch for controls listed in skipped."
+            "Each executor must retain its own native Approve/Reject decision. Completed or ineligible controls are already skipped server-side."
         ),
     }
 
@@ -148,7 +154,7 @@ server = FastMCP(
     instructions=(
         "Server-owned planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution. "
-        "Single-family prepare returns one exact executor hint. Fix-all uses prepare_eligible_remediation_batches so completed or ineligible families are skipped server-side."
+        "The only preparation tool is prepare_remediation(control). For control=all it skips completed/ineligible families server-side; for one exact control it prepares only that family."
     ),
 )
 
@@ -160,15 +166,11 @@ def get_remediation_plan(control: Literal["all", "s3-bucket-level-public-access-
 
 
 @server.tool()
-def prepare_remediation_batch(control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"]) -> dict:
-    """Freeze one exact server-owned batch. On explicit single-family fix intent, invoke returned next_execution."""
-    return with_next_execution(control, call("prepare", control))
-
-
-@server.tool()
-def prepare_eligible_remediation_batches() -> dict:
-    """Fix-all planner: skip completed/ineligible families and return separate exact ASK executor calls for only eligible families."""
-    return prepare_eligible()
+def prepare_remediation(control: Literal["all", "s3-bucket-level-public-access-prohibited", "restricted-ssh"]) -> dict:
+    """Single deterministic preparation entry point for explicit fixes; returns exact native-ASK executor call(s)."""
+    if control == "all":
+        return prepare_eligible()
+    return prepare_one(control)
 
 
 for tool in server._tool_manager.list_tools():

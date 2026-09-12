@@ -18,21 +18,23 @@ class ComplianceAgentSpecTests(unittest.TestCase):
         self.assertIn("list_config_findings_mcp_aws_compliance", tools)
         self.assertIn("list_batches_mcp_aws_secops_reader", tools)
         self.assertIn("list_sg_batches_mcp_aws_compliance", tools)
-        self.assertIn("prepare_eligible_remediation_batches_mcp_aws_compliance_planner", tools)
+        self.assertIn("prepare_remediation_mcp_aws_compliance_planner", tools)
+        self.assertNotIn("prepare_remediation_batch_mcp_aws_compliance_planner", tools)
+        self.assertNotIn("prepare_eligible_remediation_batches_mcp_aws_compliance_planner", tools)
         instructions = value["instructions"]
         self.assertIn("Never combine S3 and SG into one approval", instructions)
         self.assertIn("SCOPE BOUNDARY", instructions)
         self.assertIn("OUT OF SCOPE", instructions)
-        self.assertIn("prepare_eligible_remediation_batches exactly once", instructions)
-        self.assertIn("emit EVERY returned next_executions entry", instructions)
+        self.assertIn("call prepare_remediation exactly once", instructions)
         self.assertIn("do not claim AgentCore Harness is used", instructions)
         installer = (root / "integration" / "install-compliance.cjs").read_text()
-        self.assertIn("'prepare_eligible_remediation_batches_mcp_aws_compliance_planner'", installer)
+        self.assertIn("'prepare_remediation_mcp_aws_compliance_planner'", installer)
+        self.assertIn("retiredPlannerTools", installer)
         self.assertNotIn("WAF exact remediation", instructions)
         self.assertFalse((root / "pilot_v1" / "static" / "bulk-s3-demo.html").exists())
 
 
-class FixAllPlannerTests(unittest.TestCase):
+class PlannerTests(unittest.TestCase):
     def test_completed_s3_is_skipped_and_pending_sg_is_prepared(self):
         calls = []
         batch_id = "a" * 64
@@ -95,6 +97,16 @@ class FixAllPlannerTests(unittest.TestCase):
             ("prepare", operator_mcp.S3_CONTROL),
             ("prepare", operator_mcp.SG_CONTROL),
         ])
+
+    def test_single_family_prepare_uses_same_internal_entry(self):
+        batch_id = "c" * 64
+        with patch.object(operator_mcp, "call", return_value={
+            "version": 1, "prepared": True,
+            "batch": {"batch_id": batch_id, "approval_hash": batch_id},
+        }) as mocked:
+            result = operator_mcp.prepare_one(operator_mcp.S3_CONTROL)
+        mocked.assert_called_once_with("prepare", operator_mcp.S3_CONTROL)
+        self.assertEqual(result["next_execution"]["tool"], "start_batch_execution_mcp_aws_secops_executor")
 
 
 if __name__ == "__main__":
