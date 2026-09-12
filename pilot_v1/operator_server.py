@@ -95,6 +95,17 @@ class OperatorService(BulkService):
             partial = True
         return found, partial
 
+    @staticmethod
+    def _unavailable_control(family: str, title: str, action: str, message: str) -> dict:
+        return {
+            "version": 1, "family": family, "title": title,
+            "resource_count": None, "compliant": None, "noncompliant": None, "unknown": None,
+            "last_verification_time": None, "batch": None, "config": None,
+            "status_available": False, "config_available": False,
+            "status_error": message, "config_error": "AWS Config status unavailable",
+            "action": action,
+        }
+
     def s3_status(self) -> dict:
         summary = self.bulk.summary()
         counts = summary.get("counts", {}) if summary.get("batch_id") else {}
@@ -106,20 +117,54 @@ class OperatorService(BulkService):
         if self.bulk.data:
             evidence_time = (_iso_mtime(self.bulk.path) if summary.get("verified") == total
                              else self.bulk.data.get("created_at"))
+        config = None
+        config_available = True
+        config_error = None
+        try:
+            config = self._config_control(S3_CONTROL)
+        except Exception:
+            config_available = False
+            config_error = "AWS Config status unavailable"
         return {
             "version": 1, "family": "s3", "title": "S3 Block Public Access",
             "resource_count": total, "compliant": compliant, "noncompliant": noncompliant,
             "unknown": unknown, "last_verification_time": evidence_time,
-            "batch": summary, "config": self._config_control(S3_CONTROL),
+            "batch": summary, "config": config,
+            "status_available": True, "config_available": config_available,
+            "status_error": None, "config_error": config_error,
             "action": "enable all four bucket-level Block Public Access settings",
         }
 
     def status(self) -> dict:
+        degraded = []
+        try:
+            s3 = self.s3_status()
+        except Exception:
+            s3 = self._unavailable_control(
+                "s3", "S3 Block Public Access",
+                "enable all four bucket-level Block Public Access settings",
+                "S3 provider/batch status unavailable",
+            )
+        try:
+            sg = self._sg("/api/operator/sg-status")
+        except Exception:
+            sg = self._unavailable_control(
+                "sg", "Security Group restricted SSH",
+                "remove only TCP/22 ingress from 0.0.0.0/0",
+                "Security Group provider/batch status unavailable",
+            )
+        for control in (s3, sg):
+            if control.get("status_available") is False:
+                degraded.append(control.get("status_error") or f"{control.get('title', control.get('family'))} status unavailable")
+            if control.get("config_available") is False:
+                degraded.append(control.get("config_error") or f"{control.get('title', control.get('family'))} AWS Config unavailable")
         return {
             "version": 1, "agent_url": "https://sec.astromedicomp.org/",
-            "controls": [self.s3_status(), self._sg("/api/operator/sg-status")],
+            "controls": [s3, sg],
             "catalog": public_catalog(),
-            "message": "Provider verification is immediate truth; AWS Config convergence may lag.",
+            "degraded": bool(degraded), "degraded_sources": degraded,
+            "message": ("Partial status: " + "; ".join(degraded) + ". Provider/batch truth is shown where available."
+                        if degraded else "Provider verification is immediate truth; AWS Config convergence may lag."),
         }
 
     def prepare_preview(self, family: str) -> dict:

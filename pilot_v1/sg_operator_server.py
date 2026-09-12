@@ -36,14 +36,23 @@ class OperatorSGService(Service):
     def status(self) -> dict:
         summary = self.store.summary()
         provider = count_sg(self.store.provider)
-        config_summary = self.config.summary()
-        config_control = next(x for x in config_summary["controls"] if x["control"] == CONTROL)
+        config_control = None
+        config_available = True
+        config_error = None
+        try:
+            config_summary = self.config.summary()
+            config_control = next(x for x in config_summary["controls"] if x["control"] == CONTROL)
+        except Exception:
+            config_available = False
+            config_error = "AWS Config status unavailable"
         return {
             "version": 1, "family": "sg", "title": "Security Group restricted SSH",
             "resource_count": provider["total"], "compliant": provider["compliant"],
             "noncompliant": provider["noncompliant"], "unknown": provider["unknown"],
             "last_verification_time": datetime.now(timezone.utc).isoformat(),
             "batch": summary, "config": config_control,
+            "status_available": True, "config_available": config_available,
+            "status_error": None, "config_error": config_error,
             "action": "remove only TCP/22 ingress from 0.0.0.0/0",
         }
 

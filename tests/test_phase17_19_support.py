@@ -12,6 +12,7 @@ from pilot_v1.demo_prepare import (
 )
 from pilot_v1.log_proof import count_lambda_starts
 from pilot_v1.operator_protocol import ConfirmationGate
+from pilot_v1.operator_server import OperatorService
 
 
 class ConfirmationGateTests(unittest.TestCase):
@@ -174,6 +175,50 @@ class LogProofTests(unittest.TestCase):
             count_lambda_starts(logs, "/aws/lambda/demo", 1, 2, max_events=2)
 
 
+class StatusResilienceTests(unittest.TestCase):
+    def test_s3_batch_truth_survives_config_failure(self):
+        class Provider:
+            resources = ["one", "two"]
+
+        class Bulk:
+            provider = Provider()
+            data = {"created_at": "2026-09-12T00:00:00+00:00"}
+            path = ROOT / "does-not-exist.json"
+
+            @staticmethod
+            def summary():
+                return {"batch_id": "a" * 64, "decision": "PENDING", "verified": 0,
+                        "counts": {"PENDING": 2}, "total": 2}
+
+        service = object.__new__(OperatorService)
+        service.bulk = Bulk()
+        service._config_control = lambda _control: (_ for _ in ()).throw(RuntimeError("config down"))
+        result = service.s3_status()
+        self.assertTrue(result["status_available"])
+        self.assertFalse(result["config_available"])
+        self.assertEqual(result["resource_count"], 2)
+        self.assertEqual(result["noncompliant"], 2)
+        self.assertEqual(result["batch"]["decision"], "PENDING")
+
+    def test_aggregate_status_degrades_one_family_without_failing_all(self):
+        service = object.__new__(OperatorService)
+        service.s3_status = lambda: {
+            "version": 1, "family": "s3", "title": "S3 Block Public Access",
+            "resource_count": 100, "compliant": 0, "noncompliant": 100, "unknown": 0,
+            "last_verification_time": None, "batch": {"batch_id": "x", "decision": "PENDING"},
+            "config": None, "status_available": True, "config_available": False,
+            "status_error": None, "config_error": "AWS Config status unavailable",
+            "action": "enable BPA",
+        }
+        service._sg = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("sg down"))
+        result = OperatorService.status(service)
+        self.assertTrue(result["degraded"])
+        self.assertEqual(len(result["controls"]), 2)
+        self.assertTrue(result["controls"][0]["status_available"])
+        self.assertFalse(result["controls"][1]["status_available"])
+        self.assertIn("Provider/batch truth is shown where available", result["message"])
+
+
 class OperatorPageTests(unittest.TestCase):
     def test_simple_two_card_ui_and_no_reset_all(self):
         html = (ROOT / "pilot_v1/static/operator.html").read_text()
@@ -183,15 +228,19 @@ class OperatorPageTests(unittest.TestCase):
         self.assertIn("Prepare SG demo", html)
         self.assertIn("https://sec.astromedicomp.org/", html)
         self.assertIn("Advanced / Legacy", html)
+        self.assertIn("status-note", html)
+        self.assertIn("temporarily unavailable", html)
         self.assertNotIn("Prepare all", html)
         self.assertNotIn("reset --all", html)
 
-    def test_agent_has_planner_but_no_reset_tool(self):
+    def test_agent_has_unified_planner_but_no_reset_tool(self):
         agent = json.loads((ROOT / "integration/compliance-agent.json").read_text())
         self.assertEqual(agent["name"], "AWS Compliance Agent")
         tools = set(agent["tools"])
         self.assertIn("get_remediation_plan_mcp_aws_compliance_planner", tools)
-        self.assertIn("prepare_remediation_batch_mcp_aws_compliance_planner", tools)
+        self.assertIn("prepare_remediation_mcp_aws_compliance_planner", tools)
+        self.assertNotIn("prepare_remediation_batch_mcp_aws_compliance_planner", tools)
+        self.assertNotIn("prepare_eligible_remediation_batches_mcp_aws_compliance_planner", tools)
         self.assertFalse(any("reset" in tool.lower() or "prepare_demo" in tool.lower() for tool in tools))
         planner = (ROOT / "pilot_v1/operator_mcp.py").read_text()
         self.assertNotIn("reset_s3", planner)
