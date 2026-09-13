@@ -1,5 +1,7 @@
 # Phase 0B.2 — Nova 2 Lite through AgentCore Harness
 
+> **Historical feasibility proof, not the current primary Demo v1 architecture.** This page records an earlier Harness experiment. The current AWS Compliance Agent uses LibreChat + native Bedrock Nova 2 Lite + bounded MCP tools, with Gateway/Policy governing the exact remediation path. See [`docs/architecture.md`](../architecture.md).
+
 Status: Phase 0B.2 initial call **BLOCKED**; Phase 0B.2a least-tool call **PASS**
 
 Date: 2026-09-09

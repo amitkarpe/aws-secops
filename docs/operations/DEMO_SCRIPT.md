@@ -1,4 +1,8 @@
-# AWS SecOps Platform Phase 1 3–5 minute demo
+# Historical multi-source pilot demo
+
+> **Historical, not current Demo v1.** This page documents an earlier Phase 1 pilot with synthetic CloudSCAPE/VAPT imports, a local UI and one exact SG remediation. For the current 100-S3 + 10-SG AWS Compliance Agent walkthrough, use [`docs/demo-v1.md`](../demo-v1.md).
+
+## AWS SecOps Platform Phase 1 — 3–5 minute demo
 
 ## Setup before the audience joins
 

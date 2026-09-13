@@ -10,6 +10,7 @@ __pycache__/
 .terraform/
 .AGENTS-temp/
 tmp/
+site/
 # Private durable backlog (normal location is outside this repository)
 .local/
 backlog.json

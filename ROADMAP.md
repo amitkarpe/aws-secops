@@ -5,19 +5,38 @@
 - Demo v1 frozen and validated.
 - 100 retained S3 buckets exercised with exact Block Public Access remediation.
 - 10 retained unattached Security Groups exercised with exact restricted-SSH remediation.
-- Read-only agent behavior, off-topic scope guardrail, separate native approvals, Gateway/Policy enforcement and direct provider verification proven.
-- Repeatable Operator demo flow and AWS Config integration proven.
+- Read-only agent behavior, off-topic scope guardrail, separate native approvals, Gateway/Policy enforcement and direct provider verification recorded.
+- Repeatable Operator demo flow and AWS Config integration recorded.
+- MkDocs Material learning portal published successfully through GitHub Pages.
 
 ## Now
 
-- Issue #28: prepare the public repository for technical sharing.
-- Publish the existing documentation as a curated MkDocs Material GitHub Pages learning portal.
-- Keep Demo v1 runtime frozen while documentation/publication is completed.
+- Complete public-release cleanup from technical review:
+  - make current Demo v1 the unmistakable default reading path;
+  - label historical pilot/Harness material clearly;
+  - tighten trust-model and evidence wording;
+  - improve repository/publication hygiene without changing AWS/runtime scope.
+- Share the repository with internal technical reviewers and collect concrete questions.
 
 ## Next
 
-- Improve the AWS Compliance Agent default response style for concise operator summaries: Markdown tables, a small consistent emoji vocabulary, and hidden batch/resource IDs unless explicitly requested.
-- Collect feedback from technical reviewers and use their questions to select the next engineering milestone.
+### Operator-summary polish
+
+Improve the AWS Compliance Agent default response style for concise operator summaries: Markdown tables, a small consistent emoji vocabulary, and hidden batch/resource IDs unless explicitly requested.
+
+### Bounded reliability hardening
+
+Track separately from documentation work:
+
+- define and test a safe SG continuation/terminalization path for mid-batch interruption scenarios;
+- add page/token bounds to AWS Config pagination and targeted fake-client tests;
+- add high-value PR checks using the existing offline regression suite where they can run without live AWS credentials.
+
+### Publication assurance
+
+- complete a full reachable-history/publication review for accidental sensitive material before broad social promotion;
+- decide and document repository licensing/reuse intent;
+- improve repository About metadata.
 
 ## Later
 
