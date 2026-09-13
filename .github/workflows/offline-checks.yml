@@ -1,0 +1,61 @@
+name: Offline regression checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: /dev/null
+      AWS_SHARED_CREDENTIALS_FILE: /dev/null
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements-bulk.txt
+            requirements-mcp.txt
+      - name: Install pinned test dependencies
+        run: python -m pip install -r requirements-bulk.txt -r requirements-mcp.txt
+      - name: Existing offline regression suite
+        run: bash scripts/check.sh
+      - name: Integration JavaScript syntax
+        run: |
+          for file in integration/*.cjs; do
+            node --check "$file"
+          done
+      - name: Export exact public source for this review
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'fix/review-hardening'
+        run: |
+          git rev-parse HEAD > reviewed-source-revision.txt
+          git archive --format=tar.gz HEAD > reviewed-source.tar.gz
+      - name: Retain bounded review source
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'fix/review-hardening'
+        uses: actions/upload-artifact@v4
+        with:
+          name: reviewed-public-source
+          path: |
+            reviewed-source.tar.gz
+            reviewed-source-revision.txt
+          retention-days: 3
+          if-no-files-found: error
