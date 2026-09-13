@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare one reviewed SSM payload for SG compliance deployment.
-
-Stages code and private manifest/Gateway state on the retained host. It does not
-dispatch SSM, create AWS resources, mutate SGs or restart LibreChat.
-"""
+"""Prepare one reviewed SSM payload for SG compliance/operator deployment."""
 from __future__ import annotations
 
 import argparse
@@ -13,6 +9,30 @@ import io
 from pathlib import Path
 import tarfile
 
+SSM_SAFE_COMMAND_BYTES = 80_000
+UPDATE_FILES = [
+    "pilot_v1/control_catalog.py",
+    "pilot_v1/demo_prepare.py",
+    "pilot_v1/log_proof.py",
+    "pilot_v1/operator_mcp.py",
+    "pilot_v1/operator_protocol.py",
+    "pilot_v1/sg_operator_server.py",
+    "integration/install-compliance.cjs",
+    "integration/compliance-agent.json",
+    "scripts/demo-control.py",
+    "scripts/probe-sg-policy.py",
+]
+FULL_EXTRA_FILES = [
+    "integration/sg-approval-hook.cjs",
+    "integration/install-compliance.cjs",
+    "integration/compliance-agent.json",
+    "scripts/sg-demo.py",
+    "scripts/provision-sg-gateway.py",
+    "scripts/probe-sg-policy.py",
+    "scripts/demo-control.py",
+    "requirements-bulk.txt",
+]
+
 p = argparse.ArgumentParser()
 p.add_argument("--manifest", type=Path, required=True)
 p.add_argument("--gateway-state", type=Path, required=True)
@@ -20,20 +40,18 @@ p.add_argument("--commands-file", type=Path, required=True)
 p.add_argument("--update-code-only", action="store_true")
 a = p.parse_args()
 root = Path(__file__).resolve().parents[1]
-
 buffer = io.BytesIO()
 with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
-    for path in sorted((root / "pilot_v1").rglob("*")):
-        if path.is_file() and path.suffix in {".py", ".json"}:
-            tar.add(path, arcname=str(path.relative_to(root)))
-    for name in [
-        "integration/sg-approval-hook.cjs", "integration/install-compliance.cjs",
-        "integration/compliance-agent.json", "scripts/sg-demo.py",
-        "scripts/provision-sg-gateway.py", "scripts/probe-sg-policy.py", "requirements-bulk.txt",
-    ]:
-        tar.add(root / name, arcname=name)
+    if a.update_code_only:
+        for name in UPDATE_FILES:
+            tar.add(root / name, arcname=name)
+    else:
+        for path in sorted((root / "pilot_v1").rglob("*")):
+            if path.is_file() and path.suffix in {".py", ".json"}:
+                tar.add(path, arcname=str(path.relative_to(root)))
+        for name in FULL_EXTRA_FILES:
+            tar.add(root / name, arcname=name)
 payload = buffer.getvalue()
-
 unit = """[Unit]
 Description=AWS SecOps governed Security Group compliance worker
 After=network-online.target
@@ -45,7 +63,7 @@ Environment=HOME=/home/ssm-user
 Environment=AWS_PROFILE=vagent
 Environment=AWS_REGION=ap-southeast-1
 Environment=AWS_MAX_ATTEMPTS=1
-ExecStart=/opt/aws-secops-sg/.venv/bin/python -m pilot_v1.sg_compliance --manifest /var/lib/aws-secops-sg/manifest.json --gateway-state /var/lib/aws-secops-sg/gateway.json --state /var/lib/aws-secops-sg/batch.json --port 4455
+ExecStart=/opt/aws-secops-sg/.venv/bin/python -m pilot_v1.sg_operator_server --manifest /var/lib/aws-secops-sg/manifest.json --gateway-state /var/lib/aws-secops-sg/gateway.json --state /var/lib/aws-secops-sg/batch.json --port 4455
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=80
@@ -65,7 +83,17 @@ commands = [
     "getent passwd ssm-user >/dev/null", "install -d -m 755 /opt/aws-secops-sg",
     "install -d -m 700 -o ssm-user -g ssm-user /var/lib/aws-secops-sg",
 ]
-if not a.update_code_only:
+if a.update_code_only:
+    commands += [
+        "test -f /var/lib/aws-secops-sg/manifest.json",
+        "test -f /var/lib/aws-secops-sg/gateway.json",
+        "test -f /var/lib/aws-secops-sg/batch.json",
+        "test -f /opt/aws-secops-sg/pilot_v1/sg_compliance.py",
+        "test -f /opt/aws-secops-sg/pilot_v1/compliance_mcp.py",
+        "test -f /opt/aws-secops-sg/integration/sg-approval-hook.cjs",
+        "test -f /opt/aws-secops-sg/requirements-bulk.txt",
+    ]
+else:
     commands += ["test ! -f /var/lib/aws-secops-sg/batch.json"]
 commands += stage("/opt/aws-secops/.runtime/sg-compliance.tgz", payload)
 commands += [
@@ -82,6 +110,7 @@ if not a.update_code_only:
 commands += stage("/etc/systemd/system/aws-secops-sg.service", unit.encode(), "644")
 commands += [
     "install -m 644 /opt/aws-secops-sg/pilot_v1/compliance_mcp.py /opt/aws-secops/pilot_v1/compliance_mcp.py",
+    "install -m 644 /opt/aws-secops-sg/pilot_v1/operator_mcp.py /opt/aws-secops/pilot_v1/operator_mcp.py",
     "install -m 644 /opt/aws-secops-sg/integration/sg-approval-hook.cjs /opt/aws-secops/integration/sg-approval-hook.cjs",
     "install -m 644 /opt/aws-secops-sg/integration/install-compliance.cjs /opt/aws-secops/integration/install-compliance.cjs",
     "install -m 644 /opt/aws-secops-sg/integration/compliance-agent.json /opt/aws-secops/integration/compliance-agent.json",
@@ -90,4 +119,8 @@ commands += [
 a.commands_file.parent.mkdir(parents=True, exist_ok=True)
 a.commands_file.write_text("\n".join(commands) + "\n")
 a.commands_file.chmod(0o600)
-print("Private SSM deployment payload prepared; no AWS operation performed")
+command_bytes = a.commands_file.stat().st_size
+if a.update_code_only and command_bytes > SSM_SAFE_COMMAND_BYTES:
+    a.commands_file.unlink()
+    raise RuntimeError(f"update-code-only SSM command payload exceeds safe budget: {command_bytes} bytes")
+print(f"Private SSM deployment payload prepared; no AWS operation performed; SSM_COMMAND_BYTES={command_bytes}")

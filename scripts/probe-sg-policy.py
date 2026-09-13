@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 import sys
 import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pilot_v1.bulk import PolicyDenied
+from pilot_v1.log_proof import count_lambda_starts
 from pilot_v1.sg_compliance import GovernedSGProvider, TARGET, digest
 
 p = argparse.ArgumentParser()
@@ -39,22 +39,16 @@ print("POLICY_ALLOW=PASS TARGET=ALREADY_COMPLIANT AWS_MUTATION=NONE", flush=True
 end_ms = int(time.time() * 1000)
 
 if a.verify_logs:
-    import os, subprocess
-    d = provider.deployment
-    def starts(begin, end):
-        cmd = ["aws", "--profile", "vagent", "--region", "ap-southeast-1", "logs", "filter-log-events",
-               "--log-group-name", d["logGroup"], "--start-time", str(begin), "--end-time", str(end),
-               "--filter-pattern", "\"START RequestId:\"", "--output", "json", "--no-paginate"]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30,
-                                env={**os.environ, "AWS_MAX_ATTEMPTS": "1", "AWS_PAGER": ""})
-        if result.returncode:
-            raise RuntimeError("log proof unavailable")
-        value = json.loads(result.stdout)
-        if value.get("nextToken"):
-            raise RuntimeError("unexpected paginated log proof")
-        return len(value.get("events", []))
+    import boto3
+    from botocore.config import Config
+    logs = boto3.Session(profile_name="vagent").client(
+        "logs", region_name="ap-southeast-1",
+        config=Config(connect_timeout=5, read_timeout=15, retries={"total_max_attempts": 2}),
+    )
+    log_group = provider.deployment["logGroup"]
     for _ in range(12):
-        denied_calls, allowed_calls = starts(start_ms, denied_end), starts(denied_end, end_ms)
+        denied_calls = count_lambda_starts(logs, log_group, start_ms, denied_end)
+        allowed_calls = count_lambda_starts(logs, log_group, denied_end, end_ms)
         if denied_calls or allowed_calls > 1:
             raise RuntimeError("unexpected Lambda execution count")
         if allowed_calls == 1:
