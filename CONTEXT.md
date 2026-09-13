@@ -1,150 +1,51 @@
 # Context
 
-Status: Phases 11–13 / Issue #22 / PR #23 — M1–M9 PASS, ready for review
+Status: **Demo v1 frozen and validated. Public-sharing work is active under Issue #28.**
 
-## Current Truth
+## Current truth
 
-- PR #21 merged. PR #23 adds native exact-batch ASK, independent Gateway Policy
-  enforcement and durable execution. Architecture: narrow Lambda target in
-  vagent/Singapore; no first-class SSM Document target is documented. Existing
-  read-only tools and old SG demo remain unchanged.
-- The authoritative bulk worker is now aws-secops-bulk.service on retained EC2,
-  under ssm-user with its existing vagent profile. The old WSL bulk writer and
-  bridge are stopped; its manifest is marked retired. Do not restart them.
-- Native LibreChat Reject (zero dispatch), fresh Approve (five governed fixes)
-  and same-conversation verified 5/5 readback passed. Independent Policy DENY
-  gave zero Lambda START records; ALLOW gave one already-compliant/no-change
-  target call. Ten-bucket interruption/reconciliation/continuation passed.
-- Live 50-bucket API/provider execution and 100-bucket native LibreChat
-  Reject/Approve/verified-readback passed. Final-scope Policy DENY/ALLOW had
-  Lambda counts 0/1. All 69 tests passed. See PLATFORM_PHASE11_13_PROOF.md.
-- After Amit's successful demo, latest saved fleet result is 100 COMPLETED /
-  verified 100. The approval-copy follow-up preserved that state without reset.
-  Shared ASK text is now resource-neutral; S3 instructions stop on read-only
-  intent and do not invent Gateway denials. Fresh read-only browser proof and
-  70 tests passed. Refresh and start a new S3 chat; no agent recreation needed.
+- PR #27 merged as the validated Demo v1 baseline.
+- The demo is a **personal Singapore lab**, not company or production infrastructure.
+- Supported remediation families are intentionally narrow:
+  - **S3 bucket-level Block Public Access** on the retained owned demo fleet;
+  - **Security Group restricted SSH** on retained owned **unattached** demo groups.
+- The validated demo scope is **100 S3 buckets + 10 Security Groups**.
+- AWS Config is the compliance detection source. Config can observe more resources than the remediation scope; only exact owned/eligible resources can become a remediation batch.
+- Read-only chat intent may explain, summarize, recommend or plan, but must not call an executor.
+- An explicit current `fix/apply/execute` request is required before execution intent is prepared.
+- S3 and Security Group execution remain **separate native human approvals**. There is no session-wide or blanket `Approve All` authorization.
+- Approved writes are routed through **AgentCore Gateway + Policy** to exact bounded remediation tools. The model does not receive a generic AWS mutation tool.
+- Direct AWS provider readback is immediate remediation truth. AWS Config convergence is independent and asynchronous.
+- Durable batch state reports terminal and uncertain outcomes honestly; `UNKNOWN` is reconciled by readback rather than blind replay.
+- The current Operator UI is useful for demo preparation, status and troubleshooting. Raw `/bulk`/batch details are engineering-level views, not the intended long-term operator experience.
+- AWS Config, CloudTrail, CloudWatch and direct provider state remain authoritative evidence sources; a future Operations Console should correlate them rather than replace them.
+- Public repository content must remain sanitized: no credentials, account IDs, private ARNs/endpoints, auth data, session IDs, raw private findings or private screenshots.
 
-## Historical milestones (superseded deployment instructions are not current)
+## Demo v1 acceptance already proven
 
-- Named LibreChat S3 Compliance Demo -> authenticated HTTPS bulk review ->
-  Reject -> fresh approval/run -> five provider-verified fixes -> chat COMPLIANT
-  readback passed on 2026-09-11. Private viewer access granted to Amit's exact
-  existing account; no public grant or change to old agents. Actual operator
-  process restart preserved the verified journal byte-for-byte. 63 tests PASS.
-- Existing EC2 edge/reader now route only bulk paths to the WSL single writer
-  over restricted loopback SSH through SSM. AWS credentials remain on WSL;
-  old amit backend and legacy routes remain unchanged. Keep WSL and the
-  aws-secops-bulk-demo operator/bridge tmux windows running. The new bridge is
-  not evidence of Gateway Policy enforcement for S3.
-- Use docs/operations/LIBRECHAT_BULK_DEMO.md for exact prompts and buttons.
-  The original local-only proof below is historical, not the current blocker.
+- read-only compliance requests produce no approval and no AWS mutation;
+- off-topic requests are rejected by the specialist agent with zero tool use;
+- `Fix all` can prepare both supported families while retaining separate native approvals;
+- Reject means no dispatch for that exact request;
+- Gateway/Policy/exact-tool execution is bounded to the approved server-owned scope;
+- provider verification is required for completion;
+- the retained 100-S3 and 10-SG demo has been exercised end to end;
+- Operator status remains useful when AWS Config is temporarily unavailable;
+- AWS Config recorder/delivery health was restored and independently verified.
 
-- Five manifest-owned empty vagent S3 buckets created for the 2026-09-11 demo.
-  Actual Playwright Reject -> fresh preview -> Approve/Run -> 5/5 provider
-  verified -> CSV/reload PASS. Offline 1,000-item durability/page/export PASS;
-  61 deterministic tests PASS. See PLATFORM_PHASE8_10_PROOF.md and the operator
-  BULK_S3_DEMO.md guide. No remote LibreChat batch integration claim yet.
-- Local bulk server on localhost:4444 owns only its separate demo-batch journal;
-  existing retained amit backend and WSL tunnels remain unchanged. Do not copy
-  credentials or start a second writer on either store.
+## Current milestone
 
-- PR #18 merged. Active authority is Issue #20 and PLATFORM_PHASE8_10_PLAN.md.
-  M0: vagent quota 10,000 / used 3; Config absent; account BPA absent;
-  Free Tier FREE/ACTIVE, remaining credits not proved. Live ceiling 10,
-  start 5 only after safe provider/deployment readiness. No fleet created.
+Issue #28: **Public repository + MkDocs learning portal**.
 
-- Approved named UI extension is deployed on the retained EC2: one Nginx,
-  HTTPS chat plus separately authenticated operator entry, and unchanged legacy
-  DNS/HTTP route. Both application backends remain loopback-only. Public access
-  remains limited to the existing trusted source IP. Browser chat-to-exact-review
-  and origin/auth boundaries passed; see NAMED_UI_DEPLOYMENT.md. No workload
-  remediation occurred. Private credentials/evidence stay outside Git.
+Goals:
 
-- Amit's 2026-09-10 amendment authorizes home/retained EC2 reuse and scoped
-  hosting/IAM/private connectivity prerequisites. SPEC records the approval;
-  reuse the old EC2 co-location pattern while preserving read-only chat tools.
+1. make README / CONTEXT / SPEC human-readable and current;
+2. publish curated existing `docs/*.md` through MkDocs Material + GitHub Pages;
+3. keep historical phase plans/proofs as deep-dive evidence rather than the public front door;
+4. make no runtime or AWS changes for the documentation milestone.
 
-- Phase 4 merged as a65347ae. Active work is the nine-milestone restricted
-  LibreChat integration in PLATFORM_PHASE5_7_PLAN.md. Chat is read/explain only;
-  the existing single-writer human UI retains all planning and approval writes.
-- M1–M9 implemented and validated. Sole backend/stores now live beside LibreChat
-  at /opt/aws-secops on the retained EC2. Original WSL files are retained but
-  their writer is stopped: do not start the old local serve command.
-- Native Bedrock Nova chat used all six reader tools. Explicit promptCache=false
-  avoids the installed provider's cachePoint follow-up error. The old Codex
-  subscription path returned text without tools and was not accepted as proof.
-- Real chat -> exact operator link -> saved human plan -> chat readback/refusal
-  passed. Remote restart preserved both stores byte-for-byte; source freshness
-  resets honestly. Scoped role policies, native Bedrock config and an additive
-  read-only MCP entry were installed under Amit's amendment. No new EC2 or
-  resource remediation occurred. Historical agents/chats remain intact.
-- Use scripts/connect-retained-ui.sh with the private retained Name tag and
-  explicit AWS_PROFILE=amit / AWS_REGION=ap-southeast-1. Operator localhost:3340;
-  LibreChat localhost:13080. The runbook has the tested reader settings.
+## Next action
 
-- Phase 3 merged via PR #14. Current work connects the direct supported SG
-  finding to durable jobs, exact preview, single-use decisions and restart-safe
-  history. No new AWS resources, actions or IAM permissions.
-- Phase 4 live proof passed Reject/no call, synthetic Policy DENY, DEV ALLOW
-  with independent provider COMPLIANT, terminal replay rejection and actual
-  restart history retention. The dedicated demo SG was restored NON_COMPLIANT
-  and unattached. Browser history/reload/disabled terminal approval passed.
+Finish the docs-only publication PR, prove `mkdocs build --strict`, publish Pages, and share the repository with technical reviewers. Reviewer questions should drive the next engineering milestone.
 
-- Phase 2 merged as PR #12. Phase 3 adds server-owned stable IDs, atomic local
-  JSON persistence, sighting tracking and a narrow operator planning action.
-- Config records missing from later bounded snapshots remain unresolved with
-  seen_in_latest_sync=false. Plans survive sync/import independently of provider
-  compliance. No AWS mutation capability was added or exercised in this phase.
-- The application defaults to ~/.local/state/aws-secops/backlog.json. Private
-  backlog data must never be committed. A corrupt store stops startup.
-- Live proof passed: three real Config records, plan saved, actual process
-  restart, same ID/plan restored, repeated sync reconciled, CSV/Markdown matched.
-  One Chromium smoke clicked Save local plan and reloaded successfully. Zero
-  specialist tool calls and zero AWS mutations; no new browser framework.
-
-- Phase 1 merged through PR #10. PR #12 implements Phase 2 using existing AWS
-  Config in the personal Singapore lab: read-only bounded sync, specialist
-  explanation, provenance/freshness, and export. Three live evaluations passed
-  the API smoke with zero tool calls and PLAN_ONLY approval rejection.
-- Config sync reports SUCCESS/PARTIAL/ERROR and retains its previous snapshot
-  on error. Evaluation and sync times are separate. No AWS resources, IAM or
-  service configuration changed. The following bullets record the retained base.
-- The retained Pilot v1 Harness, Gateway, Policy, exact SG remediation, S3
-  read, and loopback UI remain the proven base.
-- Live work uses only the approved personal `amit` profile in Singapore.
-- Private resource identities and raw evidence remain outside this public repo.
-- M1 added one repo-owned live smoke command and proved SG finding, Reject
-  no-change, synthetic Policy DENY no-change, DEV ALLOW with provider
-  COMPLIANT, read-only S3, and final SG reset to NON_COMPLIANT.
-- M2 added one common SG/S3 finding contract plus bounded deterministic JSON
-  and CSV import with public-safe samples; no new live source integration.
-- M3 added a deterministic provider-backed management backlog to the existing
-  single-user API/UI with totals, grouping, priority/age, and recommended focus.
-- M4 expanded the exact S3 read tool to two server-owned buckets, proved 10
-  provider controls (9 PASS / 1 safe versioning exception), and made zero S3
-  mutations; the caller/model cannot select buckets.
-- M5 added CSV and Markdown reduction-plan exports from the same bounded open
-  findings used by the UI; no second reporting store or AWS write was added.
-- The Pilot v1.1 baseline previously passed 26 deterministic tests, one live end-to-end API
-  smoke, provider readback, public-safety review, and one headless browser
-  smoke of the management screen.
-- Platform Phase 1 adds same-origin bounded content upload through the existing
-  loopback API/UI. The browser supplies file content plus a basename, never a
-  filesystem path.
-- Public-safe CloudSCAPE-style compliance and VAPT-style vulnerability fixtures
-  map through two explicit adapters into the existing common contract.
-- Specialist routing and action eligibility are deterministic and server-owned:
-  CloudSCAPE/AWS compliance routes to `Compliance Agent`, VAPT routes to
-  `Vulnerability Agent`, and all imported evidence is `PLAN_ONLY`.
-- The only `REMEDIATION_SUPPORTED` record remains the provider-backed exact
-  public-SSH Security Group finding; Reject, synthetic Policy DENY, DEV ALLOW,
-  exact Lambda, and provider re-read behavior remain unchanged.
-- Final Platform Phase 1 acceptance passed 29 deterministic tests, one live
-  import/routing/plan-only/SG/S3/export API-provider smoke, and one headless
-  browser-visible operations-screen smoke.
-
-## Next Action
-
-- ChatGPT reviews the full PR #23 diff and exact-HEAD evidence. No new milestone
-  or self-merge. Amit can use the existing S3 Compliance Demo agent without
-  reconfiguration. Preserve the sole EC2 writer and history. No 1,000-live claim.
+Historical implementation detail remains available under `docs/implementation/`, `docs/operations/` and `docs/research/`.

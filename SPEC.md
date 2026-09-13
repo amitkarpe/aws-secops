@@ -1,161 +1,141 @@
 # Specification
 
-Status: implemented and validated — Phases 11–13 / Issue #22 / PR #23, ready for review
+Status: **Demo v1 implemented, validated and frozen.**
+
+This file defines the current trusted contract. Historical phase-specific authority and proofs remain under `docs/implementation/` and `docs/research/`.
 
 ## Problem
 
-Extend the proven Compliance Agent into a bounded multi-source AWS SecOps
-workflow while retaining one exact governed AWS mutation.
+AWS Config and other security tools can detect compliance findings, but operations teams still need a safe path from **finding -> explanation -> approval -> exact remediation -> verified evidence**.
 
-## Scope
+The project must accelerate that path **without giving the model broad AWS mutation authority**.
 
-### Phases 11–13 authority (supersedes historical read-only chat/direct S3 path)
+## Current supported scope
 
-Issue #22 authorizes one native LibreChat ASK execution-intent tool taking only
-the current immutable batch ID and approval hash. Reject never dispatches;
-Approve starts this exact batch once. No session-wide approval. The existing
-reader stays read-only; the Operator UI becomes optional audit/debug fallback.
+Demo v1 supports exactly two remediation families in the personal Singapore lab:
 
-Route approved S3 writes through a dedicated vagent/Singapore Gateway in
-ENFORCE mode, Policy and one narrow Lambda. Exact allowlisted empty demo buckets
-only; independent S3 readback determines completion. Preserve old amit SG and
-hosting services. New scoped Gateway/Policy/Lambda/IAM resources are authorized.
-The existing retained EC2's ssm-user profiles were supplied by Amit; verify
-identity before use, never copy credentials or silently change service identity.
+### S3 Block Public Access
 
-One journal writer, durable async progress, bounded concurrency, terminal replay
-rejection and UNKNOWN reconciliation without blind writes. Live ladder is
-10 -> 50 -> 100 maximum, with quota/cost/readiness gates before each level.
-No 1,000-live run. No generic AWS tool, cross-account write path or unrelated
-resources. Report partial live proof honestly rather than bypassing a gate.
+- retained, server-owned empty demo buckets only;
+- target state: all four bucket-level Block Public Access settings enabled;
+- exact resource scope comes from the server-owned retained manifest, never model-supplied bucket IDs;
+- provider readback is required before reporting completion.
 
-### Phases 8–10 authority
+### Security Group restricted SSH
 
-Issue #20 supersedes the single-action restriction only for one exact S3
-bucket-level Block Public Access batch action. New empty demo resources belong
-only to verified vagent in Singapore. Preserve the existing amit deployment and
-SG action. No generic write tool, credential copying, account-protection change,
-Config enablement or silent runtime identity switch. Start 5–10 live buckets
-only after readiness; current preflight ceiling 10, no automatic escalation.
+- retained, server-owned **unattached** demo Security Groups only;
+- exact action: remove unrestricted TCP/22 ingress from `0.0.0.0/0`;
+- the model cannot choose arbitrary Security Group IDs, ports, CIDRs or APIs;
+- provider readback is required before reporting completion.
 
-Use separate bounded batch state (up to 1,000 items), immutable preview hash,
-single-use human approval and per-item provider readback. Restarted RUNNING
-items become UNKNOWN and need read-only reconciliation; no blind replay.
-Existing 100-finding/import/job limits remain unchanged. Chat batch queries
-are read-only and cannot prepare, approve, step, reset or execute. Offline
-fixtures cannot select a live provider. Current-phase exceptions take precedence
-over the historical single-SG-only statements below; all other boundaries remain.
+## Detection and eligibility
 
-### Approved named UI entry points — 2026-09-10
+- AWS Config is the current compliance detection source.
+- Config may observe resources outside the remediation demo scope.
+- A finding is eligible only when it also matches the exact server-owned retained scope and current provider guards.
+- Imported or external findings are not automatically authorization to mutate AWS.
+- Config convergence is asynchronous; successful provider readback may precede Config reporting COMPLIANT.
 
-Amit's 2026-09-11 request explicitly authorizes making the bulk demonstration
-usable from the named LibreChat GUI. Reuse its existing authenticated operator
-entry for exact batch approval. A loopback-only SSM/SSH transport may connect
-the WSL-owned vagent writer to the retained amit host; no AWS credential copying,
-runtime identity switch, second writer, public backend port or chat write tool.
-Preserve the old agent and grant the new read-only demo agent only to the intended
-operator. Record the WSL uptime dependency and five-bucket live scale honestly.
+## Agent behavior
 
-Amit selected option 1: reuse the retained EC2 with one reverse proxy and TLS,
-preserve the legacy AgentCore DNS/service, add separate chat/operator subdomains,
-and protect the Operator UI with its own login. Scoped DNS, certificate renewal
-IAM, HTTPS ingress restricted to the existing trusted source, port handoff and
-service restart are approved. Operator backend stays loopback-only; the proxy
-must reject cross-origin writes before translating trusted upstream headers.
-Use the same PR #18; validate with Playwright and notify ChatGPT. No AWS approval
-may be inferred from chat access. Credentials and deployment names stay private.
+### Read-only intent
 
-### Amit approval amendment — 2026-09-10
+For read, check, explain, summarize, recommend, plan or explicit no-change requests:
 
-Amit approved completing this release using the home Linux host or reusing
-the retained EC2; creating a suitable personal-lab EC2 is also authorized when
-reuse is insufficient. Scoped hosting, IAM, private connectivity, installation,
-deployment and restart steps needed by this Issue are approved without another
-routine permission request. This supersedes the original no-new-IAM/resources
-restriction for deployment prerequisites, not the application mutation boundary.
-Use `amit` / `ap-southeast-1` for the retained implementation. `vagent` is an
-approved alternative, not an automatic fallback: verify its separate identity,
-Region, available services/quota and cost before using it. Prefer reuse to new
-recurring cost. Keep credentials/private evidence out of Git, avoid public
-operator exposure, and preserve unrelated services, chats and user work.
+- use read/planning tools only;
+- do not call an executor;
+- do not create an AWS mutation merely because a recommendation exists.
 
-Preserve merged Phase 4 and deliver Issue #17: bounded backend queries,
-inference-independent intake, cached zero-tool explanations, restricted MCP,
-real LibreChat integration and exact human-review links. Deliver all nine
-milestones in PLATFORM_PHASE5_7_PLAN.md. Chat cannot save plans, create jobs,
-approve, reject, execute or rearm. No second AWS mutation capability.
+### Explicit execution intent
 
-## MUST
+Only an explicit current request to fix/apply/execute may prepare remediation.
 
-- Use Nova 2 Lite through AgentCore Harness in `ap-southeast-1`.
-- Keep Harness built-ins unavailable and expose only exact Gateway tools.
-- Ground the SG and S3 results in current AWS provider reads.
-- Require a human decision before the exact SG remediation.
-- Prove Reject and Policy DENY make zero changes.
-- Re-read AWS after approval and report COMPLIANT only from provider truth.
-- Keep the UI single-user, compact, and manager-readable.
-- Record sanitized live evidence, costs, retention, and cleanup commands.
-- Keep finding import at 100 records/256 KB and S3 assessment at five
-  server-owned buckets; caller/model-selected buckets are prohibited.
-- Derive management totals and exports from the same deterministic findings.
-- Accept only same-origin JSON/CSV content uploads capped at 256 KB and 100
-  records; do not accept a browser/model-supplied filesystem path.
-- Treat imported CloudSCAPE/VAPT evidence as `PLAN_ONLY`, never as AWS provider
-  verification or authorization to mutate.
-- Route specialist work deterministically on the server; do not let a model
-  select an arbitrary agent or tool.
-- Imported explanations use distinct server-owned specialist instructions via
-  the retained Nova 2 Lite Harness, with zero effective tools and rejection of
-  any attempted tool call.
-- Keep the provider-backed exact public-SSH Security Group finding as the only
-  `REMEDIATION_SUPPORTED` record.
+- the server decides currently eligible families and exact resource scope;
+- for `fix all`, S3 and SG remain separate action families;
+- the model must not invent or edit resource IDs, account, Region, role, API, action, target or approval hash.
 
-## MUST NOT
+## Human approval
 
-- No unrelated AWS resources, IAM or service enablement. Scoped deployment
-  prerequisites are authorized by the amendment above; prefer the retained EC2.
-- Only the retained dedicated demo SG and exact action may be exercised live,
-  including rearm to the approved unattached demonstration state.
-- A pending job is consumed durably before network execution. Terminal jobs
-  cannot be replayed. Interrupted execution becomes FAILED with unknown effect;
-  no automatic retry. Only independent matching provider COMPLIANT can finish
-  an allowed action as COMPLETED. Generic tool errors are not Policy DENY.
-- Retain at most 100 jobs/256 KB in a private atomic local journal next to the
-  backlog. Plans and Config/imported findings cannot authorize a job.
-- Config evaluations stay PLAN_ONLY. Do not infer fresh resource compliance
-  from a recent sync or missing record; show actual observation and sync times.
-- Store at most 100 findings in one atomically replaced local JSON file outside
-  Git. Reject corrupt/unreadable stores without overwriting them. One app process
-  owns a store; no database or multi-writer coordination is introduced.
-- Derive IDs and sighting metadata on the server, independently from model text.
-  Preserve operator plans during sync/import; missing bounded-snapshot records
-  remain unresolved. Planning cannot alter compliance, eligibility or approvals.
-- Accept only bounded owner/mitigation_plan/target/planning_status fields for an
-  existing server finding ID through the existing same-origin JSON boundary.
+- Every supported action family requires a native LibreChat human decision.
+- S3 approval and SG approval are independent.
+- A UI control that submits multiple decisions together is only batching of separate decisions; it is not blanket authorization.
+- Reject/cancel means that exact executor request does not dispatch.
+- There is no session-wide `Approve All` capability.
 
-- Do not add generic AWS actions, arbitrary resource selection, multi-user auth,
-  multi-account support, Registry, Temporal Policy, EKS, Supervisor, or A2A.
-- Do not use company, production, or Organizations-management resources.
-- Do not commit account IDs, ARNs, endpoints, session IDs, credentials, or raw
-  private evidence.
+## Execution governance
 
-## Verification
+Approved execution follows the bounded control path:
 
-- Phase 3: stable ID/plan survives actual process restart and Config resync;
-  exports agree. Missing records stay unresolved; failed sync/write preserves
-  state; corrupt store stops; planning cannot invoke AWS or expand eligibility.
+```text
+Human approval
+   ↓
+Exact batch executor
+   ↓
+AgentCore Gateway
+   ↓
+Policy ALLOW / DENY
+   ↓
+Exact remediation tool
+   ↓
+AWS API
+   ↓
+Provider readback
+```
 
-- Pilot v1.1 M1–M5 focused checks and live proofs pass.
-- The final visual path shows real finding, decision, Policy result, exact
-  action, and provider verification.
-- The S3 view is allowlisted, bounded, read-only, and provider-backed.
-- Backlog totals and action-plan exports use the same validated finding set.
-- Both synthetic adapters, both specialist routes, and plan-only mutation
-  rejection pass through the real loopback API before the governed SG proof.
-- `git diff --check` and the public-safety scan pass.
+### MUST
 
-## Stop Gates
+- keep the model separate from the authorization boundary;
+- expose only exact bounded remediation tools;
+- independently enforce Gateway/Policy before the AWS change;
+- persist durable execution state before/around network mutation as required by the current worker contract;
+- verify AWS provider state after execution;
+- report partial, failed and unknown outcomes honestly;
+- preserve the existing owned demo-resource guards;
+- keep private runtime evidence outside the public repository.
 
-- Stop for identity or Region mismatch, unclear/unbounded recurring cost,
-  ambiguous retained-resource ownership, Policy not in ENFORCE mode, exposure
-  of private data, risk to a non-demo resource, or expansion beyond Issue #17.
+### MUST NOT
+
+- no generic AWS CLI/API mutation tool for the model;
+- no caller/model-selected arbitrary AWS resource IDs at execution time;
+- no cross-account write path in Demo v1;
+- no company, production or Organizations-management resources;
+- no WAF/third-control claim in Demo v1;
+- no automatic retry of an uncertain mutation;
+- no claim that model text, approval, Gateway invocation or Config timing alone proves success;
+- no credentials, account IDs, private ARNs/endpoints, auth material, session IDs, raw private findings or private screenshots in Git.
+
+## Reliability contract
+
+- immutable batch identity/approval data must bind the approved scope;
+- terminal batches cannot be silently replayed;
+- uncertain execution becomes an explicit non-success state and is resolved through read-only provider reconciliation;
+- successful completion requires matching direct provider evidence;
+- AWS Config is independent evidence and may lag provider truth;
+- CloudTrail and CloudWatch remain authoritative AWS audit/log sources where applicable.
+
+## Operator / admin boundary
+
+The current Operator UI supports bounded demo preparation, status and troubleshooting. Raw batch IDs and `/bulk` are engineering details.
+
+Long term, an Operations Console may aggregate:
+
+- platform/service health;
+- remediation history and progress;
+- approvals and Policy outcomes;
+- correlation links into CloudTrail, CloudWatch and Config;
+- provider verification and uncertain-state reconciliation.
+
+It must not become a generic arbitrary-AWS mutation console.
+
+## Publication / documentation contract
+
+The repository and GitHub Pages site are public learning material.
+
+- documentation may explain architecture, sanitized evidence, runbooks and historical experiments;
+- current user-facing pages should distinguish proven Demo v1 behavior from research or future work;
+- historical phase documents remain evidence, not the current authority;
+- `README.md`, `CONTEXT.md`, this `SPEC.md`, and `ROADMAP.md` describe the current project contract.
+
+## Change authority
+
+Any future expansion of mutation scope, resource families, accounts, identity model or production use requires a new explicit milestone with its own safety/verification acceptance. Reviewer feedback should drive that next milestone rather than silently expanding Demo v1.
