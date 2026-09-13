@@ -1,0 +1,54 @@
+site_name: AWS Compliance Agent
+site_description: Governed AWS compliance remediation learning portal
+site_url: https://amitkarpe.github.io/aws-secops/
+repo_url: https://github.com/amitkarpe/aws-secops
+repo_name: amitkarpe/aws-secops
+
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - attr_list
+  - pymdownx.details
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Learn:
+      - Architecture: architecture.md
+      - Demo v1: demo-v1.md
+      - Governance: governance.md
+      - Learning path: learning-path.md
+  - Operations:
+      - Operations Console direction: operator-console.md
+      - Demo script: operations/DEMO_SCRIPT.md
+      - LibreChat bulk demo: operations/LIBRECHAT_BULK_DEMO.md
+      - Cost and cleanup: operations/COST_AND_CLEANUP.md
+  - Technical proofs:
+      - Governed S3 execution proof: implementation/PLATFORM_PHASE11_13_PROOF.md
+      - Gateway + Policy live proof: research/GATEWAY_POLICY_LIVE_PROOF.md
+      - AgentCore feature matrix: research/AGENTCORE_FEATURE_MATRIX.md
+      - Cost model: research/COST_MODEL_V0.md
+  - Project:
+      - Roadmap: roadmap.md
