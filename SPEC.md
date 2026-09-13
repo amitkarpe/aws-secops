@@ -12,7 +12,7 @@ The project must accelerate that path **without giving the model broad AWS mutat
 
 ## Current supported scope
 
-Demo v1 supports exactly two remediation families in the personal Singapore lab:
+Demo v1 supports exactly two remediation families in the personal Singapore lab.
 
 ### S3 Block Public Access
 
@@ -33,6 +33,7 @@ Demo v1 supports exactly two remediation families in the personal Singapore lab:
 - AWS Config is the current compliance detection source.
 - Config may observe resources outside the remediation demo scope.
 - A finding is eligible only when it also matches the exact server-owned retained scope and current provider guards.
+- Current planners are conservative: a family is prepared only when the **complete retained family** satisfies the required readiness/eligibility conditions. Demo v1 does not claim arbitrary-subset remediation.
 - Imported or external findings are not automatically authorization to mutate AWS.
 - Config convergence is asynchronous; successful provider readback may precede Config reporting COMPLIANT.
 
@@ -46,13 +47,15 @@ For read, check, explain, summarize, recommend, plan or explicit no-change reque
 - do not call an executor;
 - do not create an AWS mutation merely because a recommendation exists.
 
+Recorded tests/smokes support this behavior, but the read-only/execution distinction is not the sole AWS authorization boundary.
+
 ### Explicit execution intent
 
 Only an explicit current request to fix/apply/execute may prepare remediation.
 
 - the server decides currently eligible families and exact resource scope;
 - for `fix all`, S3 and SG remain separate action families;
-- the model must not invent or edit resource IDs, account, Region, role, API, action, target or approval hash.
+- the model must not invent or edit resource IDs, account, Region, role, API, action, target or approval identity.
 
 ## Human approval
 
@@ -61,6 +64,7 @@ Only an explicit current request to fix/apply/execute may prepare remediation.
 - A UI control that submits multiple decisions together is only batching of separate decisions; it is not blanket authorization.
 - Reject/cancel means that exact executor request does not dispatch.
 - There is no session-wide `Approve All` capability.
+- The batch/approval identity binds exact workflow scope. Demo v1 does not claim that a named human identity is itself evaluated by the later Policy decision.
 
 ## Execution governance
 
@@ -102,6 +106,7 @@ Provider readback
 - no WAF/third-control claim in Demo v1;
 - no automatic retry of an uncertain mutation;
 - no claim that model text, approval, Gateway invocation or Config timing alone proves success;
+- no claim of complete host-wide least-privilege certification from this demo;
 - no credentials, account IDs, private ARNs/endpoints, auth material, session IDs, raw private findings or private screenshots in Git.
 
 ## Reliability contract
@@ -113,9 +118,23 @@ Provider readback
 - AWS Config is independent evidence and may lag provider truth;
 - CloudTrail and CloudWatch remain authoritative AWS audit/log sources where applicable.
 
+### Current reliability limitation
+
+Demo v1 has restart detection and read-only reconciliation for uncertain Security Group work, but complete continuation/terminalization of every remaining approved SG item after every possible mid-batch interruption is not yet a production guarantee. Any runtime correction for this belongs in a separate explicitly authorized hardening milestone with targeted tests.
+
+## Trust assumptions
+
+Demo v1 trusts the retained host/deployment configuration, LibreChat approval configuration, reverse-proxy/operator protection, server-owned manifests and durable local state, and the installed Gateway/Policy/tool configuration.
+
+The demo does not claim hostile multi-tenant isolation, tamper-proof approval records, production identity governance or complete host-wide IAM isolation.
+
 ## Operator / admin boundary
 
 The current Operator UI supports bounded demo preparation, status and troubleshooting. Raw batch IDs and `/bulk` are engineering details.
+
+`Prepare demo` is a separate confirmed operator-maintenance path. It deliberately changes only the owned lab resources back to the known non-compliant demo state after provider guards. It is not exposed as an agent reset tool and is not remediation approval.
+
+Current status evidence should be described precisely: S3 Operator status is primarily saved durable batch/provider-verification evidence rather than a fresh full S3 provider scan on every UI refresh; SG status includes current provider reads.
 
 Long term, an Operations Console may aggregate:
 
@@ -132,9 +151,10 @@ It must not become a generic arbitrary-AWS mutation console.
 The repository and GitHub Pages site are public learning material.
 
 - documentation may explain architecture, sanitized evidence, runbooks and historical experiments;
-- current user-facing pages should distinguish proven Demo v1 behavior from research or future work;
-- historical phase documents remain evidence, not the current authority;
-- `README.md`, `CONTEXT.md`, this `SPEC.md`, and `ROADMAP.md` describe the current project contract.
+- current user-facing pages must distinguish proven Demo v1 behavior from research or future work;
+- historical Harness, multi-source pilot and phase documents remain evidence/history, not current primary architecture;
+- `README.md`, `PROJECT_STATUS.md`, this `SPEC.md`, and `ROADMAP.md` describe the current public project contract;
+- `CONTEXT.md` is retained for coding-agent/session continuity and is not the human public introduction.
 
 ## Change authority
 

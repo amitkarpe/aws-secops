@@ -1,17 +1,18 @@
 # Roadmap
 
-Demo v1 is validated and frozen.
+The root `ROADMAP.md` is the source of truth.
+
+## Completed
+
+- Demo v1 validation.
+- MkDocs Material learning portal publication.
 
 ## Now
 
-Publish the MkDocs learning portal and prepare the public repository for technical review.
+Public-release cleanup and technical review. AWS/runtime scope remains frozen.
 
 ## Next
 
-Improve concise operator-summary output and collect reviewer feedback.
+Concise operator-summary output, bounded reliability hardening, publication assurance and reviewer-driven milestones.
 
-## Later
-
-Potential milestones include the Operations Console, another justified compliance control, multi-account design, CloudSCAPE/VAPT ingestion, audit reporting and deeper AgentCore portability work.
-
-The repository `ROADMAP.md` remains the source of truth.
+For the complete roadmap, open the repository root `ROADMAP.md`.

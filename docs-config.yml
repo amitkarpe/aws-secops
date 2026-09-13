@@ -16,6 +16,9 @@ theme:
     - scheme: default
       primary: indigo
       accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
     - scheme: slate
       primary: indigo
       accent: indigo
@@ -41,14 +44,17 @@ nav:
       - Governance: governance.md
       - Learning path: learning-path.md
   - Operations:
-      - Operations Console direction: operator-console.md
-      - Demo script: operations/DEMO_SCRIPT.md
-      - LibreChat bulk demo: operations/LIBRECHAT_BULK_DEMO.md
+      - LibreChat bulk demo (S3-specific): operations/LIBRECHAT_BULK_DEMO.md
       - Cost and cleanup: operations/COST_AND_CLEANUP.md
   - Technical proofs:
       - Governed S3 execution proof: implementation/PLATFORM_PHASE11_13_PROOF.md
-      - Gateway + Policy live proof: research/GATEWAY_POLICY_LIVE_PROOF.md
+      - Gateway + Policy live proof (historical feasibility): research/GATEWAY_POLICY_LIVE_PROOF.md
       - AgentCore feature matrix: research/AGENTCORE_FEATURE_MATRIX.md
       - Cost model: research/COST_MODEL_V0.md
+  - History / Research:
+      - Historical multi-source pilot demo: operations/DEMO_SCRIPT.md
+      - Historical Harness feasibility proof: research/HARNESS_NOVA2_LITE_LIVE_PROOF.md
   - Project:
+      - Project status: project-status.md
+      - Operations Console direction: operator-console.md
       - Roadmap: roadmap.md
