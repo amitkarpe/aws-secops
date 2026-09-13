@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, fix/review-hardening]
   workflow_dispatch:
 
 permissions:
@@ -45,12 +45,12 @@ jobs:
             node --check "$file"
           done
       - name: Export exact public source for this review
-        if: always() && github.event_name == 'pull_request' && github.head_ref == 'fix/review-hardening'
+        if: always() && github.ref == 'refs/heads/fix/review-hardening'
         run: |
           git rev-parse HEAD > reviewed-source-revision.txt
           git archive --format=tar.gz HEAD > reviewed-source.tar.gz
       - name: Retain bounded review source
-        if: always() && github.event_name == 'pull_request' && github.head_ref == 'fix/review-hardening'
+        if: always() && github.ref == 'refs/heads/fix/review-hardening'
         uses: actions/upload-artifact@v4
         with:
           name: reviewed-public-source
