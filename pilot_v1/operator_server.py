@@ -7,7 +7,6 @@ normal remediation authorization remains in LibreChat native ASK + Gateway Polic
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 from http.server import HTTPServer
 import json
 import os
@@ -29,12 +28,6 @@ SG_CONTROL = "restricted-ssh"
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         raise ValueError("internal redirects prohibited")
-
-
-def _iso_mtime(path: Path) -> str | None:
-    if not path.exists():
-        return None
-    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
 
 
 class OperatorService(BulkService):
@@ -113,10 +106,9 @@ class OperatorService(BulkService):
         compliant = int(summary.get("verified", 0)) if summary.get("batch_id") else 0
         noncompliant = int(counts.get("PENDING", 0) + counts.get("APPROVED", 0) + counts.get("DENIED", 0))
         unknown = max(0, total - compliant - noncompliant)
-        evidence_time = None
-        if self.bulk.data:
-            evidence_time = (_iso_mtime(self.bulk.path) if summary.get("verified") == total
-                             else self.bulk.data.get("created_at"))
+        # Old journals do not have event timestamps. Do not manufacture one from
+        # batch creation or file mtime: neither proves when AWS was verified.
+        evidence_time = summary.get("last_verification_time")
         config = None
         config_available = True
         config_error = None
@@ -129,6 +121,7 @@ class OperatorService(BulkService):
             "version": 1, "family": "s3", "title": "S3 Block Public Access",
             "resource_count": total, "compliant": compliant, "noncompliant": noncompliant,
             "unknown": unknown, "last_verification_time": evidence_time,
+            "evidence_source": "Saved S3 batch readback (not a fresh scan)",
             "batch": summary, "config": config,
             "status_available": True, "config_available": config_available,
             "status_error": None, "config_error": config_error,
@@ -158,6 +151,8 @@ class OperatorService(BulkService):
                 degraded.append(control.get("status_error") or f"{control.get('title', control.get('family'))} status unavailable")
             if control.get("config_available") is False:
                 degraded.append(control.get("config_error") or f"{control.get('title', control.get('family'))} AWS Config unavailable")
+            elif isinstance(control.get("config"), dict) and control["config"].get("partial"):
+                degraded.append(f"{control.get('title', control.get('family'))} AWS Config evidence is partial")
         return {
             "version": 1, "agent_url": "https://sec.astromedicomp.org/",
             "controls": [s3, sg],

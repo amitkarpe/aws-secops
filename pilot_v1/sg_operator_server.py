@@ -50,6 +50,7 @@ class OperatorSGService(Service):
             "resource_count": provider["total"], "compliant": provider["compliant"],
             "noncompliant": provider["noncompliant"], "unknown": provider["unknown"],
             "last_verification_time": datetime.now(timezone.utc).isoformat(),
+            "evidence_source": "Current EC2 status read (unknowns are reported)",
             "batch": summary, "config": config_control,
             "status_available": True, "config_available": config_available,
             "status_error": None, "config_error": config_error,

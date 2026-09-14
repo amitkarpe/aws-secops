@@ -2,6 +2,7 @@ import tempfile
 import time
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 from pilot_v1.sg_compliance import SGBatchStore, TARGET
 from pilot_v1.bulk import PolicyDenied
@@ -108,6 +109,77 @@ class SGBatchTests(unittest.TestCase):
         new = self.store.preview(renew=True)
         self.assertNotEqual(view["batch_id"], new["batch_id"])
         self.assertTrue(self.path.with_name(self.path.name + "." + view["batch_id"]).exists())
+
+    def test_interrupted_batch_terminates_unsent_work_and_keeps_history(self):
+        original = self.store.preview()
+        self.store.data["decision"] = "APPROVE"
+        self.store.data["items"][0].update(state="RUNNING", changed=None)
+        for item in self.store.data["items"][1:]:
+            item["state"] = "APPROVED"
+        self.store.save()
+        self.provider.values["sg-a1"] = dict(TARGET)
+        self.store.close()
+        self.store = SGBatchStore(self.path, self.provider)
+        self.assertEqual(self.store.summary()["counts"], {"UNKNOWN": 1, "FAILED": 2})
+        for item in self.store.data["items"][1:]:
+            self.assertFalse(item["changed"])
+            self.assertIn("not dispatched", item["message"].lower())
+        with self.assertRaises(ValueError):
+            self.store.preview(renew=True)
+        self.store.reconcile(original["batch_id"])
+        self.assertEqual(self.store.summary()["counts"], {"COMPLETED": 1, "FAILED": 2})
+        self.assertEqual(self.provider.calls, [])
+        with self.assertRaises(ValueError):
+            self.store.start(original["batch_id"], original["approval_hash"])
+        # A new full-manifest preview is local planning, not approval. It keeps
+        # the previous journal and needs a separate explicit start decision.
+        new = self.store.preview(renew=True)
+        archive = self.path.with_name(self.path.name + "." + original["batch_id"])
+        self.assertTrue(archive.exists())
+        self.assertNotEqual(original["batch_id"], new["batch_id"])
+        self.assertEqual(new["counts"], {"PENDING": 3})
+        self.assertEqual(self.provider.calls, [])
+        self.store.start(new["batch_id"], new["approval_hash"])
+        self.wait()
+        self.assertEqual(self.store.summary()["verified"], 3)
+        self.assertEqual(self.store.summary()["counts"], {"SKIPPED": 1, "COMPLETED": 2})
+        self.assertNotIn("sg-a1", self.provider.calls)
+
+    def test_unknown_dispatch_stops_and_terminalizes_unstarted_items(self):
+        self.provider.concurrency = 1
+        def uncertain(resource, before):
+            self.provider.calls.append(resource)
+            self.provider.values[resource] = dict(TARGET)
+            raise TimeoutError("response lost after provider change")
+        self.provider.apply = uncertain
+        view = self.store.preview()
+        self.store.start(view["batch_id"], view["approval_hash"])
+        self.wait()
+        self.assertEqual(self.store.summary()["counts"], {"UNKNOWN": 1, "FAILED": 2})
+        self.assertEqual(len(self.provider.calls), 1)
+        self.store.reconcile(view["batch_id"])
+        self.assertEqual(self.store.summary()["counts"], {"COMPLETED": 1, "FAILED": 2})
+        self.assertIsNone(self.store.data["items"][0]["changed"])
+        self.assertEqual(len(self.provider.calls), 1)
+
+    def test_reconciliation_cannot_race_active_execution(self):
+        view = self.store.preview()
+        self.store.data["decision"] = "APPROVE"
+        self.store.data["items"][0]["state"] = "RUNNING"
+        self.store.save()
+        with self.assertRaisesRegex(ValueError, "active"):
+            self.store.reconcile(view["batch_id"])
+        self.assertEqual(self.provider.calls, [])
+
+    def test_thread_start_failure_leaves_no_stranded_approval(self):
+        view = self.store.preview()
+        with patch("pilot_v1.sg_compliance.threading.Thread.start", side_effect=RuntimeError("thread unavailable")):
+            with self.assertRaises(RuntimeError):
+                self.store.start(view["batch_id"], view["approval_hash"])
+        self.assertEqual(self.store.summary()["counts"], {"FAILED": 3})
+        self.assertEqual(self.provider.calls, [])
+        with self.assertRaises(ValueError):
+            self.store.start(view["batch_id"], view["approval_hash"])
 
 
 if __name__ == "__main__":

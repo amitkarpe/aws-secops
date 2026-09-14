@@ -94,4 +94,46 @@ class BulkTests(unittest.TestCase):
         self.assertEqual(path.read_text(), '{bad')
 
 
+    def test_verification_time_is_a_recorded_event_not_file_mtime(self):
+        from pilot_v1.operator_server import OperatorService
+        import os
+        key = self.approve()
+        while self.store.summary()['counts'].get('APPROVED'):
+            self.store.step(key)
+        stamp = self.store.summary()['last_verification_time']
+        self.assertIsInstance(stamp, str)
+        self.assertTrue(all(i.get('verified_at') for i in self.store.data['items']))
+        service = OperatorService(self.store)
+        service._config_control = lambda _: {'counts': {'COMPLIANT': 5}, 'partial': False}
+        os.utime(self.store.path, (1, 1))
+        self.assertEqual(service.s3_status()['last_verification_time'], stamp)
+        self.assertIn('not a fresh scan', service.s3_status()['evidence_source'])
+        self.store.close()
+        self.store = BulkStore(self.root/'bulk.json', self.provider)
+        self.assertEqual(self.store.summary()['last_verification_time'], stamp)
+
+    def test_legacy_journal_keeps_unknown_verification_timestamp(self):
+        from pilot_v1.operator_server import OperatorService
+        key = self.approve()
+        while self.store.summary()['counts'].get('APPROVED'):
+            self.store.step(key)
+        for item in self.store.data['items']:
+            item.pop('verified_at', None)
+        self.store.save()
+        service = OperatorService(self.store)
+        service._config_control = lambda _: {'counts': {'COMPLIANT': 5}}
+        status = service.s3_status()
+        self.assertEqual(status['compliant'], 5)
+        self.assertIsNone(status['last_verification_time'])
+
+    def test_readonly_reconciliation_refuses_an_inflight_item(self):
+        key = self.approve()
+        self.store.data['items'][0]['state'] = 'RUNNING'
+        self.store.data['items'][1]['state'] = 'UNKNOWN'
+        self.store.save()
+        with self.assertRaisesRegex(ValueError, 'active'):
+            self.store.reconcile(key)
+        self.assertEqual(self.provider.calls, 0)
+
+
 if __name__ == '__main__': unittest.main()

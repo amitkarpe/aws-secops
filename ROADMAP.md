@@ -8,15 +8,13 @@
 - Read-only agent behavior, off-topic scope guardrail, separate native approvals, Gateway/Policy enforcement and direct provider verification recorded.
 - Repeatable Operator demo flow and AWS Config integration recorded.
 - MkDocs Material learning portal published successfully through GitHub Pages.
+- PR #31 public-release navigation, history labels, claim precision, and PR docs validation completed.
 
 ## Now
 
-- Complete public-release cleanup from technical review:
-  - make current Demo v1 the unmistakable default reading path;
-  - label historical pilot/Harness material clearly;
-  - tighten trust-model and evidence wording;
-  - improve repository/publication hygiene without changing AWS/runtime scope.
-- Share the repository with internal technical reviewers and collect concrete questions.
+- Validate Issue #32 bounded reliability corrections: Config page/token/recorder checks, safe SG interruption terminalization, truthful status timestamps, and existing offline PR tests.
+- Keep the recorded live Demo v1 separate from new code validation. A live rollout requires an explicit deployment handoff; no reset/re-arm is implied.
+- Share the documented scope and known limits with technical reviewers.
 
 ## Next
 
@@ -26,11 +24,7 @@ Improve the AWS Compliance Agent default response style for concise operator sum
 
 ### Bounded reliability hardening
 
-Track separately from documentation work:
-
-- define and test a safe SG continuation/terminalization path for mid-batch interruption scenarios;
-- add page/token bounds to AWS Config pagination and targeted fake-client tests;
-- add high-value PR checks using the existing offline regression suite where they can run without live AWS credentials.
+Issue #32 implements a safe stop/reconcile/replan lifecycle, not an automatic resume capability. Follow-up acceptance is a proportional authorized deployment check of the same retained scope. Mixed-family/subset planning, live interruption tests, and production recovery remain separate decisions, not assumed results of an offline green test suite.
 
 ### Publication assurance
 

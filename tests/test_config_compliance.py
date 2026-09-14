@@ -66,6 +66,76 @@ class ConfigComplianceTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ConfigComplianceReader(Inactive()).summary()
 
+    def test_empty_continuation_pages_have_a_request_budget(self):
+        class EmptyPages(FakeConfig):
+            def get_compliance_details_by_config_rule(self, **kwargs):
+                self.calls.append(kwargs)
+                # A finite watchdog makes the old unbounded implementation fail
+                # this regression without hanging the test runner.
+                return {"EvaluationResults": [], **(
+                    {"NextToken": str(len(self.calls))} if len(self.calls) < 12 else {})}
+        fake = EmptyPages()
+        rows, partial = ConfigComplianceReader(fake)._results("restricted-ssh")
+        self.assertEqual(rows, [])
+        self.assertTrue(partial)
+        self.assertEqual(len(fake.calls), 10)
+
+    def test_repeated_or_cyclic_tokens_fail_closed(self):
+        for tokens in [("a", "a", None), ("a", "b", "a", None)]:
+            with self.subTest(tokens=tokens):
+                class Cycling(FakeConfig):
+                    def get_compliance_details_by_config_rule(self, **kwargs):
+                        self.calls.append(kwargs)
+                        token = tokens[len(self.calls) - 1]
+                        return {"EvaluationResults": [], "NextToken": token}
+                fake = Cycling()
+                with self.assertRaisesRegex(RuntimeError, "pagination"):
+                    ConfigComplianceReader(fake)._results("restricted-ssh")
+                self.assertLess(len(fake.calls), len(tokens))
+
+    def test_legitimate_empty_page_can_be_followed_by_results(self):
+        class EmptyFirst(FakeConfig):
+            def get_compliance_details_by_config_rule(self, **kwargs):
+                if not self.calls:
+                    self.calls.append(kwargs)
+                    return {"EvaluationResults": [], "NextToken": "next"}
+                return super().get_compliance_details_by_config_rule(**kwargs)
+        fake = EmptyFirst()
+        rows, partial = ConfigComplianceReader(fake)._results("restricted-ssh")
+        self.assertEqual(len(rows), 5)
+        self.assertFalse(partial)
+        self.assertEqual(len(fake.calls), 2)
+
+    def test_list_and_planner_reads_also_require_a_healthy_recorder(self):
+        class Inactive(FakeConfig):
+            def describe_configuration_recorder_status(self):
+                return {"ConfigurationRecordersStatus": [{"recording": True, "lastStatus": "FAILURE"}]}
+        fake = Inactive()
+        with self.assertRaisesRegex(RuntimeError, "recorder"):
+            ConfigComplianceReader(fake).list_findings("restricted-ssh")
+        self.assertEqual(fake.calls, [])
+
+    def test_invalid_continuation_token_is_not_treated_as_complete(self):
+        class InvalidToken(FakeConfig):
+            def get_compliance_details_by_config_rule(self, **kwargs):
+                self.calls.append(kwargs)
+                return {"EvaluationResults": [], "NextToken": 0}
+        with self.assertRaisesRegex(RuntimeError, "pagination"):
+            ConfigComplianceReader(InvalidToken())._results("restricted-ssh")
+
+    def test_item_limit_remains_partial_when_more_results_exist(self):
+        class FullPages(FakeConfig):
+            def get_compliance_details_by_config_rule(self, **kwargs):
+                response = super().get_compliance_details_by_config_rule(**kwargs)
+                sample = response["EvaluationResults"][0]
+                return {"EvaluationResults": [sample] * kwargs["Limit"],
+                        "NextToken": str(len(self.calls))}
+        fake = FullPages()
+        rows, partial = ConfigComplianceReader(fake)._results("restricted-ssh")
+        self.assertEqual(len(rows), 250)
+        self.assertEqual([c["Limit"] for c in fake.calls], [100, 100, 50])
+        self.assertTrue(partial)
+
 
 if __name__ == "__main__":
     unittest.main()

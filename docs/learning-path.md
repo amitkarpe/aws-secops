@@ -12,6 +12,8 @@ Use this curated path before reading historical phase documents.
 
 ## Current technical proof
 
+[Issue #32 hardening evidence](implementation/RELIABILITY_HARDENING_PROOF.md) covers Config termination, SG safe-stop recovery, truthful status timestamps, and AWS-free validation. It is separate from historical live acceptance.
+
 Then continue with:
 
 - [Governed S3 execution proof](implementation/PLATFORM_PHASE11_13_PROOF.md)

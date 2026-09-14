@@ -9,7 +9,7 @@ The root `ROADMAP.md` is the source of truth.
 
 ## Now
 
-Public-release cleanup and technical review. AWS/runtime scope remains frozen.
+Issue #32: bounded code/docs hardening and offline validation. The two-family AWS scope is unchanged; deployment needs separate approval.
 
 ## Next
 

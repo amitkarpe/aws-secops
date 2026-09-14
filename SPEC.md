@@ -1,6 +1,6 @@
 # Specification
 
-Status: **Demo v1 implemented, validated and frozen.**
+Status: **Demo v1 live acceptance is recorded. Issue #32 hardens the same scope; new code requires separate deployment validation.**
 
 This file defines the current trusted contract. Historical phase-specific authority and proofs remain under `docs/implementation/` and `docs/research/`.
 
@@ -36,6 +36,7 @@ Demo v1 supports exactly two remediation families in the personal Singapore lab.
 - Current planners are conservative: a family is prepared only when the **complete retained family** satisfies the required readiness/eligibility conditions. Demo v1 does not claim arbitrary-subset remediation.
 - Imported or external findings are not automatically authorization to mutate AWS.
 - Config convergence is asynchronous; successful provider readback may precede Config reporting COMPLIANT.
+- Each rule read requires a healthy recorder and is bounded to 250 results and 10 evaluation-page requests. These are application safeguards, not AWS service quotas. Exhausted limits return `partial=true`; repeated/cyclic/malformed continuation tokens fail the read. Incomplete evidence must not prepare remediation.
 
 ## Agent behavior
 
@@ -118,9 +119,17 @@ Provider readback
 - AWS Config is independent evidence and may lag provider truth;
 - CloudTrail and CloudWatch remain authoritative AWS audit/log sources where applicable.
 
-### Current reliability limitation
+### Bounded SG interruption recovery
 
-Demo v1 has restart detection and read-only reconciliation for uncertain Security Group work, but complete continuation/terminalization of every remaining approved SG item after every possible mid-batch interruption is not yet a production guarantee. Any runtime correction for this belongs in a separate explicitly authorized hardening milestone with targeted tests.
+Issue #32 implements safe terminalization, not automatic replay:
+
+- On process recovery, a claimed `RUNNING` item becomes `UNKNOWN`. Unclaimed `APPROVED` items become `FAILED` with `changed=false` and an explicit **not dispatched** reason.
+- An uncertain worker outcome stops further claims. Already in-flight calls finish; then unclaimed work is terminalized. Failure to launch the worker also expires unstarted work.
+- Reconciliation is read-only and is rejected while that family's worker or a `RUNNING` item is active. An unavailable read leaves `UNKNOWN` unresolved. A matching read proves state, not which caller caused a change.
+- The old SG approval remains consumed. It cannot start the old batch again. A fresh full-manifest preview can be created only after uncertainty is resolved and existing preview limits/guards pass; it preserves the prior journal and requires a new approval before execution.
+- The normal Config-driven planner still requires complete-family readiness. Mixed compliant/non-compliant recovery is **not** a new automatic chat/subset-retry capability. Do not edit journals or reset resources merely to clear a failure.
+
+These cases are tested with offline providers. They do not certify every filesystem/process failure, live interruption recovery, or production availability. See [hardening evidence](docs/implementation/RELIABILITY_HARDENING_PROOF.md).
 
 ## Trust assumptions
 
@@ -134,7 +143,7 @@ The current Operator UI supports bounded demo preparation, status and troublesho
 
 `Prepare demo` is a separate confirmed operator-maintenance path. It deliberately changes only the owned lab resources back to the known non-compliant demo state after provider guards. It is not exposed as an agent reset tool and is not remediation approval.
 
-Current status evidence should be described precisely: S3 Operator status is primarily saved durable batch/provider-verification evidence rather than a fresh full S3 provider scan on every UI refresh; SG status includes current provider reads.
+S3 Operator status is saved batch evidence, not a fresh S3 scan. New successful S3 readbacks persist per-item `verified_at`; the card reports the latest saved readback event. Old journals lacking those timestamps show **not recorded**, never a guessed time from file modification or batch creation. The latest event is not an all-resource freshness guarantee. SG status performs current EC2 reads and reports unknowns explicitly. Partial Config counts remain labeled partial and cannot erase the saved provider/batch metrics.
 
 Long term, an Operations Console may aggregate:
 
