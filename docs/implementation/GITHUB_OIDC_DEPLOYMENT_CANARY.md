@@ -18,7 +18,7 @@ reviewed main
 This milestone manages only:
 
 - CloudFormation stack `aws-secops-deployment-canary`;
-- SSM parameter `/aws-secops/deployment-canary`.
+- SSM parameter `/amitkarpe/aws-secops/deployment-canary`.
 
 The parameter value is the deployed Git commit SHA. Successful provider readback proves the reviewed `main` commit reached AWS through short-lived GitHub OIDC credentials.
 
@@ -61,6 +61,10 @@ Do not commit their values.
 - followed by direct SSM provider readback.
 
 PR validation remains credential-free.
+
+## SSM path note
+
+The original `/aws-secops/deployment-canary` name was rejected by AWS as reserved because it begins with `aws`. The canary therefore uses `/amitkarpe/aws-secops/deployment-canary`.
 
 ## Acceptance
 
