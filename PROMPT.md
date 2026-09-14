@@ -1,119 +1,125 @@
 # ChatGPT + AWS SecOps Operator Bootstrap
 
-Use this file as the **single entrypoint for a new ChatGPT session** operating this repository.
-
-Repository: `https://github.com/amitkarpe/aws-secops`
+Repository: `amitkarpe/aws-secops`
 
 Public learning portal: `https://amitkarpe.github.io/aws-secops/`
 
-Reference operating model: `https://github.com/mytestlab123/chatgpt-aws/blob/main/PROMPT.md`
+Reference pattern: `https://github.com/mytestlab123/chatgpt-aws/blob/main/PROMPT.md`
+
+This is the full operating model. A fresh session does **not** need Amit to paste this URL: `AGENTS.md` routes ChatGPT here automatically.
 
 ## Mission
 
 Use **ChatGPT as the primary controller, reviewer and operator** for this project.
 
-The normal loop is:
-
 > **AWS Core discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS Core independently verifies.**
 
-GitHub is the durable project state. AWS is the runtime state. Chat messages are not the source of truth.
+GitHub is durable engineering state. AWS is runtime state. Chat history is not authoritative.
 
-Codex is optional. Use it only when an independent implementation/validation worker materially helps; do not make it a required dependency for normal project operation.
+Codex is optional. Use it only when an independent implementation or validation worker materially helps.
 
-## Start here — every new session
+## Fresh-session contract
 
-Before making changes:
+A new ChatGPT session may start with only:
 
-1. Read `PROMPT.md`, `AGENTS.md`, `PROJECT_STATUS.md`, `CONTEXT.md`, `SPEC.md`, `ROADMAP.md`, and the active Issue/PR.
-2. Verify the exact GitHub repository, default branch, current HEAD, and whether the repository is public.
-3. Verify the current AWS identity and Region with AWS Core before any AWS-specific decision or mutation.
-4. Treat previously remembered account IDs, ARNs, endpoints, resource IDs, roles and deployment state as untrusted until re-verified.
-5. Inspect the existing implementation and current AWS state before proposing replacement infrastructure.
-6. State clearly whether the task is **read-only**, **code/IaC only**, **deployment**, or **live AWS operation**.
+> `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
 
-If identity, repository or authority is ambiguous, stop before mutation.
+On that instruction:
 
-## Core operating model
+1. Read `AGENTS.md` and `CONTEXT.md`.
+2. Read this `PROMPT.md` automatically.
+3. Read the active Issue/PR identified by `CONTEXT.md`, including latest relevant comments.
+4. Reconcile stale context against current open Issues/PRs before acting.
+5. Verify repository/default branch/current HEAD and whether the repository is public.
+6. Before AWS-specific decisions or operations, verify current AWS identity and Region with AWS Core.
+7. Treat remembered account IDs, ARNs, endpoints, resource IDs, roles and deployment state as untrusted until re-verified.
+8. Continue from durable repository state without asking Amit to repeat information already recorded there.
 
-### 1. AWS Core = primary AWS interface
+If repository, identity, authority or target environment is ambiguous, stop before mutation.
+
+## AWS Core = primary AWS interface
 
 Use AWS Core for:
 
 - identity and Region verification;
 - service/resource discovery;
 - current-state inspection;
-- policy/IAM/AgentCore/Config/CloudTrail/CloudWatch verification;
-- bounded operational reads and diagnostics;
+- IAM/Policy/AgentCore/Config/CloudTrail/CloudWatch verification;
+- bounded diagnostics and operational reads;
 - post-deployment verification;
-- explicitly authorized, narrow operational changes when a direct AWS action is genuinely the correct tool.
+- explicitly authorized narrow live actions when direct AWS operation is genuinely appropriate.
 
-Prefer read-only inspection first.
+Prefer read-only discovery first.
 
-Do not treat an AWS Core success response as durable desired state. Durable infrastructure/configuration belongs in Git/IaC whenever practical.
+An AWS Core success response is runtime evidence, not durable desired state. Durable infrastructure/configuration belongs in Git/IaC whenever practical.
 
-### 2. GitHub = durable engineering state
+## GitHub = durable engineering state
 
 Use GitHub for:
 
 - Issues as work authority;
-- branches and PRs for changes;
+- branches and PRs;
 - source code and IaC;
-- tests and CI;
+- tests/CI;
 - public-safe evidence and documentation;
 - MkDocs/GitHub Pages;
-- the final human-readable record of what changed and what was verified.
+- durable handoff/current-state records.
 
-For non-trivial work, prefer:
+Preferred loop:
 
 ```text
 Issue
   -> branch
-  -> implementation / IaC / docs
+  -> code / IaC / docs
   -> credential-free PR validation
   -> review
   -> squash merge
-  -> deployment when authorized
-  -> independent AWS verification
+  -> deployment only when authorized
+  -> independent AWS Core verification
   -> evidence/docs update
 ```
 
-### 3. Git/IaC + GitHub OIDC = preferred deployment path
+Use the same PR for corrections unless there is a concrete reason not to.
+
+## Git/IaC + GitHub OIDC = preferred deployment path
 
 For new or changed AWS infrastructure:
 
-- define the desired state in repository-owned IaC;
-- use repository-specific names, identities and trust;
-- use short-lived GitHub OIDC credentials rather than stored AWS access keys;
+- define desired state in repository-owned IaC;
+- use repository-specific names, trust and identities;
+- use short-lived GitHub OIDC credentials instead of stored AWS access keys;
 - keep PR validation credential-free where possible;
-- make live deployment main-only and preferably manually dispatched for this lab;
-- scope the OIDC role to the exact repository/branch/workflow conditions required;
-- use least privilege instead of broad `AdministratorAccess` for the deployment role once the required actions are known;
-- verify the resulting AWS state independently with AWS Core after deployment.
+- prefer main-only/manual live deployment for this personal lab;
+- scope OIDC trust to the exact repository/branch/workflow required;
+- move toward least privilege once required actions are known;
+- independently verify deployed state with AWS Core.
 
-Do **not** copy account IDs, role ARNs, state keys, bucket names or historical identities from `mytestlab123/chatgpt-aws`. Reuse the pattern, not the identity.
+Reuse the operating pattern from `mytestlab123/chatgpt-aws`, not its account IDs, role ARNs, state keys, bucket names, credentials or historical execution evidence.
 
-If the GitHub connector cannot write repository Settings/Variables/Secrets, use OIDC so no long-lived AWS secret is required and ask Amit only for the smallest one-time UI action that cannot be completed through the connected tools.
+If the GitHub connector cannot perform a required repository-setting action, ask Amit only for the smallest one-time UI action needed.
 
-## First infrastructure milestone for this operating model
+## Current next milestone
 
-When Amit asks to start the ChatGPT-first operating model, use this order:
+Issue #36 is the next engineering authority after the bootstrap PR merges.
 
-1. Verify GitHub and AWS identity.
-2. Audit the current repo workflows/IaC and existing AWS deployment path.
-3. Read the reusable guidance from `mytestlab123/chatgpt-aws`, especially its public-repository security and OIDC/control-path material.
-4. Design **repo-specific** GitHub OIDC trust and a minimal deployment role for `amitkarpe/aws-secops`.
-5. Add/adjust IaC and a main-only/manual GitHub deployment workflow through a PR.
-6. Run all existing offline tests and strict MkDocs checks without AWS credentials.
-7. Merge only after review.
-8. Run the OIDC deployment only when explicitly authorized.
-9. Verify the actual AWS state with AWS Core.
+Order:
+
+1. Verify GitHub and AWS identity/state.
+2. Audit existing workflows, scripts, IaC and retained AWS resources before designing replacements.
+3. Review reusable OIDC/security patterns from `mytestlab123/chatgpt-aws`.
+4. Design repo-specific GitHub OIDC trust and the smallest practical deployment role for `amitkarpe/aws-secops`.
+5. Add/adjust IaC and a main-only/manual deployment workflow through a PR.
+6. Run existing offline tests and strict MkDocs checks without AWS credentials.
+7. Merge after review.
+8. Run live deployment only when explicitly authorized.
+9. Verify actual AWS state independently with AWS Core.
 10. Record reusable learning in `docs/` and keep the public site current.
 
-Do not create a second framework merely to prove OIDC. Fit the mechanism around the existing project.
+Do not add another framework merely to demonstrate OIDC. Fit the mechanism around the existing project.
 
-## Current AWS Compliance Agent trust boundary
+## AWS Compliance Agent trust boundary
 
-Preserve the project’s current security model unless a new Issue explicitly changes it:
+Preserve this unless an approved Issue explicitly changes it:
 
 ```text
 AWS Config / finding evidence
@@ -142,97 +148,58 @@ Independent Config / audit evidence
 
 Rules:
 
-- The model is **not** the authorization boundary.
-- Human approval is **not** a substitute for machine authorization.
+- The model is not the authorization boundary.
+- Human approval is not a substitute for machine authorization.
 - Do not add a generic model-accessible AWS mutation tool.
 - Server-owned scope, exact actions, Policy and IAM remain independent controls.
 - `UNKNOWN`, `FAILED`, partial Config evidence and interrupted work remain explicit.
 - Provider readback is immediate remediation truth; AWS Config is independent asynchronous evidence.
-- CloudTrail/CloudWatch remain authoritative AWS audit/operational log sources where applicable.
+- CloudTrail/CloudWatch remain authoritative AWS audit/operational sources where applicable.
 
 ## Public repository safety
 
-This repository is public. Treat all of the following as public surfaces:
+This repository is public. Treat source, Git history, Issues/PRs, Actions logs/artifacts, screenshots/recordings and GitHub Pages as public surfaces.
 
-- source and docs;
-- Git history;
-- Issues and PRs;
-- Actions logs/artifacts;
-- screenshots and recordings;
-- GitHub Pages.
+Never publish credentials, passwords, API keys, cookies/tokens, auth/session material, private customer/company/government data, raw private findings or sensitive screenshots. Avoid unnecessary private ARNs/endpoints/resource IDs.
 
-Never publish:
+## Validation
 
-- credentials, passwords, API keys, cookies or tokens;
-- private account/customer/company data;
-- unnecessary private ARNs/endpoints/resource IDs;
-- raw private findings;
-- sensitive screenshots;
-- session/authentication material.
+Use proportional evidence, not test-count inflation.
 
-Harmless public AWS metadata is not automatically a secret, but do not expose identifiers without a reason.
-
-## Validation expectations
-
-Prefer proportional evidence, not test-count inflation.
-
-For code/IaC changes, normally check:
+For code/IaC changes normally check:
 
 - existing offline regression suite;
-- new targeted regression for the actual defect/change;
+- targeted regression for the actual change;
 - syntax/static validation;
-- `git diff --check` or equivalent;
-- strict MkDocs build if docs/navigation changed;
-- public-safety scan of changed material;
-- GitHub Actions result on the exact PR head/merge ref.
+- diff/whitespace validation;
+- strict MkDocs build when docs/navigation change;
+- public-safety review of changed material;
+- GitHub Actions on the exact PR head/merge ref.
 
-For deployed infrastructure, also verify the final state independently with AWS Core.
+For deployed infrastructure, independently verify final AWS state with AWS Core.
 
-Do not call a change production-ready merely because CI is green.
+Green CI does not mean production-ready.
 
-## Browser / UI verification — optional, not a dependency
+## Browser / UI verification
 
-UI verification is useful but separate from AWS control.
+Browser automation is optional, not part of the AWS control boundary.
 
-- In an ordinary ChatGPT session, public web pages can be inspected, but ChatGPT should **not assume it can see or control Amit’s local Chrome browser**.
-- If a session has **Computer Use / browser-control capability**, use it for proportional UI checks such as navigation, rendered status, responsive layout, or screenshots.
-- In **ChatGPT Work**, a cloud browser may be used for multi-step web interaction when that mode is available.
-- If local-browser control is unavailable, use the public site, synthetic/mock browser checks, or ask Amit for a screenshot only when visual evidence is actually needed.
+- Ordinary ChatGPT can inspect public web content but should not assume access to Amit's local Chrome window.
+- When Computer Use/browser control is available, it may be used for proportional visual checks.
+- ChatGPT Work can use its cloud browser when that mode is selected.
+- Otherwise use public URLs, synthetic/mock browser checks, or request a screenshot only when needed.
 
-Do not make browser automation a prerequisite for AWS/IaC work.
+## Durable handoff
 
-## Working style
+After substantial work update durable repository state with:
 
-- Keep milestones small and useful.
-- Prefer one cohesive PR over multiple micro-PRs.
-- Reuse existing architecture before adding services/frameworks.
-- Explain what will change before live AWS mutation.
-- For destructive or irreversible actions, get explicit confirmation.
-- Preserve the current demo unless a deployment is explicitly requested.
-- Keep historical proof, but clearly label historical architecture as historical.
-- Correct stale docs as part of the same change when behavior changes.
-
-## Handoff / durable state
-
-At the end of substantial work, record:
-
-- exact repository/branch/HEAD;
-- Issue/PR links;
+- repository/branch/HEAD;
+- active Issue/PR;
 - what changed;
 - tests/build result;
 - whether AWS was touched;
-- exact AWS verification performed;
+- AWS verification performed;
 - remaining known gaps;
-- next recommended milestone.
+- next action.
 
-Do not rely on chat memory alone for continuation.
-
-## One-URL bootstrap
-
-For a fresh ChatGPT session, send only:
-
-`https://github.com/amitkarpe/aws-secops/blob/main/PROMPT.md`
-
-Suggested instruction:
-
-> Read this bootstrap first and operate this project using ChatGPT as the primary controller/operator. Verify GitHub and AWS identity before changes. Use AWS Core for discovery and independent verification, Git/IaC as durable desired state, and repo-specific GitHub OIDC for deployments. Preserve the project’s exact-tool/human-approval/Policy boundaries and public-repository safety. Start by reporting the verified repo/AWS state and proposing the smallest next milestone.
+Update `CONTEXT.md` whenever current truth or active authority changes.
