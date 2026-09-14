@@ -43,6 +43,7 @@ nav:
       - Demo v1: demo-v1.md
       - Governance: governance.md
       - Learning path: learning-path.md
+      - AgentCore Harness operator experiments: research/AGENTCORE_HARNESS_OPERATOR_EXPERIMENTS.md
   - Operations:
       - LibreChat bulk demo (S3-specific): operations/LIBRECHAT_BULK_DEMO.md
       - Cost and cleanup: operations/COST_AND_CLEANUP.md
