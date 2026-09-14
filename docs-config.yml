@@ -42,29 +42,31 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Learn:
-      - Architecture: architecture.md
+      - Start here: learning-path.md
+      - Current architecture: architecture.md
       - Demo v1: demo-v1.md
       - Governance: governance.md
-      - Learning path: learning-path.md
-  - AgentCore Research:
-      - Research & Learning hub: research/index.md
-      - Harness operator experiments: research/agentcore-harness-operator-experiments.md
-      - AgentCore feature matrix: research/AGENTCORE_FEATURE_MATRIX.md
-      - Gateway + Policy live proof: research/GATEWAY_POLICY_LIVE_PROOF.md
-      - Historical Harness feasibility proof: research/HARNESS_NOVA2_LITE_LIVE_PROOF.md
-      - Model access matrix: research/MODEL_ACCESS_MATRIX.md
-      - Cost model: research/COST_MODEL_V0.md
-      - Connector safety framing: research/CHATGPT_CONNECTOR_SAFETY_FRAMING.md
+  - AgentCore Lab:
+      - Overview: research/index.md
+      - Current Harness experiment: research/agentcore-harness-operator-experiments.md
+      - Components and capabilities: research/AGENTCORE_FEATURE_MATRIX.md
+      - Earlier live proofs:
+          - Gateway + Policy proof: research/GATEWAY_POLICY_LIVE_PROOF.md
+          - Harness runtime proof: research/HARNESS_NOVA2_LITE_LIVE_PROOF.md
+      - Reference:
+          - Model access matrix: research/MODEL_ACCESS_MATRIX.md
+          - Cost model: research/COST_MODEL_V0.md
+          - Connector safety notes: research/CHATGPT_CONNECTOR_SAFETY_FRAMING.md
   - Operations:
       - LibreChat bulk demo (S3-specific): operations/LIBRECHAT_BULK_DEMO.md
       - Cost and cleanup: operations/COST_AND_CLEANUP.md
   - Technical proofs:
-      - Reliability hardening (offline proof): implementation/RELIABILITY_HARDENING_PROOF.md
-      - Governed S3 execution proof: implementation/PLATFORM_PHASE11_13_PROOF.md
-  - History / Research:
-      - Historical multi-source pilot demo: operations/DEMO_SCRIPT.md
-      - Phase 0B research plan: research/PHASE0B_PLAN.md
+      - Reliability hardening: implementation/RELIABILITY_HARDENING_PROOF.md
+      - Governed S3 execution: implementation/PLATFORM_PHASE11_13_PROOF.md
   - Project:
       - Project status: project-status.md
       - Operations Console direction: operator-console.md
       - Roadmap: roadmap.md
+  - History:
+      - Earlier multi-source pilot demo: operations/DEMO_SCRIPT.md
+      - Phase 0B research plan: research/PHASE0B_PLAN.md
