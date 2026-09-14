@@ -29,6 +29,12 @@ ChatGPT is the primary controller/operator.
 
 https://github.com/amitkarpe/aws-secops/issues/36
 
+Current implementation PR:
+
+**PR #37 — bootstrap repo-specific GitHub OIDC identity**
+
+https://github.com/amitkarpe/aws-secops/pull/37
+
 This is the active engineering milestone unless repository state has moved.
 
 Fresh-session command:
@@ -37,16 +43,25 @@ Fresh-session command:
 
 A session receiving that instruction should read `AGENTS.md`, this file, `PROMPT.md`, Issue #36, and any active PR linked to it; verify current GitHub state; verify current AWS identity and Region with AWS Core; then continue from repository state without asking Amit to repeat project history.
 
+## Current state
+
+- PR #37 defines a repository-specific GitHub OIDC preflight role and a manual, `main`-only preflight workflow.
+- Trust is bound to `repo:amitkarpe/aws-secops:ref:refs/heads/main` with audience `sts.amazonaws.com`.
+- The preflight role is read-only and constrained to `ap-southeast-1` for Config, Lambda, and AgentCore inspection.
+- PR validation remains credential-free.
+- CloudFormation template validation passed in `ap-southeast-1` with `CAPABILITY_NAMED_IAM` required.
+- AWS Access Analyzer returned zero findings for the inline preflight policy.
+- The account-level GitHub OIDC provider exists with client ID `sts.amazonaws.com`.
+- Existing Demo v1 resources have not been adopted, redeployed, or mutated by Issue #36 work.
+
 ## Current next action
 
-1. Verify GitHub and AWS identity/state.
-2. Audit existing deployment scripts/workflows/IaC and retained AWS resources.
-3. Reuse the OIDC/control-path pattern from `mytestlab123/chatgpt-aws` without copying identities.
-4. Design repo-specific GitHub OIDC trust and the smallest practical deployment role.
-5. Implement repository-owned IaC plus a main-only/manual deployment workflow through a PR.
-6. Keep PR validation AWS-free where practical.
-7. Deploy only after explicit authorization.
-8. Verify resulting AWS state independently with AWS Core.
-9. Record reusable learning in `docs/`.
+1. Complete review and merge PR #37 after green CI.
+2. Perform the one-time OIDC role bootstrap only with explicit authorization.
+3. Configure the repository variables required by `.github/workflows/aws-oidc-preflight.yml`.
+4. Run the manual preflight workflow from `main`.
+5. Verify the assumed identity and retained AWS state independently with AWS Core.
+6. Only after successful preflight, design the next explicitly reviewed deployment/adoption boundary; do not silently import or mutate Demo v1.
+7. Keep reusable learning under `docs/` and keep this file current-only.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
