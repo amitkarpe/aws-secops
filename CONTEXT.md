@@ -17,26 +17,20 @@ Repository: `amitkarpe/aws-secops`
 
 ## Current authority
 
-**Issue #36 — Establish ChatGPT-first GitHub OIDC + IaC deployment path**
-
-https://github.com/amitkarpe/aws-secops/issues/36
+Issue #36 is complete. No Demo v1 adoption/mutation milestone is currently authorized.
 
 ## Current state
 
-- Read-only GitHub OIDC preflight passed from `main`: https://github.com/amitkarpe/aws-secops/actions/runs/34818083174
-- PR #42 merged the isolated deployment-canary role/workflow/IaC.
-- PR #43 fixed the reserved SSM name; the canary now uses `/amitkarpe/aws-secops/deployment-canary`.
-- PR #43 validation passed: 128 offline tests, Documentation Pages, both CloudFormation templates, and Access Analyzer with zero findings.
-- The deploy-canary bootstrap role stack `aws-secops-github-oidc-deploy-canary` is `UPDATE_COMPLETE` with exact repo/main OIDC trust and exact canary stack/parameter scope.
-- The deployment canary itself has not run yet; Demo v1 remains untouched.
-- Issue #36 contains the current `HANDOFF: CODEX` for the final local `gh` variable setup + workflow dispatch.
+- Read-only GitHub OIDC preflight passed: https://github.com/amitkarpe/aws-secops/actions/runs/34818083174
+- PR #42 established the isolated deployment-canary role/workflow/IaC.
+- PR #43 corrected the reserved SSM path before first execution.
+- Deploy-canary bootstrap role stack is `UPDATE_COMPLETE` with exact repo/main OIDC trust and corrected bounded SSM scope.
+- End-to-end GitHub OIDC write canary passed from `main`: https://github.com/amitkarpe/aws-secops/actions/runs/34828258876
+- Independent AWS readback confirms stack `aws-secops-deployment-canary` is `CREATE_COMPLETE`, contains exactly one `AWS::SSM::Parameter`, and `/amitkarpe/aws-secops/deployment-canary` equals the deployed `main` commit SHA.
+- Demo v1 remains outside this canary boundary.
 
 ## Current next action
 
-1. X sets `AWS_SECOPS_DEPLOY_CANARY_ROLE_ARN` and `AWS_DEPLOY_CANARY_ENABLED=true` locally with `gh` (keep values out of public Git).
-2. X runs `aws-deploy-canary.yml` from `main` using the authorized personal AWS context.
-3. Verify the new workflow PASS and the SSM commit marker independently with AWS Core.
-4. Confirm Demo v1 remained untouched.
-5. Only after the canary passes, choose an existing Demo v1 component for explicit adoption/import design.
+Create a new Issue before touching Demo v1. Choose exactly one existing Demo v1 component and design its explicit IaC adoption/import boundary first; do not silently import or mutate retained resources.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
