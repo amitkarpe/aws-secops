@@ -36,6 +36,9 @@ Resources:
                   - lambda:ListFunctions
                   - bedrock-agentcore:ListGateways
                 Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
       Tags:
         - Key: project
           Value: aws-secops
