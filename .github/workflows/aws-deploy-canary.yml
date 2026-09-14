@@ -23,7 +23,7 @@ jobs:
       AWS_ROLE_ARN: ${{ vars.AWS_SECOPS_DEPLOY_CANARY_ROLE_ARN }}
       AWS_ALLOWED_ACCOUNT_ID: ${{ vars.AWS_ALLOWED_ACCOUNT_ID }}
       STACK_NAME: aws-secops-deployment-canary
-      PARAMETER_NAME: /aws-secops/deployment-canary
+      PARAMETER_NAME: /amitkarpe/aws-secops/deployment-canary
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
