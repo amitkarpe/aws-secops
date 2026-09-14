@@ -14,11 +14,12 @@ class OidcPreflightSafetyTests(unittest.TestCase):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
 
     def test_trust_is_exact_repo_main_only(self):
-        expected = "repo:amitkarpe/aws-secops:ref:refs/heads/main"
+        expected = "repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main"
         self.assertIn(f"Default: {expected}", self.template)
         self.assertIn(f"- {expected}", self.template)
         self.assertIn("token.actions.githubusercontent.com:aud: sts.amazonaws.com", self.template)
-        self.assertNotIn("repo:amitkarpe/aws-secops:*", self.template)
+        self.assertNotIn("repo:amitkarpe/aws-secops:ref:refs/heads/main", self.template)
+        self.assertNotIn("repo:amitkarpe@1894622/aws-secops@1362357126:*", self.template)
 
     def test_preflight_policy_is_read_only_and_singapore_only(self):
         expected_actions = {
