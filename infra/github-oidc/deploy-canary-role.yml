@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Issue #36 repository-specific GitHub OIDC role for the isolated deployment canary.
+
+Parameters:
+  GitHubSubject:
+    Type: String
+    Default: repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main
+    AllowedValues:
+      - repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main
+
+Resources:
+  GitHubDeployCanaryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: github-actions-aws-secops-deploy-canary
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Ref GitHubSubject
+      Policies:
+        - PolicyName: aws-secops-deployment-canary
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ValidateTemplate
+                Effect: Allow
+                Action:
+                  - cloudformation:ValidateTemplate
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+              - Sid: ManageCanaryStack
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                Resource: !Sub arn:${AWS::Partition}:cloudformation:ap-southeast-1:${AWS::AccountId}:stack/aws-secops-deployment-canary/*
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+              - Sid: ManageCanaryParameter
+                Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                  - ssm:DeleteParameter
+                  - ssm:AddTagsToResource
+                  - ssm:RemoveTagsFromResource
+                Resource: !Sub arn:${AWS::Partition}:ssm:ap-southeast-1:${AWS::AccountId}:parameter/aws-secops/deployment-canary
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+      Tags:
+        - Key: project
+          Value: aws-secops
+        - Key: purpose
+          Value: github-oidc-deployment-canary
+
+Outputs:
+  DeployCanaryRoleName:
+    Value: !Ref GitHubDeployCanaryRole
+  DeployCanaryRoleArn:
+    Value: !GetAtt GitHubDeployCanaryRole.Arn
