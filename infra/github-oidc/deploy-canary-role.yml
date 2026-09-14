@@ -59,7 +59,7 @@ Resources:
                   - ssm:DeleteParameter
                   - ssm:AddTagsToResource
                   - ssm:RemoveTagsFromResource
-                Resource: !Sub arn:${AWS::Partition}:ssm:ap-southeast-1:${AWS::AccountId}:parameter/aws-secops/deployment-canary
+                Resource: !Sub arn:${AWS::Partition}:ssm:ap-southeast-1:${AWS::AccountId}:parameter/amitkarpe/aws-secops/deployment-canary
                 Condition:
                   StringEquals:
                     aws:RequestedRegion: ap-southeast-1
