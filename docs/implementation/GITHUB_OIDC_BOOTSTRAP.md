@@ -6,11 +6,13 @@ Establish a repository-specific GitHub OIDC identity for `amitkarpe/aws-secops` 
 
 ## Trust boundary
 
-The bootstrap role trusts only the exact GitHub Actions subject for `main`:
+The bootstrap role trusts only the exact GitHub Actions subject observed for this repository's `main` branch:
 
-`repo:amitkarpe/aws-secops:ref:refs/heads/main`
+`repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main`
 
 The expected audience is `sts.amazonaws.com`.
+
+The immutable GitHub owner/repository IDs in the subject were confirmed from GitHub metadata and the failed STS web-identity event. Do not broaden this to an organization or repository wildcard merely to make OIDC succeed.
 
 This repository must not reuse account IDs, role ARNs, Terraform state identities, or retained resource names from the reference repository `mytestlab123/chatgpt-aws`.
 
@@ -36,6 +38,19 @@ PR validation (no AWS credentials)
   -> read-only preflight
   -> AWS Core independent verification
 ```
+
+## OIDC troubleshooting rule
+
+Follow the repository reference model in `mytestlab123/chatgpt-aws/PROMPT.md` and `docs/learning/github-oidc.md`:
+
+1. confirm the workflow has job-scoped `id-token: write`;
+2. verify the AWS OIDC provider and `sts.amazonaws.com` audience;
+3. inspect the actual web-identity subject in CloudTrail when `AssumeRoleWithWebIdentity` fails;
+4. compare it with the role trust policy;
+5. update trust only to the exact legitimate subject observed;
+6. never replace precise trust with a broad organization wildcard as a troubleshooting shortcut.
+
+The first live preflight failure for this repository was caused by using the older name-only subject form in IAM trust while GitHub issued the ID-qualified subject above.
 
 ## Codex / local operator path
 
