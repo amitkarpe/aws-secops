@@ -46,6 +46,24 @@ Codex is optional. Use it only when an independent implementation or validation 
 - Update `CONTEXT.md` whenever current truth, active authority or next action changes.
 - Keep `SPEC.md` as the current trusted contract; historical proofs belong under `docs/`.
 
+## Sensitive GitHub / AWS writes
+
+For IAM, OIDC, GitHub Actions credentials, deployment roles, or other security-sensitive changes:
+
+1. Re-read the exact target file, branch, and PR immediately before writing.
+2. Change one security boundary at a time.
+3. Prefer one atomic file write, then re-fetch and verify it.
+4. Do not bundle IAM + workflow + deployment mutation into one step.
+5. If a write is safety-blocked:
+   - do not broaden permissions or weaken safeguards;
+   - re-read the unchanged target;
+   - retry the identical bounded write once;
+   - if still blocked, stop and report it.
+6. Distinguish safety blocks from approval prompts, stale SHA/409 errors, GitHub permission failures, and validation failures.
+7. A repository write does not authorize AWS mutation.
+
+Detailed observations and the experiment log live in `docs/research/CHATGPT_CONNECTOR_SAFETY_FRAMING.md`.
+
 ## Git workflow
 
 For non-trivial work prefer:

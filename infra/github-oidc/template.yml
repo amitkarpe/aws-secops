@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Issue #36 bootstrap for a repository-specific GitHub Actions OIDC preflight role.
+
+Parameters:
+  GitHubSubject:
+    Type: String
+    Default: repo:amitkarpe/aws-secops:ref:refs/heads/main
+    AllowedValues:
+      - repo:amitkarpe/aws-secops:ref:refs/heads/main
+
+Resources:
+  GitHubPreflightRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: github-actions-aws-secops-preflight
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Ref GitHubSubject
+      Policies:
+        - PolicyName: aws-secops-readonly-preflight
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - config:DescribeConfigurationRecorders
+                  - lambda:ListFunctions
+                  - bedrock-agentcore:ListGateways
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+      Tags:
+        - Key: project
+          Value: aws-secops
+        - Key: owner
+          Value: amit
+        - Key: purpose
+          Value: github-oidc-preflight
+
+Outputs:
+  PreflightRoleName:
+    Value: !Ref GitHubPreflightRole
