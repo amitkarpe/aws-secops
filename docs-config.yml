@@ -11,6 +11,9 @@ theme:
   features:
     - navigation.sections
     - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
     - content.code.copy
   palette:
     - scheme: default
@@ -43,19 +46,24 @@ nav:
       - Demo v1: demo-v1.md
       - Governance: governance.md
       - Learning path: learning-path.md
-      - AgentCore Harness operator experiments: research/agentcore-harness-operator-experiments.md
+  - AgentCore Research:
+      - Research & Learning hub: research/index.md
+      - Harness operator experiments: research/agentcore-harness-operator-experiments.md
+      - AgentCore feature matrix: research/AGENTCORE_FEATURE_MATRIX.md
+      - Gateway + Policy live proof: research/GATEWAY_POLICY_LIVE_PROOF.md
+      - Historical Harness feasibility proof: research/HARNESS_NOVA2_LITE_LIVE_PROOF.md
+      - Model access matrix: research/MODEL_ACCESS_MATRIX.md
+      - Cost model: research/COST_MODEL_V0.md
+      - Connector safety framing: research/CHATGPT_CONNECTOR_SAFETY_FRAMING.md
   - Operations:
       - LibreChat bulk demo (S3-specific): operations/LIBRECHAT_BULK_DEMO.md
       - Cost and cleanup: operations/COST_AND_CLEANUP.md
   - Technical proofs:
       - Reliability hardening (offline proof): implementation/RELIABILITY_HARDENING_PROOF.md
       - Governed S3 execution proof: implementation/PLATFORM_PHASE11_13_PROOF.md
-      - Gateway + Policy live proof (historical feasibility): research/GATEWAY_POLICY_LIVE_PROOF.md
-      - AgentCore feature matrix: research/AGENTCORE_FEATURE_MATRIX.md
-      - Cost model: research/COST_MODEL_V0.md
   - History / Research:
       - Historical multi-source pilot demo: operations/DEMO_SCRIPT.md
-      - Historical Harness feasibility proof: research/HARNESS_NOVA2_LITE_LIVE_PROOF.md
+      - Phase 0B research plan: research/PHASE0B_PLAN.md
   - Project:
       - Project status: project-status.md
       - Operations Console direction: operator-console.md
