@@ -26,7 +26,7 @@ See `docs/demo-v1.md` for the evidence digest and exact claim boundaries.
 - This is not production-ready, multi-account or arbitrary-resource remediation.
 - Read-only vs execution intent is partly an agent-behavior rule; hard AWS-change controls remain human approval, Gateway/Policy, exact tools and IAM.
 - S3 Operator refresh primarily presents saved durable batch/provider-verification evidence; it should not be described as a fresh full S3 scan on every refresh.
-- Issue #32 adds offline-tested SG safe terminalization and Config page/token bounds. It does not add automatic SG continuation, mixed-subset chat retries, or production recovery certification.
+- Issue #32 adds offline-tested S3 and SG safe terminalization plus Config page/token bounds. It does not add automatic continuation, mixed-subset chat retries, or production recovery certification.
 - Demo v1 does not claim that a named human identity is itself evaluated by the current Policy decision.
 - Demo v1 does not certify complete host-wide least-privilege isolation.
 - Earlier Harness, multi-source pilot and phase-plan material is retained as history/research and is not the current primary architecture.

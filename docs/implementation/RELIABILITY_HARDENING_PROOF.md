@@ -20,7 +20,7 @@ Reads of either supported rule require a healthy recorder. At most **10 evaluati
 
 These are application budgets, not AWS quotas or a fixed response-time promise. Existing SDK request timeouts/retry limits still apply. No recorder, rule, delivery bucket, or IAM change is made.
 
-### SG interrupted work
+### S3 and SG interrupted work
 
 The chosen recovery is **safe terminalization**, not automatic continuation.
 
@@ -30,7 +30,14 @@ The chosen recovery is **safe terminalization**, not automatic continuation.
 | APPROVED but unclaimed | FAILED, changed=false, not dispatched | No; old approval remains consumed |
 | COMPLETED / SKIPPED / DENIED / FAILED | Preserved | No terminal replay |
 
-On an uncertain worker outcome, already in-flight calls finish before unclaimed items are expired. Each family refuses reconciliation while its own worker or an item is still running. A failed reconciliation read leaves UNKNOWN; a successful read proves present state, not who changed it.
+Both supported families use this same rule. On startup, each first changes
+`RUNNING` to `UNKNOWN`, then expires remaining `APPROVED` items, and persists
+the journal once. On worker-launch failure, no provider call occurs and all
+unclaimed work is expired. On an uncertain worker outcome, already in-flight
+calls finish before unclaimed items are expired. Each family refuses
+reconciliation while its own worker or an item is still running. A failed
+reconciliation read leaves UNKNOWN; a successful read proves present state,
+not who changed it.
 
 When no uncertain/active item remains, the existing owner-operated **full-manifest** preview path can archive the old journal and create a new PENDING batch, subject to its guards and version budget. Fresh execution requires a new approval and the unchanged Gateway/Policy route. Already compliant resources can be skipped by the existing worker without mutation.
 
@@ -40,7 +47,7 @@ When no uncertain/active item remains, the existing owner-operated **full-manife
 
 Successful S3 step/reconciliation readbacks persist per-item `verified_at`. Summary reports the latest such saved event. The timestamp is not batch creation or file modification time, and it does not prove every resource is still compliant now. Old journals keep their counts and return no fabricated verification time.
 
-The UI labels S3 as **saved batch readback** and SG as **current EC2 status read**. FAILED/DENIED and UNKNOWN batches remain visibly incomplete rather than displaying the consumed decision as if it were a completion result.
+The UI labels S3 as **saved batch readback** and SG as **current EC2 status read**. FAILED/DENIED and UNKNOWN batches remain visibly incomplete rather than displaying the consumed decision as if it were a completion result. For either family, a replacement batch is only a full-manifest `PENDING` preview and needs a fresh human approval; reconciliation never dispatches remaining work.
 
 ## How to reproduce offline
 
@@ -55,7 +62,12 @@ mkdocs build --strict -f docs-config.yml
 
 No AWS identity, runtime manifests, live endpoint, or credentials are required. The offline workflow runs the existing full suite on PRs/main with read-only repository permissions; documentation PR builds never deploy Pages.
 
-Focused local validation used Python 3.13 and passed **47 tests** across `test_bulk`, `test_config_compliance`, `test_sg_compliance`, `test_phase17_19_support`, and `test_bulk_governed`. The local sandbox lacked the MCP package, so it is **not** the source of a full-suite PASS claim. Use the exact PR's GitHub Actions checks for the full dependency-installed suite and strict documentation build.
+Focused local validation with the repository's dependency environment passed the
+full **117-test** suite, including the three S3 interruption regressions, and
+the existing `scripts/check.sh` check passed. JavaScript syntax checks passed
+for every `integration/*.cjs` file and `mkdocs build --strict -f
+docs-config.yml` passed. These are offline checks only; they do not constitute
+AWS interruption, deployment, or production-recovery proof.
 
 ## Coverage and outstanding limits
 

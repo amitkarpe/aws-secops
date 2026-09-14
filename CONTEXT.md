@@ -23,7 +23,7 @@ The repository and site are public. Keep credentials, private infrastructure ide
 
 ## Current work rule
 
-Issue #32 is the active bounded code/docs-hardening milestone: Config pagination and recorder checks, safe SG interruption terminalization, truthful status evidence, and offline PR tests. Existing two-family scope and approval/Gateway/Policy contracts remain fixed.
+Issue #32 is the active bounded code/docs-hardening milestone: Config pagination and recorder checks, safe S3 and SG interruption terminalization, truthful status evidence, and offline PR tests. Existing two-family scope and approval/Gateway/Policy contracts remain fixed.
 
 This issue authorizes implementation and offline validation only. No AWS calls, reset/re-arm, service restart, deployment, IAM/policy changes, or live remediation are authorized. Preserve the existing `fix/review-hardening` branch/work; never overwrite unrelated changes.
 

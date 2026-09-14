@@ -119,14 +119,15 @@ Provider readback
 - AWS Config is independent evidence and may lag provider truth;
 - CloudTrail and CloudWatch remain authoritative AWS audit/log sources where applicable.
 
-### Bounded SG interruption recovery
+### Bounded S3 and SG interruption recovery
 
-Issue #32 implements safe terminalization, not automatic replay:
+Issue #32 implements the same safe terminalization rule for both supported
+families, not automatic replay:
 
 - On process recovery, a claimed `RUNNING` item becomes `UNKNOWN`. Unclaimed `APPROVED` items become `FAILED` with `changed=false` and an explicit **not dispatched** reason.
 - An uncertain worker outcome stops further claims. Already in-flight calls finish; then unclaimed work is terminalized. Failure to launch the worker also expires unstarted work.
 - Reconciliation is read-only and is rejected while that family's worker or a `RUNNING` item is active. An unavailable read leaves `UNKNOWN` unresolved. A matching read proves state, not which caller caused a change.
-- The old SG approval remains consumed. It cannot start the old batch again. A fresh full-manifest preview can be created only after uncertainty is resolved and existing preview limits/guards pass; it preserves the prior journal and requires a new approval before execution.
+- The old S3 or SG approval remains consumed. It cannot start the old batch again. A fresh full-manifest preview can be created only after uncertainty is resolved and existing preview limits/guards pass; it preserves the prior journal and requires a new approval before execution.
 - The normal Config-driven planner still requires complete-family readiness. Mixed compliant/non-compliant recovery is **not** a new automatic chat/subset-retry capability. Do not edit journals or reset resources merely to clear a failure.
 
 These cases are tested with offline providers. They do not certify every filesystem/process failure, live interruption recovery, or production availability. See [hardening evidence](docs/implementation/RELIABILITY_HARDENING_PROOF.md).

@@ -61,6 +61,9 @@ class BulkStore:
                     if item['state'] == 'RUNNING':
                         item.update(state='UNKNOWN', message='Interrupted; provider reconciliation required', changed=None)
                         changed = True
+                # A decision belongs to the process that accepted it. Never let
+                # a later process dispatch work that process did not claim.
+                changed = self._fail_unclaimed() or changed
                 if changed:
                     self.save()
             except Exception:
@@ -118,6 +121,20 @@ class BulkStore:
         finally:
             if temp and os.path.exists(temp):
                 os.unlink(temp)
+
+    def _fail_unclaimed(self):
+        """Expire approved work that has not been claimed for dispatch.
+
+        RUNNING and UNKNOWN remain untouched because their effect is uncertain
+        and only read-only reconciliation may resolve them.
+        """
+        changed = False
+        for item in self.data['items']:
+            if item['state'] == 'APPROVED':
+                item.update(state='FAILED', changed=False, after=None,
+                            message='Not dispatched: batch interrupted; fresh preview and approval required')
+                changed = True
+        return changed
 
     def preview(self, renew=False):
         with self.lock:
@@ -228,7 +245,13 @@ class BulkStore:
             elif hasattr(self.provider, 'authorize'):
                 self.provider.authorize(batch_id)
             self.worker = threading.Thread(target=self._run, args=(batch_id,), daemon=False)
-            self.worker.start()
+            try:
+                self.worker.start()
+            except Exception:
+                self.worker = None
+                self._fail_unclaimed()
+                self.save()
+                raise RuntimeError('worker could not start; no dispatch; fresh approval required') from None
             return self.summary()
 
     def _run(self, batch_id):
@@ -248,7 +271,14 @@ class BulkStore:
                         future.result()
         except Exception:
             # Journal stays authoritative. Recovery is explicit, not automatic.
-            return
+            pass
+        finally:
+            # The executor has joined every submitted step before this point.
+            # Preserve uncertain claims, but consume remaining approvals so a
+            # later start cannot replay them.
+            with self.lock:
+                if self._fail_unclaimed():
+                    self.save()
 
     def reconcile(self, batch_id):
         with self.lock:
