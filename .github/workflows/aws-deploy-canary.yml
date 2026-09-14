@@ -43,6 +43,7 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           allowed-account-ids: ${{ env.AWS_ALLOWED_ACCOUNT_ID }}
+          mask-aws-account-id: true
 
       - name: Verify caller and Region
         shell: bash
@@ -74,7 +75,7 @@ jobs:
             if [ "$UPDATE_RC" -eq 0 ]; then
               aws cloudformation wait stack-update-complete --stack-name "$STACK_NAME"
             elif ! grep -q 'No updates are to be performed' <<<"$UPDATE_OUTPUT"; then
-              printf '%s\n' "$UPDATE_OUTPUT" >&2
+              echo "CloudFormation canary update failed; inspect with authorized AWS tooling." >&2
               exit "$UPDATE_RC"
             fi
           else
