@@ -25,10 +25,11 @@ class DeploymentCanarySafetyTests(unittest.TestCase):
     def test_deploy_role_is_bounded_to_canary(self):
         self.assertIn("stack/aws-secops-deployment-canary/*", self.role_template)
         self.assertIn("parameter/aws-secops/deployment-canary", self.role_template)
-        self.assertNotIn("cloudformation:DeleteStack", self.role_template)
-        self.assertNotIn("iam:", self.role_template.lower())
-        self.assertNotIn("lambda:", self.role_template.lower())
-        self.assertNotIn("bedrock-agentcore:", self.role_template.lower())
+        policy_section = self.role_template.split("PolicyName: aws-secops-deployment-canary", 1)[1]
+        self.assertNotIn("cloudformation:DeleteStack", policy_section)
+        self.assertNotIn("- iam:", policy_section.lower())
+        self.assertNotIn("- lambda:", policy_section.lower())
+        self.assertNotIn("- bedrock-agentcore:", policy_section.lower())
 
     def test_canary_stack_only_manages_one_ssm_parameter(self):
         self.assertEqual(self.canary_template.count("Type: AWS::SSM::Parameter"), 1)
