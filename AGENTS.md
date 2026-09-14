@@ -1,37 +1,65 @@
 # AGENTS.md
 
-## Read Order
+Repository: `amitkarpe/aws-secops`
 
-1. `AGENTS.md`
-2. `CONTEXT.md`
-3. `SPEC.md` when work changes a trusted contract, release, environment, or
-   external system.
+## Fresh ChatGPT session
+
+A new ChatGPT session may begin with only:
+
+> `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
+
+Treat that as a complete bootstrap instruction.
+
+The session must:
+
+1. Read `AGENTS.md` and `CONTEXT.md` first.
+2. Read `PROMPT.md` automatically for the full ChatGPT + GitHub + AWS Core operating model; the user does not need to mention it separately.
+3. Use `CONTEXT.md` to identify the current authority. Read the referenced active Issue/PR and their latest relevant comments. If repository state has moved, re-discover open Issues/PRs and reconcile `CONTEXT.md` before acting.
+4. Read `SPEC.md` when work changes a trusted contract, release, environment, AWS state, or external system. Read `ROADMAP.md` when selecting future scope.
+5. Verify GitHub repository/default branch/current HEAD before changes. Before AWS-specific decisions or operations, verify the current AWS identity and Region with AWS Core.
+6. Continue from the current durable state without asking Amit to repeat context that is already in the repository.
+
+If multiple open work items exist, do **not** guess. `CONTEXT.md` names the current authority; otherwise report the ambiguity before mutation.
+
+## Operating model
+
+ChatGPT is the primary controller, reviewer and operator.
+
+> **AWS Core discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS Core independently verifies.**
+
+GitHub is durable engineering state. AWS is runtime state. Chat history is not authoritative.
+
+Codex is optional. Use it only when an independent implementation or validation worker materially helps; it is not required for normal operation.
 
 ## Rules
 
-- Follow KISS: one problem, one happy path, one command, one proof, one result.
-- Preserve existing work. Do not revert unrelated changes or use destructive
-  Git commands without explicit approval.
-- Keep durable code, decisions, and reports in Git. Do not put secrets,
-  credentials, large dependencies, or copied repositories in temporary paths.
-- Create a temporary directory or worktree only when isolation is needed.
-  A terminal result or `.done` marker alone never authorizes deletion. Remove
-  an exact worktree or temporary directory only with owner/controller
-  acceptance and explicit cleanup authority; preserve work that is active,
-  held, dirty, or unknown.
-- Update `CONTEXT.md` when current truth or the next action changes.
-- Keep `SPEC.md` small. A worker proceeds inside an approved SPEC and stops on
-  a safety, scope, authorization, or evidence failure.
+- Follow KISS: one useful milestone, one happy path, proportional proof, one usable result.
+- Prefer read-only discovery before mutation.
+- Preserve existing work. Do not revert unrelated changes or use destructive Git commands without explicit approval.
+- Keep durable code, decisions and evidence in Git. Never commit secrets, credentials, auth/session material, private findings or unnecessary private infrastructure identifiers.
+- Treat this repository, Git history, Issues/PRs, Actions logs/artifacts and GitHub Pages as public.
+- Use repository-owned IaC for durable AWS desired state whenever practical.
+- Prefer short-lived, repo-specific GitHub OIDC credentials over stored AWS access keys.
+- Keep PR validation credential-free where possible. Live deployment should be main-only/manual for this lab unless an approved Issue changes that contract.
+- Preserve the AWS Compliance Agent security boundary: human approval, AgentCore Gateway/Policy, exact bounded tools, provider readback; no generic model-accessible AWS mutation tool.
+- Explain the intended AWS change before live mutation. Get explicit confirmation for destructive or irreversible actions.
+- Update `CONTEXT.md` whenever current truth, active authority or next action changes.
+- Keep `SPEC.md` as the current trusted contract; historical proofs belong under `docs/`.
 
-## Global Guidance
+## Git workflow
 
-For this repository, follow the standing GitHub loop: Codex implements and
-validates the posted handoff; ChatGPT reviews the full diff, fixes the same PR
-if needed, merges when clean, then creates the next Issue/PR and handoff.
-Start concrete in-scope handoffs without waiting for another go. Batch Git
-publication; do not invent the next scope or skip the review gate.
+For non-trivial work prefer:
 
-When available, use `~/.agent/CORE.md` as the shared machine-wide operating
-contract. `~/.codex/AGENTS.md` is a Codex-specific adapter only. Agent OS is
-reusable guidance, never automatic project authority; local repository rules
-and approved SPECs remain authoritative.
+```text
+Issue
+  -> branch
+  -> code / IaC / docs
+  -> credential-free PR validation
+  -> review
+  -> squash merge
+  -> deployment only when authorized
+  -> independent AWS Core verification
+  -> evidence/docs update
+```
+
+Use the existing PR for corrections. Do not create parallel replacement PRs for the same milestone unless necessary.
