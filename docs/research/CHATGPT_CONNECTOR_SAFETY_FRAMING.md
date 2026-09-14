@@ -22,6 +22,7 @@ During the same Issue #36 task we saw several different outcomes from closely re
 5. A later atomic retry of the same bounded, read-only OIDC preflight workflow succeeded.
 6. A later update attempt returned HTTP 409 because the file SHA was stale. Re-reading the branch showed another successful write had already moved the file. This was a normal GitHub concurrency/version error, **not** a safety block.
 7. With user-selected Extra High thinking effort, a new atomic static-safety test file was committed successfully and then re-fetched successfully. The test file makes no AWS calls and grants no permissions.
+8. A stronger Extra High trial changed the existing IAM policy only to **tighten** it with `aws:RequestedRegion: ap-southeast-1`. The first write was safety-blocked. The file was re-read and confirmed unchanged with the same SHA. An identical retry with the same content, same branch, same file SHA, and same stated security boundary then succeeded.
 
 No AWS mutation was performed during these observations.
 
@@ -33,11 +34,12 @@ We can conclude only the following from the observed evidence:
 - some attempts were blocked by a connector/platform safety check;
 - later, more narrowly scoped attempts succeeded;
 - ordinary GitHub errors such as a stale file SHA can look like another failure but have a different cause;
-- a successful later attempt does **not** prove that thinking effort alone caused the change in result.
+- thinking effort alone does **not** explain the outcomes: at Extra High, the same atomic IAM hardening write was first blocked and then succeeded on an identical retry;
+- the evidence is therefore more consistent with a **borderline or variable safety classification plus task framing/context**, rather than a simple deterministic rule such as “Medium/Extra High always works.”
 
 ## Working hypothesis
 
-The most useful hypothesis to test is that sensitive infrastructure changes are more reliable when the task is framed and executed as small, independently reviewable operations.
+The most useful hypothesis is that sensitive infrastructure changes are more reliable when the task is framed and executed as small, independently reviewable operations, while some residual variability remains in the safety decision.
 
 Possible contributing variables include:
 
@@ -49,7 +51,7 @@ Possible contributing variables include:
 6. reasoning/thinking effort;
 7. normal variability in a borderline safety classification.
 
-We do **not** currently have enough controlled trials to rank these variables confidently.
+The Extra High IAM retry experiment increases confidence that item 7 is real and that item 6 is not sufficient by itself.
 
 ## Recommended operating protocol
 
@@ -74,10 +76,16 @@ For GitHub + AWS + IAM/OIDC work, use this sequence:
    - re-fetch the file / PR
    - distinguish safety block vs GitHub/API error
 
-5. CONTINUE TO THE NEXT CHANGE
+5. IF SAFETY-BLOCKED
+   - do not broaden permissions
+   - re-read the exact target state
+   - one identical retry is useful for classifying variability
+   - record blocked vs successful result
+
+6. CONTINUE TO THE NEXT CHANGE
    - only after the previous boundary is verified
 
-6. AWS APPLY IS SEPARATE
+7. AWS APPLY IS SEPARATE
    - repository write != AWS deployment
    - require the repository's normal approval/merge/bootstrap process
 ```
@@ -107,15 +115,19 @@ If a tool call fails, classify the failure first:
 - validation/syntax error,
 - other.
 
+If the call is safety-blocked and the intended change is still valid:
+- re-read the exact target state;
+- do not widen permissions or weaken safeguards;
+- at most one identical retry may be used to distinguish a stable block from variable classification;
+- record both outcomes.
+
 Do not broaden permissions merely to make the operation pass.
 Do not treat a repository write as approval to mutate AWS.
 ```
 
 ## Thinking-effort experiment
 
-Amit observed that the workflow became more reliable after increasing thinking effort. This is worth testing, but the experiment must avoid confusing correlation with causation.
-
-For future comparable tasks, record:
+Amit observed that the workflow became more reliable after increasing thinking effort. This was worth testing, but the experiment must avoid confusing correlation with causation.
 
 | Trial | Thinking effort | Change size | Sensitive boundary | Result | Failure class |
 | --- | --- | --- | --- | --- | --- |
@@ -123,16 +135,20 @@ For future comparable tasks, record:
 | B | Medium | atomic IAM file | IAM/OIDC trust + read-only role | success | none |
 | C | Medium | atomic workflow | `id-token: write` + read-only OIDC | initial block, later success | safety check / none |
 | D | Extra High (user-selected) | atomic validation change | static safety tests only | success + readback verified | none |
+| E1 | Extra High (user-selected) | atomic IAM hardening | add Singapore-only `aws:RequestedRegion` condition | blocked | safety check |
+| E2 | Extra High (same session) | identical IAM hardening | same content, same SHA, same boundary | success + readback verified | none |
 
-Trial D supports the atomic-execution hypothesis, but it is **not a controlled proof** that Extra High thinking caused the success because the requested change was safer than the IAM/OIDC writes in Trials B/C.
-
-To learn anything useful, keep the requested change as similar as possible between future trials and record the exact failure category.
+Trial E is the strongest evidence so far. E1 and E2 held the requested change and thinking effort effectively constant, while the result changed. This means thinking effort can improve planning quality, but it cannot be treated as the switch that determines whether a sensitive connector write passes.
 
 ## KISS rule for this repository
 
 For security-sensitive ChatGPT -> GitHub work:
 
 > **One verified boundary, one atomic write, one readback. Then continue.**
+
+If an otherwise valid atomic write is safety-blocked:
+
+> **Re-read, keep the boundary unchanged, retry once, and classify the result.**
 
 For durable AWS delivery, the repository's existing rule still applies:
 
