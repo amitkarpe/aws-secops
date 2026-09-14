@@ -61,6 +61,9 @@ class BulkStore:
                     if item['state'] == 'RUNNING':
                         item.update(state='UNKNOWN', message='Interrupted; provider reconciliation required', changed=None)
                         changed = True
+                # A decision belongs to the process that accepted it. Never let
+                # a later process dispatch work that process did not claim.
+                changed = self._fail_unclaimed() or changed
                 if changed:
                     self.save()
             except Exception:
@@ -118,6 +121,20 @@ class BulkStore:
         finally:
             if temp and os.path.exists(temp):
                 os.unlink(temp)
+
+    def _fail_unclaimed(self):
+        """Expire approved work that has not been claimed for dispatch.
+
+        RUNNING and UNKNOWN remain untouched because their effect is uncertain
+        and only read-only reconciliation may resolve them.
+        """
+        changed = False
+        for item in self.data['items']:
+            if item['state'] == 'APPROVED':
+                item.update(state='FAILED', changed=False, after=None,
+                            message='Not dispatched: batch interrupted; fresh preview and approval required')
+                changed = True
+        return changed
 
     def preview(self, renew=False):
         with self.lock:
@@ -202,6 +219,8 @@ class BulkStore:
         except Exception:
             update = dict(state='UNKNOWN' if dispatched else 'FAILED', changed=None if dispatched else False,
                           message='Dispatch/readback uncertain; reconcile, do not replay' if dispatched else 'Pre-read failed; no dispatch')
+        if update.get('state') in {'COMPLETED', 'SKIPPED'}:
+            update['verified_at'] = datetime.now(timezone.utc).isoformat()
         with self.lock:
             item.update(update)
             self.save()
@@ -226,7 +245,13 @@ class BulkStore:
             elif hasattr(self.provider, 'authorize'):
                 self.provider.authorize(batch_id)
             self.worker = threading.Thread(target=self._run, args=(batch_id,), daemon=False)
-            self.worker.start()
+            try:
+                self.worker.start()
+            except Exception:
+                self.worker = None
+                self._fail_unclaimed()
+                self.save()
+                raise RuntimeError('worker could not start; no dispatch; fresh approval required') from None
             return self.summary()
 
     def _run(self, batch_id):
@@ -246,18 +271,29 @@ class BulkStore:
                         future.result()
         except Exception:
             # Journal stays authoritative. Recovery is explicit, not automatic.
-            return
+            pass
+        finally:
+            # The executor has joined every submitted step before this point.
+            # Preserve uncertain claims, but consume remaining approvals so a
+            # later start cannot replay them.
+            with self.lock:
+                if self._fail_unclaimed():
+                    self.save()
 
     def reconcile(self, batch_id):
         with self.lock:
             self.require(batch_id)
+            if ((self.worker and self.worker.is_alive())
+                    or any(i['state'] == 'RUNNING' for i in self.data['items'])):
+                raise ValueError('execution active; wait before reconciliation')
             for item in self.data['items']:
                 if item['state'] != 'UNKNOWN':
                     continue
                 try:
                     after = bpa(self.provider.read(item['resource']))
                     item.update(state='COMPLETED' if after == TARGET else 'FAILED', after=after,
-                                message='Read-only reconciliation; effect attribution unknown; no retry')
+                                message='Read-only reconciliation; effect attribution unknown; no retry',
+                                verified_at=datetime.now(timezone.utc).isoformat() if after == TARGET else None)
                 except Exception:
                     item['message'] = 'Reconciliation unavailable; remains UNKNOWN'
                 self.save()
@@ -269,11 +305,14 @@ class BulkStore:
                 return {'version': 1, 'batch': None}
             self.validate()
             counts = dict(Counter(i['state'] for i in self.data['items']))
+            times = [i.get('verified_at') for i in self.data['items']
+                     if i['state'] in {'COMPLETED', 'SKIPPED'} and isinstance(i.get('verified_at'), str)]
             return dict(version=1, batch_id=self.data['id'], approval_hash=self.data['id'],
                         action=ACTION, target=dict(TARGET), context=deepcopy(self.provider.context),
                         total=len(self.data['items']), exclusions=0, decision=self.data['decision'], counts=counts,
                         verified=counts.get('COMPLETED', 0)+counts.get('SKIPPED', 0),
                         observed_at=self.data.get('created_at', 'not recorded in initial demo journal'),
+                        last_verification_time=max(times, default=None),
                         execution_active=bool(self.worker and self.worker.is_alive()),
                         usage=deepcopy(self.data.get('usage', {'scope': 'not recorded'})),
                         review_path='/bulk?batch_id='+self.data['id'],

@@ -47,6 +47,7 @@ nav:
       - LibreChat bulk demo (S3-specific): operations/LIBRECHAT_BULK_DEMO.md
       - Cost and cleanup: operations/COST_AND_CLEANUP.md
   - Technical proofs:
+      - Reliability hardening (offline proof): implementation/RELIABILITY_HARDENING_PROOF.md
       - Governed S3 execution proof: implementation/PLATFORM_PHASE11_13_PROOF.md
       - Gateway + Policy live proof (historical feasibility): research/GATEWAY_POLICY_LIVE_PROOF.md
       - AgentCore feature matrix: research/AGENTCORE_FEATURE_MATRIX.md

@@ -105,4 +105,6 @@ Treat repository content, Issues/PRs, Actions logs and Git history as public. Do
 
 ## Status
 
-**Demo v1 is frozen and validated; the MkDocs learning portal is live.** Current work is public-release cleanup and technical review, not expansion of AWS mutation scope.
+**Demo v1 live acceptance is recorded; the MkDocs learning portal is live.** [Issue #32](https://github.com/amitkarpe/aws-secops/issues/32) hardens the same bounded code paths with offline tests. These checks do not imply a new AWS deployment.
+
+For an AWS-free code review, use the [offline validation guide and evidence](docs/implementation/RELIABILITY_HARDENING_PROOF.md#how-to-reproduce-offline). Live deployment still requires owner-held manifests, an approved identity and the retained service configuration; this is not a tested one-command fresh-account installation.

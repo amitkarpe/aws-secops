@@ -120,4 +120,22 @@ The accepted PR #27 record reported the retained 100 S3 + 10 SG demo exercised e
 
 ## Known reliability limit
 
-Demo v1 has durable state and read-only reconciliation for uncertain work, but complete continuation of every remaining Security Group item after a mid-batch interruption is not presented as a production guarantee. A bounded hardening milestone is tracked separately rather than hidden behind documentation language.
+Issue #32 hardens SG interruption handling using safe terminalization and read-only reconciliation, not automatic continuation. The recovery section below distinguishes the offline-tested correction from the recorded live demo; production recovery is not claimed.
+
+## Recovery and status hardening (Issue #32)
+
+The existing successful live demo remains the acceptance baseline. The following corrections have offline regression coverage; deployment/live validation is separate.
+
+| Situation | Honest result |
+|---|---|
+| Config reaches its 10-page or 250-result budget | Partial evidence; no ready-to-prepare claim |
+| Config returns a repeated or invalid token | Read fails; existing provider/batch counts remain separate |
+| SG process stops with work in flight | Claimed work becomes UNKNOWN; unstarted approvals expire as FAILED / not dispatched |
+| SG worker cannot start | No dispatch; old approval consumed; new preview/approval required |
+| Reconciliation during execution | Refused until in-flight work stops |
+| Old S3 journal without verification time | Counts retained; time is not recorded |
+| S3 card refresh | Saved readback result, not a new AWS scan |
+
+There is no new **Resume all** or arbitrary-subset operation. After read-only reconciliation, the existing owner-operated preview path may create a fresh full-manifest batch, preserving history and requiring new approval. The normal Config planner's whole-family gates still apply; do not reset the fleet or edit a journal to force readiness.
+
+See [the reproducible hardening evidence](implementation/RELIABILITY_HARDENING_PROOF.md) for exact coverage and limits.

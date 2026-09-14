@@ -102,7 +102,7 @@ AWS Config remains valuable independent evidence, but it can converge later. The
 - **Provider verified** — current AWS state was re-read and matches the approved target.
 - **Config status** — asynchronous compliance evaluation from AWS Config.
 
-The current Operator cards also expose different evidence shapes: S3 primarily reports saved durable batch/provider-verification evidence, while the SG status path includes current provider reads. A UI refresh should therefore not be described as a fresh full S3 provider scan.
+The Operator cards identify their evidence sources: **saved S3 batch readback** versus **current EC2 status read**. New S3 verification events persist their own timestamps; old journals retain their counts but show **not recorded** when no verification timestamp exists. File modification time is not a verification event. Refresh is not a fresh S3 scan, and the newest item's verification time does not prove all resources are still compliant.
 
 ## Reliability
 
@@ -115,6 +115,16 @@ The execution model preserves durable state and explicit uncertainty:
 - `UNKNOWN` is resolved through read-only provider reconciliation;
 - success requires matching provider evidence.
 
-A current limitation is documented rather than hidden: complete continuation of all remaining Security Group work after every possible mid-batch interruption is not a production guarantee in Demo v1.
+### Safe stop, not automatic replay
+
+The Issue #32 hardening expires **unstarted** SG approvals on restart or after an uncertain batch stop. Those items become workflow `FAILED` with **not dispatched**, while uncertain in-flight effects remain `UNKNOWN`. Already in-flight calls are allowed to finish before remaining work is expired. Read-only reconciliation is blocked while execution is active.
+
+After uncertainty is resolved, the existing owner-operated full-manifest preview path can retain the old journal and create a new pending batch. The consumed approval cannot restart the old SG batch; later execution needs fresh approval and the same Gateway/Policy path. Normal chat planning still enforces complete-family readiness, so mixed recovery is not automatic subset remediation.
+
+These are offline-tested recovery cases, not live production-recovery certification. Read the [hardening proof and remaining limits](implementation/RELIABILITY_HARDENING_PROOF.md).
+
+### Bounded Config reads
+
+Each supported rule read checks recorder health and stops after at most **10 evaluation pages or 250 results**. Valid empty pages can continue within that budget. A cap yields `partial=true`; invalid or repeated tokens fail closed. The UI distinguishes partial evidence from a complete healthy assessment. These are local safety budgets, not AWS rate limits.
 
 For current evidence, read [Demo v1](demo-v1.md). Historical Harness and earlier pilot material are retained under **History / Research** and should not be confused with this current architecture.

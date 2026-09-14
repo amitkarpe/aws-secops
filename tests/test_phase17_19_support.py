@@ -219,6 +219,20 @@ class StatusResilienceTests(unittest.TestCase):
         self.assertIn("Provider/batch truth is shown where available", result["message"])
 
 
+    def test_partial_config_is_visible_without_hiding_saved_provider_metrics(self):
+        service = object.__new__(OperatorService)
+        service.s3_status = lambda: {
+            "family": "s3", "title": "S3", "compliant": 100,
+            "config_available": True, "config": {"partial": True, "counts": {"COMPLIANT": 100}},
+        }
+        service._sg = lambda *_: {"family": "sg", "config_available": True,
+                                 "config": {"partial": False}}
+        result = service.status()
+        self.assertTrue(result["degraded"])
+        self.assertEqual(result["controls"][0]["compliant"], 100)
+        self.assertIn("partial", result["message"])
+
+
 class OperatorPageTests(unittest.TestCase):
     def test_simple_two_card_ui_and_no_reset_all(self):
         html = (ROOT / "pilot_v1/static/operator.html").read_text()

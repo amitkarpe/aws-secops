@@ -36,6 +36,7 @@ CONFIG_RULES = {
 }
 CONFIG_STATUSES = {"COMPLIANT", "NON_COMPLIANT", "INSUFFICIENT_DATA", "NOT_APPLICABLE"}
 MAX_CONFIG_RESULTS = 250
+MAX_CONFIG_PAGES = 10
 
 
 def digest(value: object) -> str:
@@ -83,6 +84,8 @@ class ConfigComplianceReader:
     def _results(self, control: str) -> tuple[list[dict[str, object]], bool]:
         if control not in CONFIG_RULES:
             raise ValueError("unsupported Config control")
+        if not self._recorder_ready():
+            raise RuntimeError("AWS Config recorder is not active and successful")
         rules = self.client.describe_config_rules(ConfigRuleNames=[control]).get("ConfigRules", [])
         if len(rules) != 1 or rules[0].get("ConfigRuleName") != control:
             raise RuntimeError("required Config rule unavailable")
@@ -91,7 +94,10 @@ class ConfigComplianceReader:
         family = "S3_BPA" if resource_type == "S3_BUCKET" else "SG_RESTRICTED_SSH"
         out: list[dict[str, object]] = []
         token = None
-        while len(out) < MAX_CONFIG_RESULTS:
+        seen_tokens: set[str] = set()
+        # Item limits alone cannot terminate empty continuation pages. Exhausting
+        # this request budget returns partial evidence, never a complete scan.
+        for _page in range(MAX_CONFIG_PAGES):
             kwargs: dict[str, object] = {"ConfigRuleName": control, "Limit": min(100, MAX_CONFIG_RESULTS - len(out))}
             if token:
                 kwargs["NextToken"] = token
@@ -118,13 +124,16 @@ class ConfigComplianceReader:
                     "observed_at": _iso(item.get("ResultRecordedTime")),
                 })
             token = response.get("NextToken")
-            if not token:
-                break
-        return out, bool(token)
+            if token is None or token == "":
+                return out, False
+            if not isinstance(token, str) or token in seen_tokens:
+                raise RuntimeError("invalid or repeated Config pagination token")
+            seen_tokens.add(token)
+            if len(out) == MAX_CONFIG_RESULTS:
+                return out, True
+        return out, True
 
     def summary(self) -> dict[str, object]:
-        if not self._recorder_ready():
-            raise RuntimeError("AWS Config recorder is not active and successful")
         controls = []
         for control, expected_type in CONFIG_RULES.items():
             rows, partial = self._results(control)
@@ -344,6 +353,9 @@ class SGBatchStore:
                     if item["state"] == "RUNNING":
                         item.update(state="UNKNOWN", changed=None, message="Interrupted; provider reconciliation required")
                         changed = True
+                # Approval was consumed by the old process. Never dispatch its
+                # unclaimed work automatically, including a crash before launch.
+                changed = self._fail_unclaimed() or changed
                 if changed:
                     self.save()
             except Exception:
@@ -375,8 +387,24 @@ class SGBatchStore:
             names.add(rid)
             if item["id"] != digest(resource) or item["resource"] != rid or item["state"] not in STATES:
                 raise ValueError("SG item integrity")
+            if d["decision"] == "PENDING" and item["state"] != "PENDING":
+                raise ValueError("unapproved SG item state")
         if set(names) != set(self.provider.resources):
             raise ValueError("configured SG manifest changed")
+
+    def _fail_unclaimed(self) -> bool:
+        """Expire unstarted work after all in-flight steps have finished.
+
+        FAILED means the workflow stopped, not that an AWS write was attempted.
+        Claimed RUNNING/UNKNOWN work is deliberately untouched by this helper.
+        """
+        changed = False
+        for item in self.data["items"]:
+            if item["state"] == "APPROVED":
+                item.update(state="FAILED", changed=False, after=None,
+                            message="Not dispatched: batch interrupted; fresh preview and approval required")
+                changed = True
+        return changed
 
     def save(self) -> None:
         self.validate()
@@ -450,7 +478,13 @@ class SGBatchStore:
                 item.update(state="APPROVED", message="Native human approval consumed for exact SG batch")
             self.save()
             self.worker = threading.Thread(target=self._run, args=(batch_id,), daemon=False)
-            self.worker.start()
+            try:
+                self.worker.start()
+            except Exception:
+                self.worker = None
+                self._fail_unclaimed()
+                self.save()
+                raise RuntimeError("SG worker could not start; no dispatch; fresh approval required") from None
             return self.summary()
 
     def step(self, batch_id: str) -> dict[str, object]:
@@ -509,11 +543,20 @@ class SGBatchStore:
                     for future in futures:
                         future.result()
         except Exception:
-            return
+            # Individual dispatch failures retain their UNKNOWN outcome. The
+            # executor context has joined every in-flight call before finally.
+            pass
+        finally:
+            with self.lock:
+                if self._fail_unclaimed():
+                    self.save()
 
     def reconcile(self, batch_id: str) -> dict[str, object]:
         with self.lock:
             self.require(batch_id)
+            if ((self.worker and self.worker.is_alive())
+                    or any(i["state"] == "RUNNING" for i in self.data["items"])):
+                raise ValueError("SG execution active; wait before reconciliation")
             for item in self.data["items"]:
                 if item["state"] != "UNKNOWN":
                     continue
