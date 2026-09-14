@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Issue #36 bootstrap for a repository-specific GitHub Actions OIDC deployment role.
+Description: Issue #36 bootstrap for a repository-specific GitHub Actions OIDC preflight role.
 
 Parameters:
   GitHubSubject:
@@ -9,10 +9,10 @@ Parameters:
       - repo:amitkarpe/aws-secops:ref:refs/heads/main
 
 Resources:
-  GitHubDeployRole:
+  GitHubPreflightRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: github-actions-aws-secops-deploy
+      RoleName: github-actions-aws-secops-preflight
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -32,10 +32,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - sts:GetCallerIdentity
-                  - lambda:GetFunctionConfiguration
                   - config:DescribeConfigurationRecorders
-                  - bedrock-agentcore:GetGateway
+                  - lambda:ListFunctions
+                  - bedrock-agentcore:ListGateways
                 Resource: '*'
       Tags:
         - Key: project
@@ -46,5 +45,5 @@ Resources:
           Value: github-oidc-preflight
 
 Outputs:
-  DeploymentRoleName:
-    Value: !Ref GitHubDeployRole
+  PreflightRoleName:
+    Value: !Ref GitHubPreflightRole
