@@ -20,7 +20,7 @@ class OidcPreflightSafetyTests(unittest.TestCase):
         self.assertIn("token.actions.githubusercontent.com:aud: sts.amazonaws.com", self.template)
         self.assertNotIn("repo:amitkarpe/aws-secops:*", self.template)
 
-    def test_preflight_policy_is_read_only(self):
+    def test_preflight_policy_is_read_only_and_singapore_only(self):
         expected_actions = {
             "config:DescribeConfigurationRecorders",
             "lambda:ListFunctions",
@@ -28,6 +28,8 @@ class OidcPreflightSafetyTests(unittest.TestCase):
         }
         for action in expected_actions:
             self.assertIn(f"- {action}", self.template)
+
+        self.assertIn("aws:RequestedRegion: ap-southeast-1", self.template)
 
         forbidden_verbs = (
             "Create",
