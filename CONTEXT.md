@@ -23,21 +23,20 @@ https://github.com/amitkarpe/aws-secops/issues/36
 
 ## Current state
 
-- PR #37 established the repo-specific read-only GitHub OIDC preflight path.
-- PR #41 corrected trust to the exact ID-qualified GitHub `main` subject.
-- End-to-end read-only OIDC preflight passed from `main`:
-  https://github.com/amitkarpe/aws-secops/actions/runs/34818083174
-- PR #42 is merged and defines the first bounded OIDC write path: a separate deploy-canary role, one CloudFormation-managed SSM parameter, a manual `main`-only workflow, safety tests, and docs.
-- The canary target is isolated from Demo v1: stack `aws-secops-deployment-canary`, parameter `/aws-secops/deployment-canary`.
-- PR #42 validation passed: 128 offline tests, Documentation Pages, both CloudFormation templates, Access Analyzer with zero inline-policy findings, and exact-target IAM simulation.
-- No deployment-canary AWS mutation has occurred yet.
+- Read-only GitHub OIDC preflight passed from `main`: https://github.com/amitkarpe/aws-secops/actions/runs/34818083174
+- PR #42 merged the isolated deployment-canary role/workflow/IaC.
+- The deploy-canary bootstrap role stack `aws-secops-github-oidc-deploy-canary` is `CREATE_COMPLETE`.
+- Live verification found the original SSM path `/aws-secops/deployment-canary` is reserved by AWS; the deployment canary was not run.
+- Active correction changes only the canary parameter path to `/amitkarpe/aws-secops/deployment-canary` in IaC, IAM scope, workflow, tests, and docs.
+- Demo v1 remains untouched.
 
 ## Current next action
 
-1. With explicit live authorization, bootstrap the separate deploy-canary OIDC role.
-2. Configure `AWS_SECOPS_DEPLOY_CANARY_ROLE_ARN` and `AWS_DEPLOY_CANARY_ENABLED=true` without committing values.
-3. Manually run `AWS deployment canary` from `main`.
-4. Verify the SSM commit marker independently with AWS Core and confirm Demo v1 remained untouched.
-5. Only after the canary passes, choose an existing Demo v1 component for explicit adoption/import design.
+1. Review/merge the canary SSM-path correction.
+2. Update the existing deploy-canary bootstrap stack from corrected `main`.
+3. Configure `AWS_SECOPS_DEPLOY_CANARY_ROLE_ARN` and `AWS_DEPLOY_CANARY_ENABLED=true` without committing values.
+4. Run `AWS deployment canary` manually from `main`.
+5. Verify the SSM commit marker independently with AWS Core and confirm Demo v1 remained untouched.
+6. Only after the canary passes, choose an existing Demo v1 component for explicit adoption/import design.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
