@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Issue #36 isolated GitHub OIDC deployment canary.
+
+Parameters:
+  DeploymentMarker:
+    Type: String
+    AllowedPattern: '^[0-9a-f]{40}$'
+    Description: Git commit SHA used as the deployment proof marker.
+
+Resources:
+  DeploymentCanaryParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /aws-secops/deployment-canary
+      Type: String
+      Value: !Ref DeploymentMarker
+      Description: GitHub OIDC deployment proof for aws-secops Issue #36.
+      Tags:
+        project: aws-secops
+        purpose: deployment-canary
+        managed-by: cloudformation
+
+Outputs:
+  ParameterName:
+    Value: !Ref DeploymentCanaryParameter
