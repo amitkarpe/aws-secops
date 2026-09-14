@@ -44,6 +44,16 @@ This project therefore demonstrates an interactive governed workflow; it does no
 
 ## Start here
 
+### Fresh ChatGPT operator session
+
+Start a new chat with only:
+
+> `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
+
+`AGENTS.md` routes ChatGPT automatically to the full [PROMPT.md](PROMPT.md) operating model, current context and active GitHub authority. The user does not need to paste the bootstrap URL or restate project history.
+
+Then, for human reading:
+
 1. **Learning portal:** https://amitkarpe.github.io/aws-secops/
 2. Read [Architecture](docs/architecture.md) for the current control path.
 3. Read [Demo v1](docs/demo-v1.md) for the current end-to-end flow, evidence and safe prompts.
@@ -73,6 +83,7 @@ The public site links the detailed proofs. The current story is anchored by thes
 - [PR #23](https://github.com/amitkarpe/aws-secops/pull/23) — governed S3 execution with native approval, Gateway/Policy and provider verification.
 - [PR #25](https://github.com/amitkarpe/aws-secops/pull/25) — AWS Config + exact restricted-SSH remediation and the unified compliance-agent direction.
 - [PR #27](https://github.com/amitkarpe/aws-secops/pull/27) — current Config-driven planner, separate S3/SG approvals, repeatable Operator flow and final Demo v1 acceptance.
+- [PR #33](https://github.com/amitkarpe/aws-secops/pull/33) — bounded Config reads, no-replay S3/SG interruption recovery, stronger status evidence and offline regression CI.
 
 See [Demo v1 — evidence digest](docs/demo-v1.md#current-evidence-digest) for what is recorded as proven versus what remains a limitation.
 
@@ -92,12 +103,15 @@ Historical documents are intentionally retained as engineering evidence. They ar
 
 ## Contributors / AI workers
 
-Human readers should use the portal and `PROJECT_STATUS.md`. Contributors and coding agents should read:
+Short-session read order:
 
-1. `AGENTS.md` — repository working rules
-2. `CONTEXT.md` — compact agent/session continuity context
-3. `SPEC.md` — current trusted contract and safety boundaries
-4. `ROADMAP.md` — current and future milestones
+1. `AGENTS.md` — bootstrap/router and repository rules
+2. `CONTEXT.md` — current truth and active authority
+3. `PROMPT.md` — full ChatGPT + GitHub + AWS Core operating model, loaded automatically by `AGENTS.md`
+4. active Issue/PR — work authority
+5. `SPEC.md` / `ROADMAP.md` when relevant
+
+Human readers should use the portal and `PROJECT_STATUS.md`.
 
 ## Public repository boundary
 
@@ -105,6 +119,8 @@ Treat repository content, Issues/PRs, Actions logs and Git history as public. Do
 
 ## Status
 
-**Demo v1 live acceptance is recorded; the MkDocs learning portal is live.** [Issue #32](https://github.com/amitkarpe/aws-secops/issues/32) hardens the same bounded code paths with offline tests. These checks do not imply a new AWS deployment.
+**Demo v1 live acceptance is recorded; the MkDocs learning portal is live; PR #33 reliability hardening is merged on `main`.** The hardening adds bounded Config reads, non-replay interruption behavior for both supported families, stronger saved verification evidence and AWS-free regression CI. These checks do not imply that the updated runtime has been deployed to the existing AWS demo host.
+
+The next engineering milestone is [Issue #36](https://github.com/amitkarpe/aws-secops/issues/36): establish repo-specific GitHub OIDC + repository-owned IaC/deployment flow with ChatGPT as primary operator and AWS Core for verification.
 
 For an AWS-free code review, use the [offline validation guide and evidence](docs/implementation/RELIABILITY_HARDENING_PROOF.md#how-to-reproduce-offline). Live deployment still requires owner-held manifests, an approved identity and the retained service configuration; this is not a tested one-command fresh-account installation.
