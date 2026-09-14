@@ -24,7 +24,7 @@ class DeploymentCanarySafetyTests(unittest.TestCase):
 
     def test_deploy_role_is_bounded_to_canary(self):
         self.assertIn("stack/aws-secops-deployment-canary/*", self.role_template)
-        self.assertIn("parameter/aws-secops/deployment-canary", self.role_template)
+        self.assertIn("parameter/amitkarpe/aws-secops/deployment-canary", self.role_template)
         policy_section = self.role_template.split("PolicyName: aws-secops-deployment-canary", 1)[1]
         self.assertNotIn("cloudformation:DeleteStack", policy_section)
         self.assertNotIn("- iam:", policy_section.lower())
@@ -37,7 +37,8 @@ class DeploymentCanarySafetyTests(unittest.TestCase):
         self.assertNotIn("AWS::Lambda::", self.canary_template)
         self.assertNotIn("AWS::EC2::", self.canary_template)
         self.assertNotIn("AWS::S3::", self.canary_template)
-        self.assertIn("Name: /aws-secops/deployment-canary", self.canary_template)
+        self.assertIn("Name: /amitkarpe/aws-secops/deployment-canary", self.canary_template)
+        self.assertNotIn("Name: /aws-secops/", self.canary_template)
 
     def test_workflow_is_manual_main_repo_and_enabled_only(self):
         self.assertIn("workflow_dispatch:", self.workflow)
@@ -57,7 +58,7 @@ class DeploymentCanarySafetyTests(unittest.TestCase):
 
     def test_workflow_mutation_is_only_canary_stack(self):
         self.assertIn("STACK_NAME: aws-secops-deployment-canary", self.workflow)
-        self.assertIn("PARAMETER_NAME: /aws-secops/deployment-canary", self.workflow)
+        self.assertIn("PARAMETER_NAME: /amitkarpe/aws-secops/deployment-canary", self.workflow)
         forbidden = (
             "aws lambda update-",
             "aws lambda create-",
