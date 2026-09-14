@@ -44,12 +44,13 @@ This project therefore demonstrates an interactive governed workflow; it does no
 
 ## Start here
 
-1. **Learning portal:** https://amitkarpe.github.io/aws-secops/
-2. Read [Architecture](docs/architecture.md) for the current control path.
-3. Read [Demo v1](docs/demo-v1.md) for the current end-to-end flow, evidence and safe prompts.
-4. Read [Governance](docs/governance.md) for trust assumptions, approval, Policy, exact-tool and verification boundaries.
-5. Read [Learning path](docs/learning-path.md) for deeper proofs, operations material and clearly labelled history.
-6. Read [Project status](PROJECT_STATUS.md) for the current public baseline and known limits.
+1. **ChatGPT operator bootstrap:** [PROMPT.md](PROMPT.md) — one URL for a fresh ChatGPT session to operate the project with Git/IaC + GitHub OIDC + AWS Core.
+2. **Learning portal:** https://amitkarpe.github.io/aws-secops/
+3. Read [Architecture](docs/architecture.md) for the current control path.
+4. Read [Demo v1](docs/demo-v1.md) for the current end-to-end flow, evidence and safe prompts.
+5. Read [Governance](docs/governance.md) for trust assumptions, approval, Policy, exact-tool and verification boundaries.
+6. Read [Learning path](docs/learning-path.md) for deeper proofs, operations material and clearly labelled history.
+7. Read [Project status](PROJECT_STATUS.md) for the current public baseline and known limits.
 
 ## What this project is — and is not
 
@@ -73,6 +74,7 @@ The public site links the detailed proofs. The current story is anchored by thes
 - [PR #23](https://github.com/amitkarpe/aws-secops/pull/23) — governed S3 execution with native approval, Gateway/Policy and provider verification.
 - [PR #25](https://github.com/amitkarpe/aws-secops/pull/25) — AWS Config + exact restricted-SSH remediation and the unified compliance-agent direction.
 - [PR #27](https://github.com/amitkarpe/aws-secops/pull/27) — current Config-driven planner, separate S3/SG approvals, repeatable Operator flow and final Demo v1 acceptance.
+- [PR #33](https://github.com/amitkarpe/aws-secops/pull/33) — bounded Config reads, no-replay S3/SG interruption recovery, stronger status evidence and offline regression CI.
 
 See [Demo v1 — evidence digest](docs/demo-v1.md#current-evidence-digest) for what is recorded as proven versus what remains a limitation.
 
@@ -92,6 +94,8 @@ Historical documents are intentionally retained as engineering evidence. They ar
 
 ## Contributors / AI workers
 
+For a fresh ChatGPT operator session, start with `PROMPT.md`.
+
 Human readers should use the portal and `PROJECT_STATUS.md`. Contributors and coding agents should read:
 
 1. `AGENTS.md` — repository working rules
@@ -105,6 +109,6 @@ Treat repository content, Issues/PRs, Actions logs and Git history as public. Do
 
 ## Status
 
-**Demo v1 live acceptance is recorded; the MkDocs learning portal is live.** [Issue #32](https://github.com/amitkarpe/aws-secops/issues/32) hardens the same bounded code paths with offline tests. These checks do not imply a new AWS deployment.
+**Demo v1 live acceptance is recorded; the MkDocs learning portal is live; PR #33 reliability hardening is merged on `main`.** The hardening adds bounded Config reads, non-replay interruption behavior for both supported families, stronger saved verification evidence and AWS-free regression CI. These checks do not imply that the updated runtime has been deployed to the existing AWS demo host.
 
 For an AWS-free code review, use the [offline validation guide and evidence](docs/implementation/RELIABILITY_HARDENING_PROOF.md#how-to-reproduce-offline). Live deployment still requires owner-held manifests, an approved identity and the retained service configuration; this is not a tested one-command fresh-account installation.
