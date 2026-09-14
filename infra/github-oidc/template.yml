@@ -4,9 +4,9 @@ Description: Issue #36 bootstrap for a repository-specific GitHub Actions OIDC p
 Parameters:
   GitHubSubject:
     Type: String
-    Default: repo:amitkarpe/aws-secops:ref:refs/heads/main
+    Default: repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main
     AllowedValues:
-      - repo:amitkarpe/aws-secops:ref:refs/heads/main
+      - repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main
 
 Resources:
   GitHubPreflightRole:
