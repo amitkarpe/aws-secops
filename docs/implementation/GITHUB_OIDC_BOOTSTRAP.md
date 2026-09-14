@@ -37,4 +37,20 @@ PR validation (no AWS credentials)
   -> AWS Core independent verification
 ```
 
+## Codex / local operator path
+
+When ChatGPT's GitHub connector cannot write repository variables or dispatch a workflow, Codex or another trusted local operator may use `scripts/run-oidc-preflight.sh`.
+
+The helper:
+
+1. derives the current AWS account ID and the preflight role ARN locally;
+2. writes them to GitHub repository variables without printing their values;
+3. verifies the two variable names only;
+4. dispatches `aws-oidc-preflight.yml` from `main`;
+5. waits for completion and prints only the workflow result metadata.
+
+It requires authenticated `aws` and `gh` CLIs and must be run only for the repository/role already authorized by Issue #36. It does not deploy or remediate Demo v1 resources.
+
+If the helper fails, inspect the failed workflow step only as needed. Do not paste account IDs, role ARNs, credentials, or other private identifiers into public Issues, PRs, comments, committed files, or logs.
+
 Any later expansion from read-only preflight to deployment permissions requires explicit review under Issue #36 and must preserve the existing human approval -> AgentCore Gateway/Policy -> exact remediation tool boundary.
