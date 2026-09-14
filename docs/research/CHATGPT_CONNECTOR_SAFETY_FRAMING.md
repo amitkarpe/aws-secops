@@ -21,6 +21,7 @@ During the same Issue #36 task we saw several different outcomes from closely re
 4. Initial attempts to add a workflow containing job-scoped `id-token: write` were blocked.
 5. A later atomic retry of the same bounded, read-only OIDC preflight workflow succeeded.
 6. A later update attempt returned HTTP 409 because the file SHA was stale. Re-reading the branch showed another successful write had already moved the file. This was a normal GitHub concurrency/version error, **not** a safety block.
+7. With user-selected Extra High thinking effort, a new atomic static-safety test file was committed successfully and then re-fetched successfully. The test file makes no AWS calls and grants no permissions.
 
 No AWS mutation was performed during these observations.
 
@@ -121,9 +122,11 @@ For future comparable tasks, record:
 | A | lower/default | bundled or initial | IAM/OIDC | observed block | safety check |
 | B | Medium | atomic IAM file | IAM/OIDC trust + read-only role | success | none |
 | C | Medium | atomic workflow | `id-token: write` + read-only OIDC | initial block, later success | safety check / none |
-| D | Extra High | atomic validation change | static safety tests only | pending | pending |
+| D | Extra High (user-selected) | atomic validation change | static safety tests only | success + readback verified | none |
 
-To learn anything useful, keep the requested change as similar as possible between trials and record the exact failure category.
+Trial D supports the atomic-execution hypothesis, but it is **not a controlled proof** that Extra High thinking caused the success because the requested change was safer than the IAM/OIDC writes in Trials B/C.
+
+To learn anything useful, keep the requested change as similar as possible between future trials and record the exact failure category.
 
 ## KISS rule for this repository
 
