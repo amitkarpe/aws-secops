@@ -1,56 +1,52 @@
 # Agent Context
 
-This file is compact current state for ChatGPT/coding-agent continuity. Human readers should use `README.md`, `PROJECT_STATUS.md`, `SPEC.md` and the MkDocs site.
+This file is compact **current-only** state for ChatGPT/coding-agent continuity.
 
 Repository: `amitkarpe/aws-secops`
 
 ## Current product truth
 
-- Demo v1 live acceptance is recorded for the personal Singapore lab; no company or production resources.
-- Supported families remain exactly:
-  - S3 bucket-level Block Public Access on the retained owned demo fleet;
-  - restricted SSH on retained owned unattached Security Groups.
-- Current primary agent path is LibreChat + native Bedrock Nova 2 Lite + bounded MCP tools. Historical Harness experiments are not the current primary architecture.
+- Demo v1 live acceptance is recorded for the personal Singapore lab.
+- Supported families remain S3 Block Public Access and restricted SSH on retained owned demo resources.
+- Current primary agent path is LibreChat + native Bedrock Nova 2 Lite + bounded MCP tools.
 - S3 and SG retain separate native human approvals.
 - Approved execution remains Gateway -> Policy -> exact family tool -> provider readback.
-- The model has no generic AWS mutation tool and cannot select arbitrary execution targets.
-- Current planners require complete retained-family readiness; no arbitrary-subset claim.
+- The model has no generic AWS mutation tool.
 - Provider readback is immediate remediation truth; Config is independent asynchronous evidence.
-- Operator Prepare demo is separate operator maintenance and is never an agent reset capability.
-- PR #33 reliability hardening is merged on `main`: bounded Config reads, non-replay interruption handling for S3/SG, stronger saved verification evidence, and offline regression CI.
-- Those PR #33 code changes are not automatically proof that the existing live AWS demo host has been redeployed with the new runtime.
+- PR #33 reliability hardening is merged on `main`; that source change is not by itself proof that the live demo host was redeployed.
 
 ## Current operating model
 
-ChatGPT is now the primary controller/operator for this repository.
+ChatGPT is the primary controller/operator.
 
 > **AWS Core discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS Core independently verifies.**
 
-`PROMPT.md` contains the full operating model. `AGENTS.md` is the short-session router and must automatically route a fresh session to `PROMPT.md`; Amit does not need to paste the bootstrap URL.
-
-Codex is optional, not a required dependency.
+`AGENTS.md` is the short-session router. It loads `PROMPT.md` automatically. Codex is optional.
 
 ## Current authority
 
-- **Issue #34 / PR #35** finalize the documentation/bootstrap change that makes the short ChatGPT session command durable in the repository.
-- **Issue #36** is the next active engineering milestone: establish repo-specific GitHub OIDC + repository-owned IaC/deployment workflow, then verify resulting AWS state with AWS Core.
+**Issue #36 — Establish ChatGPT-first GitHub OIDC + IaC deployment path**
 
-After PR #35 is merged, Issue #36 becomes the primary active authority for the next chat session unless repository state has moved.
+https://github.com/amitkarpe/aws-secops/issues/36
+
+This is the active engineering milestone unless repository state has moved.
 
 Fresh-session command:
 
 > `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
 
-A session receiving that instruction should read `PROMPT.md` automatically, verify current GitHub state, read the active Issue/PR, and continue without asking Amit to restate repository context.
+A session receiving that instruction should read `AGENTS.md`, this file, `PROMPT.md`, Issue #36, and any active PR linked to it; verify current GitHub state; verify current AWS identity and Region with AWS Core; then continue from repository state without asking Amit to repeat project history.
 
-## Current publication rule
+## Current next action
 
-The repository and site are public. Keep credentials, private infrastructure identifiers, auth/session material, raw private findings and private screenshots out of Git, Issues/PRs, Actions artifacts/logs and public documentation.
+1. Verify GitHub and AWS identity/state.
+2. Audit existing deployment scripts/workflows/IaC and retained AWS resources.
+3. Reuse the OIDC/control-path pattern from `mytestlab123/chatgpt-aws` without copying identities.
+4. Design repo-specific GitHub OIDC trust and the smallest practical deployment role.
+5. Implement repository-owned IaC plus a main-only/manual deployment workflow through a PR.
+6. Keep PR validation AWS-free where practical.
+7. Deploy only after explicit authorization.
+8. Verify resulting AWS state independently with AWS Core.
+9. Record reusable learning in `docs/`.
 
-## Current safety boundary
-
-The bootstrap/documentation work does not itself authorize AWS resource creation, deployment, restart, reset/re-arm, remediation, IAM/Policy mutation or live-journal edits.
-
-For Issue #36, verify current GitHub and AWS identity/state first. Prefer read-only discovery, then define durable AWS state in Git/IaC. Deployment requires explicit authorization and must be independently verified afterward with AWS Core.
-
-For public status and known limitations use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
+For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
