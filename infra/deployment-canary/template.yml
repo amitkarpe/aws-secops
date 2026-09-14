@@ -11,7 +11,7 @@ Resources:
   DeploymentCanaryParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /aws-secops/deployment-canary
+      Name: /amitkarpe/aws-secops/deployment-canary
       Type: String
       Value: !Ref DeploymentMarker
       Description: GitHub OIDC deployment proof for aws-secops Issue #36.
