@@ -25,18 +25,18 @@ https://github.com/amitkarpe/aws-secops/issues/36
 
 - Read-only GitHub OIDC preflight passed from `main`: https://github.com/amitkarpe/aws-secops/actions/runs/34818083174
 - PR #42 merged the isolated deployment-canary role/workflow/IaC.
-- The deploy-canary bootstrap role stack `aws-secops-github-oidc-deploy-canary` is `CREATE_COMPLETE`.
-- Live verification found the original SSM path `/aws-secops/deployment-canary` is reserved by AWS; the deployment canary was not run.
-- Active correction changes only the canary parameter path to `/amitkarpe/aws-secops/deployment-canary` in IaC, IAM scope, workflow, tests, and docs.
-- Demo v1 remains untouched.
+- PR #43 fixed the reserved SSM name; the canary now uses `/amitkarpe/aws-secops/deployment-canary`.
+- PR #43 validation passed: 128 offline tests, Documentation Pages, both CloudFormation templates, and Access Analyzer with zero findings.
+- The deploy-canary bootstrap role stack `aws-secops-github-oidc-deploy-canary` is `UPDATE_COMPLETE` with exact repo/main OIDC trust and exact canary stack/parameter scope.
+- The deployment canary itself has not run yet; Demo v1 remains untouched.
+- Issue #36 contains the current `HANDOFF: CODEX` for the final local `gh` variable setup + workflow dispatch.
 
 ## Current next action
 
-1. Review/merge the canary SSM-path correction.
-2. Update the existing deploy-canary bootstrap stack from corrected `main`.
-3. Configure `AWS_SECOPS_DEPLOY_CANARY_ROLE_ARN` and `AWS_DEPLOY_CANARY_ENABLED=true` without committing values.
-4. Run `AWS deployment canary` manually from `main`.
-5. Verify the SSM commit marker independently with AWS Core and confirm Demo v1 remained untouched.
-6. Only after the canary passes, choose an existing Demo v1 component for explicit adoption/import design.
+1. X sets `AWS_SECOPS_DEPLOY_CANARY_ROLE_ARN` and `AWS_DEPLOY_CANARY_ENABLED=true` locally with `gh` (keep values out of public Git).
+2. X runs `aws-deploy-canary.yml` from `main` using the authorized personal AWS context.
+3. Verify the new workflow PASS and the SSM commit marker independently with AWS Core.
+4. Confirm Demo v1 remained untouched.
+5. Only after the canary passes, choose an existing Demo v1 component for explicit adoption/import design.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
