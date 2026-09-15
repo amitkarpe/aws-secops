@@ -42,6 +42,7 @@ class OperatorHarnessDeploymentSafetyTests(unittest.TestCase):
             self.assertIn(name, stack_policy)
         self.assertNotIn("bedrock-agentcore:*", stack_policy)
         self.assertIn("bedrock-agentcore:CreateWorkloadIdentity", stack_policy)
+        self.assertIn("bedrock-agentcore:DeleteWorkloadIdentity", stack_policy)
         for forbidden in ("s3:", "ec2:", "ssm:", "dynamodb:"):
             self.assertNotIn(forbidden, stack_policy.lower())
         self.assertIn("aws:RequestedRegion: ap-southeast-1", stack_policy)
