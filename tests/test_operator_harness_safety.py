@@ -39,7 +39,10 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         self.assertIn("MAX_RESULTS = 250", self.text)
         self.assertIn("MAX_PAGES = 10", self.text)
         self.assertIn("selected[:20]", self.text)
-        self.assertIn("AdditionalProperties: false", self.text)
+        self.assertIn("if set(event) != {'control'} or event['control'] not in RULES:", self.text)
+        self.assertIn("only one exact supported control is accepted", self.text)
+        self.assertNotIn("AdditionalProperties:", self.text)
+        self.assertNotIn("Enum:", self.text)
 
     def test_no_model_accessible_mutation_permissions(self):
         harness_policy = self.text.split("PolicyName: NovaAndExactReadGateway", 1)[1].split("OperatorReadPolicy:", 1)[0]

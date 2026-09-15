@@ -255,12 +255,8 @@ Resources:
                     Properties:
                       control:
                         Type: string
-                        Enum:
-                          - s3-bucket-level-public-access-prohibited
-                          - restricted-ssh
                     Required:
                       - control
-                    AdditionalProperties: false
 
   OperatorHarnessRole:
     Type: AWS::IAM::Role
