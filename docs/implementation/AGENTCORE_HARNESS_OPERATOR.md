@@ -95,6 +95,20 @@ Fix all restricted SSH findings.
 
 this Harness must explain that execution still requires the existing governed human-approval/executor path. It must not claim or attempt remediation.
 
+### Response style contract
+
+The Harness leads with the result and uses one small Markdown table when a
+control/status/count comparison is useful. It uses the minimal status vocabulary
+only when it clarifies the result: ✅ compliant/pass, ⚠️ attention/partial,
+❌ non-compliant/fail, or ℹ️ informational.
+
+It hides resource IDs, batch IDs, ARNs, account IDs, and other internal
+identifiers by default. It reveals one only when the operator explicitly asks or
+when it is necessary to disambiguate a finding. When Config returns zero
+non-compliant findings, the response says that no current non-compliant findings
+were returned by AWS Config; it does not turn that asynchronous Config evidence
+into a provider-level remediation claim.
+
 ## Long-term direction
 
 Harness should become the primary operator chat entrypoint while these boundaries stay stable:

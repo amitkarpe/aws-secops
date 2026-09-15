@@ -39,10 +39,15 @@ PR #56 is a completed Codex verification handoff artifact. No further verificati
 
 ## Current authority
 
-No active implementation milestone is selected yet.
+**Issue #58 — polish Harness operator summaries**
+
+https://github.com/amitkarpe/aws-secops/issues/58
 
 ## Current next action
 
-Select one new product milestone from `ROADMAP.md`. Preferred next step is operator-summary polish on the deployed Harness: concise operator answers, consistent Markdown tables, minimal identifiers by default, and no change to the existing AWS authorization/remediation boundary.
+Complete PR #59 as a prompt/documentation-only operator-summary polish:
+concise result-first responses, small Markdown tables, and minimal identifiers
+by default. Run credential-free CI only; do not deploy or change the existing
+AWS authorization/remediation boundary.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
