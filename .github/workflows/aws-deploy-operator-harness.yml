@@ -19,10 +19,10 @@ jobs:
       contents: read
       id-token: write
     env:
-      AWS_REGION: ap-southeast-1
-      AWS_ROLE_ARN: ${{ vars.AWS_SECOPS_OPERATOR_HARNESS_DEPLOY_ROLE_ARN }}
-      AWS_STACK_EXECUTION_ROLE_ARN: ${{ vars.AWS_SECOPS_OPERATOR_HARNESS_STACK_EXECUTION_ROLE_ARN }}
-      AWS_ALLOWED_ACCOUNT_ID: ${{ vars.AWS_ALLOWED_ACCOUNT_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_SECOPS_OPERATOR_HARNESS_DEPLOY_ROLE_ARN }}
+      AWS_STACK_EXECUTION_ROLE_ARN: ${{ secrets.AWS_SECOPS_OPERATOR_HARNESS_STACK_EXECUTION_ROLE_ARN }}
+      AWS_ALLOWED_ACCOUNT_ID: ${{ secrets.AWS_ALLOWED_ACCOUNT_ID }}
       STACK_NAME: aws-secops-operator-harness
       TEMPLATE_PATH: infra/operator-harness/template.yml
     steps:
