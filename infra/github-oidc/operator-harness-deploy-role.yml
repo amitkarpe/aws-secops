@@ -126,6 +126,9 @@ Resources:
                   - bedrock-agentcore:GetAgentRuntime
                   - bedrock-agentcore:UpdateAgentRuntime
                   - bedrock-agentcore:DeleteAgentRuntime
+                  # Harness creation provisions and cleans up its immutable runtime endpoint.
+                  - bedrock-agentcore:CreateAgentRuntimeEndpoint
+                  - bedrock-agentcore:DeleteAgentRuntimeEndpoint
                   # Gateway creation provisions and cleans up its default workload identity.
                   - bedrock-agentcore:CreateWorkloadIdentity
                   - bedrock-agentcore:DeleteWorkloadIdentity
