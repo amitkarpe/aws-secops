@@ -41,6 +41,8 @@ class OperatorHarnessDeploymentSafetyTests(unittest.TestCase):
         ):
             self.assertIn(name, stack_policy)
         self.assertNotIn("bedrock-agentcore:*", stack_policy)
+        self.assertIn("bedrock-agentcore:CreateWorkloadIdentity", stack_policy)
+        self.assertIn("bedrock-agentcore:DeleteWorkloadIdentity", stack_policy)
         for forbidden in ("s3:", "ec2:", "ssm:", "dynamodb:"):
             self.assertNotIn(forbidden, stack_policy.lower())
         self.assertIn("aws:RequestedRegion: ap-southeast-1", stack_policy)
@@ -52,6 +54,14 @@ class OperatorHarnessDeploymentSafetyTests(unittest.TestCase):
         self.assertIn("github.ref == 'refs/heads/main'", self.workflow)
         self.assertIn("github.repository == 'amitkarpe/aws-secops'", self.workflow)
         self.assertIn("vars.AWS_OPERATOR_HARNESS_DEPLOY_ENABLED == 'true'", self.workflow)
+        self.assertIn("AWS_REGION: ${{ vars.AWS_REGION }}", self.workflow)
+        for secret in (
+            "AWS_ALLOWED_ACCOUNT_ID",
+            "AWS_SECOPS_OPERATOR_HARNESS_DEPLOY_ROLE_ARN",
+            "AWS_SECOPS_OPERATOR_HARNESS_STACK_EXECUTION_ROLE_ARN",
+        ):
+            self.assertIn(f"secrets.{secret}", self.workflow)
+            self.assertNotIn(f"vars.{secret}", self.workflow)
 
     def test_oidc_permission_is_job_scoped_and_actions_are_pinned(self):
         top_level_permissions, jobs = self.workflow.split("jobs:", 1)
