@@ -10,7 +10,7 @@ Repository: `amitkarpe/aws-secops`
 - Supported remediation families remain S3 Block Public Access and restricted SSH on retained owned demo resources.
 - Approved execution remains human approval -> Gateway/Policy -> exact family tool -> provider readback.
 - The model has no generic AWS mutation tool.
-- The new `aws_secops_operator` Harness is read-only and does not change Demo v1 remediation authority.
+- The `aws_secops_operator` Harness is read-only and does not change Demo v1 remediation authority.
 
 ## Current operating model
 
@@ -31,14 +31,15 @@ Parent: Issue #44 — Promote AgentCore Harness to the AWS SecOps operator path.
 - The Harness has no write, shell, generic AWS, or arbitrary resource-selection tool.
 - Explicit remediation requests still route to the existing governed human-approval/executor path; direct Harness mutation is not authorized.
 - PR #50 merged the bounded deployment path: exact repo/main GitHub OIDC -> exact CloudFormation stack -> dedicated CloudFormation execution role -> declared Harness resources.
-- Fresh pre-merge AWS verification in `ap-southeast-1` passed: STS identity verified, both CloudFormation templates validated, and IAM Access Analyzer returned zero findings for the GitHub deploy and CloudFormation execution identity policies.
-- The live bootstrap stack `aws-secops-operator-harness-deploy-roles` reached `CREATE_COMPLETE`.
-- Readback verified the exact repo+main OIDC trust, exact Harness stack boundary, exact CloudFormation execution-role pass, and service-constrained runtime role passes.
-- The Harness application stack `aws-secops-operator-harness` has not been deployed yet, and Demo v1 has not been mutated.
-- Current blocker is connector capability only: this ChatGPT GitHub interface does not expose repository Actions-variable writes or `workflow_dispatch`.
+- PR #53 merged the durable GitHub Actions configuration model: `AWS_REGION` and the deploy enable flag as repository Variables; account/role identifiers as repository Secrets; no static AWS access keys.
+- The live bootstrap stack `aws-secops-operator-harness-deploy-roles` is `CREATE_COMPLETE`.
+- Main-only workflow run `34927383714` succeeded from `main` using GitHub OIDC. Caller/account and Region checks passed, the template validated, the exact Harness stack applied, and CloudFormation readback confirmed the expected `HarnessArn`, `GatewayArn`, `PolicyEngineId`, and `ReadFunctionArn` outputs.
+- The Harness application stack `aws-secops-operator-harness` reached `CREATE_COMPLETE`.
+- Demo v1 mutation during the Harness deployment: **NO**.
+- Independent live functional verification of Harness/Gateway/Policy/Lambda behavior and the negative write boundary is still required before Issue #49 closes.
 
 ## Current next action
 
-Configure the required repository Actions variables from the bootstrap stack outputs, manually run `AWS operator Harness deploy` from `main`, then independently verify Harness/Gateway/Policy/Lambda behavior and the negative write boundary with AWS Core. Do not bypass the approved GitHub OIDC apply path with direct AWS Core deployment.
+Perform independent read-only AWS verification for Issue #49: confirm Harness/runtime, Gateway, Policy ENFORCE / ACTIVE policy, Lambda read path, both exact Config controls, and the negative `fix/apply/execute` boundary. If that passes, record public-safe evidence, close Issue #49, and then decide whether parent Issue #44 is fully accepted.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
