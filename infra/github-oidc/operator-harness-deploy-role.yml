@@ -126,6 +126,8 @@ Resources:
                   - bedrock-agentcore:GetAgentRuntime
                   - bedrock-agentcore:UpdateAgentRuntime
                   - bedrock-agentcore:DeleteAgentRuntime
+                  # Gateway creation provisions its required default workload identity.
+                  - bedrock-agentcore:CreateWorkloadIdentity
                   - bedrock-agentcore:TagResource
                   - bedrock-agentcore:UntagResource
                   - bedrock-agentcore:ListTagsForResource
