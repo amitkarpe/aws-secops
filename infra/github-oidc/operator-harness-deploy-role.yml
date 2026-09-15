@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Issue #49 repository-specific GitHub OIDC deployment identity for the read-only AgentCore operator Harness.
+
+Parameters:
+  GitHubSubject:
+    Type: String
+    Default: repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main
+    AllowedValues:
+      - repo:amitkarpe@1894622/aws-secops@1362357126:ref:refs/heads/main
+
+Resources:
+  OperatorHarnessStackExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cloudformation-aws-secops-operator-harness
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: aws-secops-operator-harness-stack
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageExactOperatorRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-read
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-gateway
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-harness
+              - Sid: PassOperatorReadRoleToLambda
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-read
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+              - Sid: PassOperatorRolesToAgentCore
+                Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-gateway
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-harness
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: bedrock-agentcore.amazonaws.com
+              - Sid: ManageExactOperatorLogGroup
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteRetentionPolicy
+                  - logs:TagResource
+                  - logs:UntagResource
+                  - logs:ListTagsForResource
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:ap-southeast-1:${AWS::AccountId}:log-group:/aws/lambda/aws-secops-operator-read
+                  - !Sub arn:${AWS::Partition}:logs:ap-southeast-1:${AWS::AccountId}:log-group:/aws/lambda/aws-secops-operator-read:*
+              - Sid: DescribeOperatorLogs
+                Effect: Allow
+                Action: logs:DescribeLogGroups
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+              - Sid: ManageExactOperatorLambda
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - lambda:ListTags
+                Resource: !Sub arn:${AWS::Partition}:lambda:ap-southeast-1:${AWS::AccountId}:function:aws-secops-operator-read
+              - Sid: ManageOperatorAgentCoreResources
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:CreatePolicyEngine
+                  - bedrock-agentcore:GetPolicyEngine
+                  - bedrock-agentcore:UpdatePolicyEngine
+                  - bedrock-agentcore:DeletePolicyEngine
+                  - bedrock-agentcore:ListPolicyEngines
+                  - bedrock-agentcore:CreateGateway
+                  - bedrock-agentcore:GetGateway
+                  - bedrock-agentcore:UpdateGateway
+                  - bedrock-agentcore:DeleteGateway
+                  - bedrock-agentcore:ListGateways
+                  - bedrock-agentcore:CreateGatewayTarget
+                  - bedrock-agentcore:GetGatewayTarget
+                  - bedrock-agentcore:UpdateGatewayTarget
+                  - bedrock-agentcore:DeleteGatewayTarget
+                  - bedrock-agentcore:ListGatewayTargets
+                  - bedrock-agentcore:CreatePolicy
+                  - bedrock-agentcore:GetPolicy
+                  - bedrock-agentcore:UpdatePolicy
+                  - bedrock-agentcore:DeletePolicy
+                  - bedrock-agentcore:ListPolicies
+                  - bedrock-agentcore:ManageResourceScopedPolicy
+                  - bedrock-agentcore:InvokeGateway
+                  - bedrock-agentcore:CreateHarness
+                  - bedrock-agentcore:GetHarness
+                  - bedrock-agentcore:UpdateHarness
+                  - bedrock-agentcore:DeleteHarness
+                  - bedrock-agentcore:ListHarnesses
+                  - bedrock-agentcore:ListHarnessVersions
+                  - bedrock-agentcore:CreateAgentRuntime
+                  - bedrock-agentcore:GetAgentRuntime
+                  - bedrock-agentcore:UpdateAgentRuntime
+                  - bedrock-agentcore:DeleteAgentRuntime
+                  - bedrock-agentcore:TagResource
+                  - bedrock-agentcore:UntagResource
+                  - bedrock-agentcore:ListTagsForResource
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+      Tags:
+        - Key: project
+          Value: aws-secops
+        - Key: purpose
+          Value: cloudformation-operator-harness
+
+  GitHubOperatorHarnessDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: github-actions-aws-secops-operator-harness
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Ref GitHubSubject
+      Policies:
+        - PolicyName: aws-secops-operator-harness-deploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ValidateTemplate
+                Effect: Allow
+                Action: cloudformation:ValidateTemplate
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+              - Sid: ManageExactHarnessStack
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                Resource: !Sub arn:${AWS::Partition}:cloudformation:ap-southeast-1:${AWS::AccountId}:stack/aws-secops-operator-harness/*
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: ap-southeast-1
+              - Sid: PassExactStackExecutionRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt OperatorHarnessStackExecutionRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+      Tags:
+        - Key: project
+          Value: aws-secops
+        - Key: purpose
+          Value: github-oidc-operator-harness
+
+Outputs:
+  OperatorHarnessDeployRoleName:
+    Value: !Ref GitHubOperatorHarnessDeployRole
+  OperatorHarnessDeployRoleArn:
+    Value: !GetAtt GitHubOperatorHarnessDeployRole.Arn
+  OperatorHarnessStackExecutionRoleName:
+    Value: !Ref OperatorHarnessStackExecutionRole
+  OperatorHarnessStackExecutionRoleArn:
+    Value: !GetAtt OperatorHarnessStackExecutionRole.Arn
