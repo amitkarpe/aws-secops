@@ -42,13 +42,22 @@ Resources:
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-read
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-gateway
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-harness
-              - Sid: PassExactOperatorRoles
+              - Sid: PassOperatorReadRoleToLambda
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-read
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+              - Sid: PassOperatorRolesToAgentCore
                 Effect: Allow
                 Action: iam:PassRole
                 Resource:
-                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-read
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-gateway
                   - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-secops-operator-harness
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: bedrock-agentcore.amazonaws.com
               - Sid: ManageExactOperatorLogGroup
                 Effect: Allow
                 Action:
