@@ -77,6 +77,17 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         self.assertIn("do not claim or attempt a change", self.text)
         self.assertIn("If live evidence is unavailable, say UNVERIFIED", self.text)
 
+    def test_operator_summary_contract_is_concise_and_identifier_safe(self):
+        self.assertIn("lead with the result", self.text)
+        self.assertIn("Prefer one small Markdown table", self.text)
+        self.assertIn("✅ compliant/pass", self.text)
+        self.assertIn("⚠️ attention/partial", self.text)
+        self.assertIn("❌ non-compliant/fail", self.text)
+        self.assertIn("ℹ️ informational", self.text)
+        self.assertIn("Hide resource IDs, batch IDs, ARNs, account IDs, and internal identifiers by default", self.text)
+        self.assertIn("only when the operator explicitly asks", self.text)
+        self.assertIn("no current non-compliant findings were returned by AWS Config", self.text)
+
 
 if __name__ == "__main__":
     unittest.main()
