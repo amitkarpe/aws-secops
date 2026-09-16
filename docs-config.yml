@@ -1,5 +1,5 @@
 site_name: AWS Compliance Agent
-site_description: Governed AWS compliance remediation learning portal
+site_description: Governed agentic AWS SecOps learning portal
 site_url: https://amitkarpe.github.io/aws-secops/
 repo_url: https://github.com/amitkarpe/aws-secops
 repo_name: amitkarpe/aws-secops
@@ -42,10 +42,11 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Learn:
+      - 3-minute demo: operations/AGENTIC_DEMO_3_MIN.md
       - Start here: learning-path.md
       - Current architecture: architecture.md
-      - Demo v1: demo-v1.md
-      - Governance: governance.md
+      - Governance / security model: governance.md
+      - Long Demo v1: demo-v1.md
   - AgentCore Lab:
       - Overview: research/index.md
       - Current Harness experiment: research/agentcore-harness-operator-experiments.md
@@ -58,7 +59,7 @@ nav:
           - Cost model: research/COST_MODEL_V0.md
           - Connector safety notes: research/CHATGPT_CONNECTOR_SAFETY_FRAMING.md
   - Operations:
-      - LibreChat bulk demo (S3-specific): operations/LIBRECHAT_BULK_DEMO.md
+      - LibreChat bulk demo (historical S3-specific): operations/LIBRECHAT_BULK_DEMO.md
       - Cost and cleanup: operations/COST_AND_CLEANUP.md
   - Technical proofs:
       - Reliability hardening: implementation/RELIABILITY_HARDENING_PROOF.md
