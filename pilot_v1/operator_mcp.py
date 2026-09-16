@@ -82,14 +82,47 @@ def call(operation: str, control: str) -> dict:
         raise ValueError("Remediation plan unavailable; no AWS change requested.") from None
 
 
+def _read_whole_batch(batch_id: str) -> dict:
+    """Read every item from one immutable batch without returning resource IDs to the model."""
+    batch_id = identity(batch_id)
+    items: list[dict] = []
+    offset = 0
+    expected_total: int | None = None
+    expected_summary: dict | None = None
+    while offset <= 1000:
+        page = read_path("/api/v1/get_batch", {"batch_id": batch_id, "offset": offset, "limit": 50})
+        page_items = page.get("items")
+        page_total = page.get("total")
+        summary = page.get("summary")
+        if not isinstance(page_items, list) or type(page_total) is not int or page_total < 0 or not isinstance(summary, dict):
+            raise ValueError("invalid batch page")
+        if expected_total is None:
+            expected_total = page_total
+            expected_summary = summary
+        elif page_total != expected_total or summary.get("batch_id") != expected_summary.get("batch_id"):
+            raise ValueError("batch changed during read")
+        items.extend(page_items)
+        offset += len(page_items)
+        if not page_items or offset >= page_total:
+            break
+    if expected_total is None or expected_summary is None:
+        raise ValueError("batch evidence missing")
+    return {
+        "version": 1,
+        "summary": expected_summary,
+        "total": expected_total,
+        "items": items,
+        "complete": len(items) == expected_total,
+    }
+
+
 def _s3_evidence() -> tuple[dict, dict, dict | None]:
     plan = read_path("/api/operator/plan", {"control": S3_CONTROL})
     status = read_path("/api/operator/status")
     page = None
     batch = plan.get("current_batch")
     if isinstance(batch, dict) and isinstance(batch.get("batch_id"), str):
-        batch_id = identity(batch["batch_id"])
-        page = read_path("/api/v1/get_batch", {"batch_id": batch_id, "offset": 0, "limit": 1})
+        page = _read_whole_batch(batch["batch_id"])
     return plan, status, page
 
 
@@ -192,7 +225,7 @@ server = FastMCP(
     "AWS Compliance Planner",
     instructions=(
         "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
-        "investigate_s3_context and get_s3_decision_timeline are read-only evidence views and never expose hidden chain-of-thought. "
+        "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution. "
         "The only preparation tool is prepare_remediation(control). For control=all it skips completed/ineligible families server-side; for one exact control it prepares only that family."
     ),
