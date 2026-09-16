@@ -1,12 +1,89 @@
 # AWS Compliance Agent
 
-A public personal-lab project for **governed AWS compliance remediation**: AWS Config detects, an AI agent explains and plans, a human approves, AgentCore Gateway + Policy govern an exact tool, and direct AWS provider readback verifies the result.
+A public personal-lab project for **governed agentic AWS SecOps**: an AI operator can read bounded AWS evidence, investigate a supported finding and explain the decision path, while AWS changes remain behind a separate human-approval + policy + exact-tool boundary.
 
-> **Demo v1 is a learning/POC environment, not a production service.**
+> **Personal lab / POC only. Not a production service.**
 
-## Demo v1 at a glance
+## The current story
 
-| | Recorded Demo v1 scope |
+There are deliberately **two separate planes**.
+
+### 1. Read / investigate — live AgentCore Harness
+
+```text
+AWS Config
+   ↓
+aws_secops_operator Harness — Nova 2 Lite
+   ↓ exactly four read tools
+AgentCore Gateway + Policy (ENFORCE)
+   ↓
+Bounded Config / retained-demo S3 reads
+   ↓
+Evidence + recommendation + Decision Timeline
+```
+
+The live Harness can:
+
+- summarize the two supported AWS Config controls;
+- list bounded current non-compliant findings;
+- investigate one deterministic retained-demo S3 finding when Config returns one;
+- show a factual nine-stage Agent Decision Timeline.
+
+It has **no model-accessible AWS write, shell, generic AWS, arbitrary resource-selection or remediation tool**. An explicit `fix/apply/execute` request still does not mutate AWS through the Harness.
+
+### 2. Governed mutation — recorded Demo v1 path
+
+```text
+Exact supported remediation intent
+   ↓
+Human Approve / Reject
+   ↓
+AgentCore Gateway + Policy
+   ↓
+Exact S3 or Security Group tool
+   ↓
+AWS API
+   ↓
+Direct provider readback
+   ↓
+AWS Config converges independently
+```
+
+The core security principle remains:
+
+> **The AI can investigate and recommend; it does not authorize an AWS change.**
+
+## What is proven
+
+| Capability | Current evidence |
+|---|---|
+| Read-only Harness | **Live** — exactly four bounded read tools, Gateway Policy `ENFORCE` |
+| Config health failure | **Fail closed** — returns `UNVERIFIED/BLOCKED`, not a fabricated result |
+| S3 contextual investigation | **Live** — healthy zero-finding path returns Config-only `CLEAR` with provider state `NOT_READ` |
+| Agent Decision Timeline | **Live** — nine observable evidence/status stages, never hidden chain-of-thought |
+| Explicit fix request through Harness | **No mutation** — remains outside the Harness write boundary |
+| Governed S3 + restricted-SSH remediation | **Recorded Demo v1** — human decision, exact tool, provider verification |
+| Two-account read-only proof | **Blocked** — no second authorized owned account/read scope is currently connected |
+
+A Config-only `CLEAR` is intentionally narrow: it means no current non-compliant finding was returned by AWS Config. It does **not** mean direct S3 provider state was read, the bucket was proven non-public, or risk was assessed.
+
+## 3-minute demo
+
+Start with the current [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md).
+
+The short story is:
+
+1. **Finding / status** — read current Config evidence.
+2. **Investigation** — use bounded contextual reads only when a current retained-demo finding exists.
+3. **Decision Timeline** — show evidence, recommendation and governance state.
+4. **Trust test** — ask the Harness to fix it; verify it still has no mutation path.
+5. **Proof boundary** — explain that actual remediation uses the separate recorded human-approval → Gateway/Policy → exact-tool → provider-readback path.
+
+This keeps the demo useful even when the current lab is compliant. A live non-compliant S3 investigation can be re-armed only through the explicit operator-only demo path, never through the Harness.
+
+## Recorded Demo v1 scope
+
+| | Recorded scope |
 |---|---|
 | Resources | **100 S3 buckets + 10 unattached Security Groups** |
 | Controls | **S3 Block Public Access + restricted SSH** |
@@ -14,35 +91,16 @@ A public personal-lab project for **governed AWS compliance remediation**: AWS C
 | Mutation | **Exact tools only; no generic model-accessible AWS write tool** |
 | Verification | **Direct provider readback; AWS Config converges independently** |
 
-```text
-AWS Config
-   ↓ Detect
-AWS Compliance Agent
-   ↓ Explain + plan
-Human Approve / Reject
-   ↓ Authorize exact intent
-AgentCore Gateway + Policy
-   ↓ Govern
-Exact S3 / Security Group tool
-   ↓ Execute
-AWS provider readback
-   ↓ Verify
-AWS Config convergence
-```
-
-The core security principle is simple:
-
-> **The AI recommends the change; it does not authorize the change.**
-
-## What the AI actually does
-
-The model helps an operator understand findings, summarize current evidence and map an explicit request onto one of the supported workflows. Deterministic server code owns the supported controls, retained manifests, eligibility rules, exact action, durable batch state and provider verification.
-
-For the recorded S3 bulk workflow, the model is **not** deciding bucket-by-bucket changes. The exact batch worker performs the bounded execution.
-
-This project therefore demonstrates an interactive governed workflow; it does not claim that AI replaces AWS Config remediation or deterministic automation.
+Demo v1 planners use complete retained-family readiness gates. This is not an arbitrary-subset remediation engine.
 
 ## Start here
+
+1. **Short demo:** [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md)
+2. **Architecture:** [current two-plane architecture](docs/architecture.md)
+3. **Governance:** [why the agent cannot freely change AWS](docs/governance.md)
+4. **Long technical demo:** [Demo v1](docs/demo-v1.md)
+5. **Current public status:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
+6. **Learning portal:** https://amitkarpe.github.io/aws-secops/
 
 ### Fresh ChatGPT operator session
 
@@ -50,53 +108,42 @@ Start a new chat with only:
 
 > `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
 
-`AGENTS.md` routes ChatGPT automatically to the full [PROMPT.md](PROMPT.md) operating model, current context and active GitHub authority. The user does not need to paste the bootstrap URL or restate project history.
-
-Then, for human reading:
-
-1. **Learning portal:** https://amitkarpe.github.io/aws-secops/
-2. Read [Architecture](docs/architecture.md) for the current control path.
-3. Read [Demo v1](docs/demo-v1.md) for the current end-to-end flow, evidence and safe prompts.
-4. Read [Governance](docs/governance.md) for trust assumptions, approval, Policy, exact-tool and verification boundaries.
-5. Read [Learning path](docs/learning-path.md) for deeper proofs, operations material and clearly labelled history.
-6. Read [Project status](PROJECT_STATUS.md) for the current public baseline and known limits.
-
-## What this project is — and is not
-
-This project focuses on the gap **after detection**. It does not try to replace AWS Config, CloudTrail, CloudWatch, CloudSCAPE or VAPT tooling.
-
-The agent is intentionally bounded:
-
-- read-only questions are intended to remain read-only and were tested that way in the recorded demo;
-- only supported, server-owned remediation families can be prepared;
-- the current planners require the **complete retained family** to pass readiness/eligibility gates; Demo v1 is not an arbitrary-subset remediation engine;
-- the model cannot choose arbitrary account, Region, API, resource IDs or AWS action at execution time;
-- S3 and Security Group approvals remain independent;
-- provider state, not model confidence, determines completion;
-- `UNKNOWN`, `FAILED` and partial outcomes remain explicit;
-- Demo v1 does not claim multi-account, hostile multi-tenant or production-ready identity governance.
+`AGENTS.md` routes ChatGPT to `PROMPT.md`, current context and active GitHub authority. Chat history is not the project source of truth.
 
 ## Evidence
 
-The public site links the detailed proofs. The current story is anchored by these milestones:
+Key recorded milestones:
 
 - [PR #23](https://github.com/amitkarpe/aws-secops/pull/23) — governed S3 execution with native approval, Gateway/Policy and provider verification.
-- [PR #25](https://github.com/amitkarpe/aws-secops/pull/25) — AWS Config + exact restricted-SSH remediation and the unified compliance-agent direction.
-- [PR #27](https://github.com/amitkarpe/aws-secops/pull/27) — current Config-driven planner, separate S3/SG approvals, repeatable Operator flow and final Demo v1 acceptance.
-- [PR #33](https://github.com/amitkarpe/aws-secops/pull/33) — bounded Config reads, no-replay S3/SG interruption recovery, stronger status evidence and offline regression CI.
+- [PR #25](https://github.com/amitkarpe/aws-secops/pull/25) — AWS Config + exact restricted-SSH remediation direction.
+- [PR #27](https://github.com/amitkarpe/aws-secops/pull/27) — recorded 100-S3 + 10-SG Demo v1 acceptance.
+- [PR #64](https://github.com/amitkarpe/aws-secops/pull/64) — live Harness-native S3 investigation + Decision Timeline.
+- [PR #65](https://github.com/amitkarpe/aws-secops/pull/65) — unhealthy Config evidence fails closed as `UNVERIFIED/BLOCKED`.
+- [PR #66](https://github.com/amitkarpe/aws-secops/pull/66) — Config-only `CLEAR` cannot be presented as provider verification.
 
-See [Demo v1 — evidence digest](docs/demo-v1.md#current-evidence-digest) for what is recorded as proven versus what remains a limitation.
+Issue [#60](https://github.com/amitkarpe/aws-secops/issues/60) is the durable authority for the current agentic SecOps phase and live acceptance evidence.
+
+## Important boundaries
+
+- AWS Config, CloudTrail, CloudWatch and direct provider reads remain authoritative AWS evidence sources.
+- The Harness is read-only; it does not become a remediation executor when prompted to fix something.
+- Human approval, Gateway/Policy, exact tools and IAM remain separate AWS-change controls.
+- Provider state, not model confidence, determines remediation completion.
+- `UNKNOWN`, `BLOCKED`, `UNVERIFIED` and partial evidence remain explicit.
+- No multi-account live claim exists until a second explicitly authorized owned read scope is configured and independently verified.
+- No production, arbitrary-resource, generic AWS administration or 1,000-resource claim is made.
 
 ## Repository map
 
 ```text
 docs/implementation/   dated plans and implementation proofs
-docs/operations/       current + historical runbooks/demo material
+docs/operations/       current short demo + historical operations material
 docs/research/         AgentCore, cost and feasibility research
-integration/           LibreChat / MCP / agent integration
-pilot_v1/              bounded application and remediation logic
-scripts/               deployment, proof and operator helpers
-tests/                 deterministic regression tests
+infra/                  repository-owned AWS infrastructure definitions
+integration/           historical/current agent integration code
+pilot_v1/              bounded Demo v1 remediation logic
+scripts/                deployment, proof and operator helpers
+tests/                  deterministic regression tests
 ```
 
 Historical documents are intentionally retained as engineering evidence. They are not all current architecture authority.
@@ -107,11 +154,9 @@ Short-session read order:
 
 1. `AGENTS.md` — bootstrap/router and repository rules
 2. `CONTEXT.md` — current truth and active authority
-3. `PROMPT.md` — full ChatGPT + GitHub + AWS Core operating model, loaded automatically by `AGENTS.md`
+3. `PROMPT.md` — full ChatGPT + GitHub + AWS Core operating model
 4. active Issue/PR — work authority
 5. `SPEC.md` / `ROADMAP.md` when relevant
-
-Human readers should use the portal and `PROJECT_STATUS.md`.
 
 ## Public repository boundary
 
@@ -119,8 +164,4 @@ Treat repository content, Issues/PRs, Actions logs and Git history as public. Do
 
 ## Status
 
-**Demo v1 live acceptance is recorded; the MkDocs learning portal is live; PR #33 reliability hardening is merged on `main`.** The hardening adds bounded Config reads, non-replay interruption behavior for both supported families, stronger saved verification evidence and AWS-free regression CI. These checks do not imply that the updated runtime has been deployed to the existing AWS demo host.
-
-The next engineering milestone is [Issue #36](https://github.com/amitkarpe/aws-secops/issues/36): establish repo-specific GitHub OIDC + repository-owned IaC/deployment flow with ChatGPT as primary operator and AWS Core for verification.
-
-For an AWS-free code review, use the [offline validation guide and evidence](docs/implementation/RELIABILITY_HARDENING_PROOF.md#how-to-reproduce-offline). Live deployment still requires owner-held manifests, an approved identity and the retained service configuration; this is not a tested one-command fresh-account installation.
+**Issue #60 Milestones 1–2 are live-deployed and healthy-path accepted on the read-only AgentCore Harness. Milestone 3 is blocked pending a second explicitly authorized owned AWS read scope. Milestone 4 is consolidating the short demo and public documentation around the verified current architecture.**
