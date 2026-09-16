@@ -10,29 +10,18 @@ Repository: `amitkarpe/aws-secops`
 - Supported remediation families remain S3 Block Public Access and restricted SSH on retained owned demo resources.
 - Approved execution remains human approval -> Gateway/Policy -> exact family tool -> provider readback.
 - The model has no generic AWS mutation tool.
-- The `aws_secops_operator` Harness is deployed and independently verified as the read-only operator reasoning/read layer for the two existing AWS Config controls.
-- Explicit `fix/apply/execute` requests do not mutate through the Harness; they route to the existing governed human-approval path.
-- Issue #58 / PR #59 operator-summary polish is complete.
-- PR #61 merged the Issue #60 contextual-investigation / Decision Timeline implementation.
-- Post-merge correctness Issue #62 is complete via PR #63.
-- PR #64 is merged and moves Issue #60 Milestones 1–2 onto the existing read-only AgentCore Harness so they no longer depend on the retired WSL/LibreChat runtime topology.
+- The `aws_secops_operator` AgentCore Harness is the live read-only operator reasoning layer.
+- Explicit `fix/apply/execute` requests do not mutate through the Harness; they remain on the separate governed human-approval path.
+- Issue #60 Milestones 1–2 are live-deployed on the Harness: bounded S3 contextual investigation + factual Agent Decision Timeline.
+- Milestone 3, exactly-two-account read-only SecOps, remains unclaimed until a second explicit owned read scope is configured and independently verified.
 
 ## Current operating model
 
 > **AWS Core discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS Core independently verifies.**
 
-ChatGPT Web is the default controller. GitHub is durable engineering state. AWS MCP/Core is the live AWS discovery and verification path. Codex is used only when deeper implementation or independent runtime validation materially helps.
+ChatGPT Web is the default controller. GitHub is durable engineering state. AWS Core is the live AWS discovery/verification path. Codex is optional for deeper implementation or independent validation.
 
-## Verified baseline
-
-- one `aws_secops_operator` Harness in `ap-southeast-1`;
-- Nova 2 Lite;
-- currently deployed Harness still has the original two read-only AWS Config tools until PR #64 is deployed;
-- Gateway Policy mode `ENFORCE`;
-- current deployed read Lambda has Config/log reads only and no S3/EC2/SSM mutation authority;
-- live Config summary + focused findings reads passed for both supported controls;
-- negative `fix/apply/execute` boundary passed;
-- Demo v1 mutation path remains separate and governed.
+When the GitHub connector cannot start the repo's manual `workflow_dispatch`, the repo-documented fallback may be used only with explicit user authorization: trusted bootstrap of reviewed desired state followed by independent AWS verification. Do not widen the workflow trigger merely to bypass connector limitations.
 
 ## Current authority
 
@@ -42,62 +31,71 @@ https://github.com/amitkarpe/aws-secops/issues/60
 
 Implementation history:
 - PR #61 — contextual investigation / Decision Timeline implementation (merged)
-- Issue #62 / PR #63 — post-merge provider-evidence correctness hardening (complete)
-- PR #64 — Harness-native S3 investigation + Decision Timeline (merged at `2f896fe86e99c4e4096c321a40040f33daff644d`)
+- Issue #62 / PR #63 — provider-evidence correctness hardening (complete)
+- PR #64 — Harness-native S3 investigation + Decision Timeline (merged at `2f896fe86e99c4e4096c321a40040f33daff644d`, live-deployed)
+- PR #65 — unhealthy Config evidence surfaced as structured `UNVERIFIED/BLOCKED` instead of a masked Gateway error (merged at `25f835068a835ee79fd9c01adc486de82334a0ba`, live-deployed)
 
-## Runtime discovery and design correction
+## Live verified Harness baseline — 2026-09-16
 
-Read-only runtime acceptance on 2026-09-16 established:
+AWS Core independently verified after PR #65 deployment:
 
-- current AWS identity and `ap-southeast-1` verified privately;
-- AWS Config recorder is healthy;
-- both supported Config rules are currently COMPLIANT;
-- current rule evaluations observed 107 compliant S3 bucket evaluations and 15 compliant restricted-SSH evaluations;
-- `aws-secops-operator-harness` CloudFormation stack is `CREATE_COMPLETE`;
-- current account is not a member of AWS Organizations;
-- exactly 100 retained `aws-secops-bpa-*` demo buckets still exist (`000`–`099`); sampled ownership tags match the historical `owner=amit`, `phase=bulk-bpa`, `project=aws-secops`, `environment=dev`, `version=r01` contract;
-- all-region SSM discovery found only one managed EC2 in this account, belonging to the separate Security Copilot / `agentic-ai-cybersecurity-lab` project, with no AWS SecOps runtime present.
+- CloudFormation stack `aws-secops-operator-harness`: `UPDATE_COMPLETE`;
+- one `aws_secops_operator` Harness in `ap-southeast-1`, READY, version 3;
+- Nova 2 Lite;
+- exactly four allowed read tools:
+  1. `get_config_summary`
+  2. `list_config_findings`
+  3. `investigate_s3_context`
+  4. `get_s3_decision_timeline`
+- Gateway READY with Policy mode `ENFORCE`;
+- one ACTIVE Cedar policy permits exactly those four read actions;
+- read Lambda IAM remains bounded to:
+  - Config recorder/rule/compliance reads;
+  - `GetBucketLocation`, `GetBucketTagging`, `GetBucketPublicAccessBlock`, `GetBucketPolicyStatus` on `aws-secops-bpa-*` only;
+  - CloudWatch Logs writes;
+- no S3 write, EC2 write, SSM, shell, generic AWS, remediation, role-chaining or cross-account mutation capability was added.
 
-Repository history clarified the old UI topology:
-- named UI / Nginx / LibreChat ran on a retained personal-lab EC2 using `AWS_PROFILE=amit`;
-- the bulk/Config writer used a separate `vagent` lane from a local WSL/operator workstation and required that workstation to be up;
-- the current AWS Core connection is the `vagent` lab, not the historical `amit` UI host.
+The retained S3 demo family still contains exactly 100 `aws-secops-bpa-*` buckets (`000`–`099`); sampled ownership tags match the retained demo contract.
 
-Therefore Issue #60 Milestones 1–2 no longer require recovering that old split runtime. PR #64 extends the existing `aws_secops_operator` Harness instead.
+## Current AWS Config health condition
 
-## PR #64 trusted scope
+The Config recorder is still `recording=true`, but its latest recording event is unhealthy:
 
-After deployment the existing Harness should expose exactly four read tools:
+- `lastStatus=FAILURE`;
+- `lastStatusChangeTime=2026-09-16T03:30:25.797Z`.
 
-1. `get_config_summary`
-2. `list_config_findings`
-3. `investigate_s3_context`
-4. `get_s3_decision_timeline`
+This failure began before the PR #64 stack deployment started at `03:35:33Z`.
 
-The two new tools:
-- accept no model-selected bucket/resource input;
-- derive a deterministic candidate only from current Config NON_COMPLIANT S3 evidence;
-- require prefix `aws-secops-bpa-*`, Singapore Region, and exact retained ownership tags before direct S3 reads;
-- add only `GetBucketLocation`, `GetBucketTagging`, `GetBucketPublicAccessBlock`, and `GetBucketPolicyStatus` on the retained S3 prefix;
-- add no S3 write, EC2 write, SSM, shell, generic AWS, remediation or cross-account capability;
-- expose an observable evidence/status timeline, not hidden chain-of-thought.
+Read-only diagnosis found:
+- both required Config rules remain ACTIVE;
+- existing rule evaluation data remains readable;
+- delivery history had a prior successful delivery;
+- CloudTrail around the failure shows `AWSServiceRoleForConfig` resource-composition scans encountering unavailable/subscription-only services, including service/provider errors outside this project's two recorded resource types.
 
-Latest-head PR #64 offline regression + integration JavaScript syntax checks passed before squash merge.
+One bounded `StartConfigurationRecorder(default)` attempt made no state change. Do not stop/recreate/reconfigure the recorder or weaken the health gate merely to make the demo pass.
 
-## Current next action
+## Fail-closed live acceptance proof
 
-Deploy merged PR #64 through the existing manual main-only **AWS operator Harness deploy** GitHub Actions workflow, then use AWS Core to independently verify:
+While Config remains unhealthy:
 
-1. stack update completed cleanly;
-2. Harness exposes exactly the four expected read tools;
-3. `investigate_s3_context` returns a truthful read-only result for current provider/Config state;
-4. `get_s3_decision_timeline` returns the factual nine-stage status timeline;
-5. explicit `fix/apply/execute` still performs no Harness mutation and points to the separate governed human-approval path.
+- `investigate_s3_context` returns structured `UNVERIFIED`, `partial=true`, read-only evidence instead of a generic internal error;
+- `get_s3_decision_timeline` returns all nine observable stages with `UNVERIFIED / BLOCKED / UNKNOWN / NOT_CALLED / NOT_REQUESTED` as appropriate;
+- explicit `Fix this S3 compliance issue now` performs no Harness mutation and reports that evidence is unavailable and remediation remains governed;
+- post-deployment Lambda logs contain `OPERATOR_READ` events with no runtime error/traceback.
 
-The current ChatGPT GitHub connector can review/merge workflow-backed code but does not expose a `workflow_dispatch` action, so starting this manual deployment requires the existing GitHub Actions UI (or another authorized workflow-dispatch client). Do not replace the workflow with a broader automatic trigger merely to bypass that limitation.
+Independent CloudTrail review from the first trusted-bootstrap deployment through final verification found zero:
+- `PutBucketPublicAccessBlock`;
+- `DeletePublicAccessBlock`;
+- `PutBucketPolicy`;
+- `DeleteBucketPolicy`;
+- `AuthorizeSecurityGroupIngress`;
+- `RevokeSecurityGroupIngress`.
 
-A live non-compliant S3 investigation is a later proportional acceptance step. If needed, re-arm only the bounded retained demo through an explicit operator-only path after the read-only Harness deployment is verified. Do not expose reset/re-arm to the Harness.
+## Current next actions
 
-Milestone 3 remains unclaimed until a second explicit owned read scope is configured and independently verified. The current account has no AWS Organizations membership, so there is no existing Organizations-based second-account path to reuse.
+1. Keep the strict Config health gate. Observe/re-diagnose the recorder until a subsequent recording event becomes successful; do not broaden Config scope or bypass the gate just for the demo.
+2. Once recorder health is successful, run one positive live S3 investigation + Decision Timeline acceptance. Re-arm the bounded retained demo only if a non-compliant finding is actually needed, through the existing operator-only path—not through Harness.
+3. Milestone 3 remains pending: configure exactly one second explicit owned read scope, then independently prove the two-account read-only path. The current account has no AWS Organizations membership/path to reuse.
+4. Keep Issue #60 open until the remaining acceptance is complete or explicitly descoped.
 
-For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
+For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future scope use `ROADMAP.md`.
