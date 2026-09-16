@@ -1,7 +1,7 @@
 # Agentic SecOps Next Phase
 
 Authority: Issue #60
-Status: planning only
+Status: implementation in PR #61; no live AWS deployment from this PR
 
 ## Objective
 
@@ -9,7 +9,7 @@ Move the demo from simple compliance remediation toward a visibly agentic SecOps
 
 `investigate context -> explain risk -> recommend exact action -> policy/human decision -> bounded execution -> provider verification -> auditable evidence`
 
-This plan takes inspiration from current AWS agent patterns without trying to clone AWS Security Agent or AWS DevOps Agent. The repository remains focused on a small, governed AWS SecOps proof.
+The direction is inspired by current AWS Security Agent / DevOps Agent investigation patterns without attempting to clone those products. This repository remains a small, governed AWS SecOps proof.
 
 ## Guardrails
 
@@ -19,83 +19,89 @@ This plan takes inspiration from current AWS agent patterns without trying to cl
 - No arbitrary resource selection for mutation.
 - Multi-account begins read-only.
 - No production claim.
-- Prefer one useful proof per milestone.
+- Hide resource/account identifiers by default.
+- Do not expose or fabricate model chain-of-thought; show evidence-backed summaries and observable decisions only.
 
-## Milestones
+## Milestone status
 
-| Milestone | Outcome | First bounded proof |
+| Milestone | PR #61 implementation | Runtime status |
 | --- | --- | --- |
-| 1. Contextual Investigation v1 | Agent investigates before recommending remediation | One retained S3 non-compliant resource; bounded Config/provider/policy/tag/recent-change context |
-| 2. Agent Decision Timeline | Operator can see the governed agent lifecycle | Finding -> Investigation -> Risk/Context -> Recommendation -> Policy -> Human Decision -> Exact Tool -> Provider Readback -> Compliance Result |
-| 3. Two-account read-only SecOps | Small enterprise-scale discovery proof | Exactly two owned lab accounts; findings/read evidence only; no cross-account mutation |
-| 4. Short demo + docs consolidation | Explain value in 2–3 minutes | Problem -> investigate -> recommend -> approve -> exact fix -> AWS proof -> audit timeline |
+| 1. Contextual Investigation v1 | `pilot_v1/agentic_evidence.py` + `investigate_s3_context` agent tool | Offline/CI proof required; no AWS mutation |
+| 2. Agent Decision Timeline | Reusable nine-stage factual timeline via `get_s3_decision_timeline` | Offline/CI proof required; existing live provider evidence can populate it after deployment |
+| 3. Two-account read-only SecOps | `pilot_v1/multi_account_read.py`; exactly two explicit scopes, read APIs only, account IDs hidden | Live proof intentionally pending two configured owned lab accounts |
+| 4. Short demo + docs | `docs/operations/AGENTIC_DEMO_3_MIN.md` | Ready for review; deployment is separate |
 
 ## Milestone 1 — Contextual Investigation v1
 
-Start with the existing S3 Block Public Access family so the milestone adds agentic investigation rather than a new remediation control.
+The first implementation reuses the existing S3 Block Public Access family rather than adding another remediation control.
 
-Bounded evidence may include:
+The investigation packet is built from existing bounded evidence:
 
-- AWS Config control/finding state;
-- current Block Public Access/provider state;
-- bucket-policy/public-access context where safely available;
-- selected non-sensitive tags/context;
-- recent relevant change evidence where practical.
+- AWS Config control state;
+- intersection with retained owned demo scope;
+- direct provider precondition evidence from the current immutable batch when available;
+- exact remediation recommendation;
+- explicit uncertainty.
 
-The operator result should state what is wrong, why it matters, evidence used, uncertainty, exact recommendation, and whether approval is required.
+The implementation intentionally does **not** infer data sensitivity, actual public data exposure, attacker activity, exploitability, business impact, or intent from a Config finding.
 
-The investigation itself is read-only. Explicit fix/apply/execute continues through the existing governed path.
+No resource identifier is accepted from the model for this investigation. The backend selects the current server-owned S3 scope/batch evidence.
 
 ## Milestone 2 — Agent Decision Timeline
 
-Create one reusable operator-facing timeline for both read-only and governed-remediation flows.
-
-Minimum stages:
+The timeline stages are:
 
 `Finding -> Investigation -> Risk/Context -> Recommendation -> Policy -> Human Decision -> Exact Tool -> Provider Readback -> Compliance Result`
 
-Show concise facts and status. Hide noisy IDs/ARNs by default. Do not expose or fabricate hidden chain-of-thought; display only bounded reasoning summaries and evidence-backed decisions.
+Each stage is derived from observable Config, plan, batch, approval, Policy/executor, or provider state. The timeline explicitly records that chain-of-thought is not collected or displayed.
+
+Important truth rules:
+
+- Policy is `NOT_CALLED` until an exact executor is invoked.
+- Native human approval is independent from investigation/recommendation.
+- Provider readback is remediation truth.
+- `UNKNOWN` is never success or zero change.
+- AWS Config is reported separately because convergence can lag.
 
 ## Milestone 3 — Two-account read-only SecOps
 
-Prove that a central operator can distinguish findings from exactly two owned lab accounts.
+The implementation requires exactly two explicit account scopes:
 
-Requirements:
+- label;
+- AWS profile;
+- expected account ID;
+- fixed Region `ap-southeast-1`.
 
-- explicit account identity in evidence;
-- bounded read-only roles/tools;
-- no generic cross-account administrator role;
-- no cross-account remediation;
-- existing single-account Demo v1 mutation path unchanged.
+The read path permits only `get-*`, `list-*`, and `describe-*` AWS CLI operations and currently reads identity plus Config compliance for the two existing controls. Raw account IDs are replaced by a short hash-based reference in returned evidence.
 
-A later separately reviewed milestone may consider one exact cross-account remediation only after this read-only proof is accepted.
+This PR does not create cross-account roles and does not add any cross-account mutation path. Live acceptance is intentionally pending until a second owned lab account is explicitly configured and independently verified.
 
-## Milestone 4 — Short demo + documentation consolidation
+## Milestone 4 — Short demo
 
-Create a 2–3 minute story:
+Use `docs/operations/AGENTIC_DEMO_3_MIN.md`.
 
-1. security problem appears;
-2. agent investigates context;
-3. evidence/risk is explained;
-4. policy chooses the correct path;
-5. human approves when mutation is required;
-6. exact bounded remediation executes;
-7. AWS/provider evidence proves the result;
-8. Decision Timeline shows the audit trail.
+The three-minute story is:
 
-Keep the longer technical demo separately.
+1. supported finding appears;
+2. agent performs bounded contextual investigation;
+3. evidence/risk/uncertainty are shown;
+4. Decision Timeline makes the state visible;
+5. explicit fix request enters the existing native human approval path;
+6. exact bounded executor runs only after approval;
+7. direct provider readback proves the result;
+8. Config convergence remains a separate evidence signal.
 
-Documentation should converge on a few obvious entry points: README, demo, architecture, security model, and evidence. Do not start with a broad refactor; refactor only code made awkward or duplicated by Milestones 1–3.
+The longer technical Demo v1 remains available separately.
 
-## Delivery order
+## Deployment boundary
 
-1. Contextual Investigation v1
-2. Agent Decision Timeline
-3. Two-account read-only proof
-4. Short demo/documentation consolidation
+PR #61 implements code, tests and documentation only. It does **not**:
 
-Milestones 1 and 2 may share one cohesive implementation PR if still small. Milestone 3 should stay independently safety-reviewable even though Issue #60 tracks the whole phase.
+- deploy AWS resources;
+- change IAM/OIDC roles;
+- widen AgentCore Gateway/Policy;
+- add a model-accessible AWS write;
+- configure a second account;
+- claim a live two-account proof.
 
-## Planning PR boundary
-
-The planning PR for Issue #60 changes documentation/current authority only. It performs no AWS deployment, IAM/OIDC/Gateway/Policy change, or product implementation.
+After merge, live activation must use the existing governed deployment/operations workflow and independent AWS verification. Any cross-account role or cross-account mutation remains a separate security-reviewed decision.
