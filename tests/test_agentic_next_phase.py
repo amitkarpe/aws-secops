@@ -50,13 +50,13 @@ def sample_status(**control_overrides):
     return {"version": 1, "controls": [control]}
 
 
-def sample_page():
+def sample_page(compliant=False):
     return {
         "version": 1,
         "items": [{
             "resource": "aws-secops-bpa-secret-name-001",
             "before": {
-                "BlockPublicAcls": False,
+                "BlockPublicAcls": True if compliant else False,
                 "IgnorePublicAcls": True,
                 "BlockPublicPolicy": True,
                 "RestrictPublicBuckets": True,
@@ -85,6 +85,13 @@ class AgenticEvidenceTests(unittest.TestCase):
         self.assertIn("incomplete", result["conclusion"].lower())
         self.assertIn("Refresh bounded Config evidence", result["recommendation"])
 
+    def test_provider_compliant_config_lag_does_not_recommend_mutation(self):
+        plan = sample_plan(eligible_owned=0)
+        result = build_s3_investigation(plan, sample_status(), sample_page(compliant=True))
+        self.assertEqual(result["result"], "PROVIDER_COMPLIANT_CONFIG_LAG")
+        self.assertEqual(result["mutation"]["approval"], "NOT_REQUIRED")
+        self.assertIn("Do not prepare remediation", result["recommendation"])
+
     def test_timeline_is_observable_evidence_not_chain_of_thought(self):
         plan = sample_plan()
         status = sample_status()
@@ -106,7 +113,7 @@ class AgenticEvidenceTests(unittest.TestCase):
 
     def test_timeline_requires_provider_verification_for_pass(self):
         plan = sample_plan(current_batch={
-            "decision": "APPROVED",
+            "decision": "APPROVE",
             "counts": {"COMPLETED": 2},
             "verified": 2,
             "total": 2,
@@ -116,6 +123,8 @@ class AgenticEvidenceTests(unittest.TestCase):
         investigation = build_s3_investigation(plan, status, sample_page())
         result = build_decision_timeline(investigation, plan, status)
         stages = {item["stage"]: item for item in result["timeline"]}
+        self.assertEqual(stages["Human Decision"]["status"], "APPROVED")
+        self.assertEqual(stages["Exact Tool"]["status"], "COMPLETED")
         self.assertEqual(stages["Provider Readback"]["status"], "PASS")
         self.assertEqual(stages["Compliance Result"]["status"], "NO_CURRENT_NONCOMPLIANT_RETURNED")
 
