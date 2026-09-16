@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 import unittest
 
+from pilot_v1 import multi_account_read as mar
 from pilot_v1.agentic_evidence import (
+    BPA_TARGET,
     S3_CONTROL,
     build_decision_timeline,
     build_s3_investigation,
@@ -11,6 +13,7 @@ from pilot_v1.multi_account_read import parse_scopes, read_two_accounts
 
 
 ROOT = Path(__file__).resolve().parents[1]
+NONCOMPLIANT = {**BPA_TARGET, "BlockPublicAcls": False}
 
 
 def sample_plan(**overrides):
@@ -50,57 +53,130 @@ def sample_status(**control_overrides):
     return {"version": 1, "controls": [control]}
 
 
-def sample_page(compliant=False):
+def batch_item(number, state="PENDING", before=None, after=None):
+    return {
+        "resource": f"aws-secops-bpa-secret-name-{number:03d}",
+        "state": state,
+        "before": dict(before or NONCOMPLIANT),
+        "after": None if after is None else dict(after),
+        "changed": None,
+        "message": "test evidence",
+    }
+
+
+def sample_batch(items=None, *, decision="PENDING", complete=True, total=None):
+    items = list(items or [batch_item(1), batch_item(2)])
+    total = len(items) if total is None else total
+    counts = {}
+    for item in items:
+        counts[item["state"]] = counts.get(item["state"], 0) + 1
+    verified = sum(item["state"] in {"COMPLETED", "SKIPPED"} for item in items)
     return {
         "version": 1,
-        "items": [{
-            "resource": "aws-secops-bpa-secret-name-001",
-            "before": {
-                "BlockPublicAcls": True if compliant else False,
-                "IgnorePublicAcls": True,
-                "BlockPublicPolicy": True,
-                "RestrictPublicBuckets": True,
-            },
-        }],
+        "summary": {
+            "batch_id": "a" * 64,
+            "decision": decision,
+            "counts": counts,
+            "verified": verified,
+            "total": total,
+            "execution_active": any(item["state"] == "RUNNING" for item in items),
+        },
+        "total": total,
+        "complete": complete,
+        "items": items,
     }
 
 
 class AgenticEvidenceTests(unittest.TestCase):
-    def test_investigation_is_sanitized_and_read_only(self):
-        result = build_s3_investigation(sample_plan(), sample_status(), sample_page())
+    def test_pending_preview_is_sanitized_and_precondition_only(self):
+        result = build_s3_investigation(sample_plan(), sample_status(), sample_batch())
         rendered = json.dumps(result)
+        self.assertEqual(result["result"], "ATTENTION")
         self.assertEqual(result["mutation"]["performed"], False)
         self.assertEqual(result["mutation"]["approval"], "REQUIRED_FOR_MUTATION")
+        self.assertEqual(result["provider_evidence"]["mode"], "PREVIEW_NONCOMPLIANT")
+        self.assertIn("preview/precondition", result["provider_evidence"]["message"])
         self.assertEqual(result["resource_identity"], "hidden-by-default")
-        self.assertNotIn("aws-secops-bpa-secret-name-001", rendered)
+        self.assertNotIn("aws-secops-bpa-secret-name", rendered)
         self.assertIn("not public data exposure", result["conclusion"])
-        self.assertIn("No claim is made", result["uncertainty"])
-        self.assertEqual(result["evidence"][-1]["value"]["BlockPublicAcls"], False)
 
     def test_partial_config_blocks_remediation_recommendation(self):
         plan = sample_plan(partial=True)
         status = sample_status(config={"counts": {"NON_COMPLIANT": 2}, "partial": True})
-        result = build_s3_investigation(plan, status, sample_page())
+        result = build_s3_investigation(plan, status, sample_batch())
         self.assertEqual(result["confidence"], "LOW")
         self.assertEqual(result["mutation"]["approval"], "NOT_READY")
-        self.assertIn("incomplete", result["conclusion"].lower())
-        self.assertIn("Refresh bounded Config evidence", result["recommendation"])
         timeline = build_decision_timeline(result, plan, status)
         stages = {item["stage"]: item for item in timeline["timeline"]}
         self.assertEqual(stages["Finding"]["status"], "PARTIAL")
         self.assertEqual(stages["Compliance Result"]["status"], "PARTIAL")
 
-    def test_provider_compliant_config_lag_does_not_recommend_mutation(self):
-        plan = sample_plan(eligible_owned=0)
-        result = build_s3_investigation(plan, sample_status(), sample_page(compliant=True))
+    def test_completed_batch_uses_after_and_does_not_recommend_again(self):
+        batch = sample_batch([
+            batch_item(1, "COMPLETED", before=NONCOMPLIANT, after=BPA_TARGET),
+            batch_item(2, "SKIPPED", before=NONCOMPLIANT, after=BPA_TARGET),
+        ], decision="APPROVE")
+        plan = sample_plan(eligible_owned=0, provider_evidence_unknown=2, current_batch=batch["summary"])
+        result = build_s3_investigation(plan, sample_status(), batch)
+        self.assertEqual(result["provider_evidence"]["mode"], "VERIFIED_COMPLIANT")
         self.assertEqual(result["result"], "PROVIDER_COMPLIANT_CONFIG_LAG")
         self.assertEqual(result["mutation"]["approval"], "NOT_REQUIRED")
-        self.assertIn("Do not prepare remediation", result["recommendation"])
+        self.assertIn("Do not remediate again", result["recommendation"])
+
+    def test_config_lag_timeline_reports_provider_pass_separately(self):
+        batch = sample_batch([
+            batch_item(1, "COMPLETED", after=BPA_TARGET),
+            batch_item(2, "COMPLETED", after=BPA_TARGET),
+        ], decision="APPROVE")
+        plan = sample_plan(eligible_owned=0, current_batch=batch["summary"])
+        status = sample_status(config={"counts": {"NON_COMPLIANT": 2}, "partial": False})
+        investigation = build_s3_investigation(plan, status, batch)
+        timeline = build_decision_timeline(investigation, plan, status)
+        stages = {item["stage"]: item for item in timeline["timeline"]}
+        self.assertEqual(stages["Provider Readback"]["status"], "PASS")
+        self.assertEqual(stages["Compliance Result"]["status"], "NON_COMPLIANT")
+        self.assertEqual(stages["Recommendation"]["status"], "NO_ACTION")
+
+    def test_mixed_terminal_provider_states_block_global_conclusion(self):
+        batch = sample_batch([
+            batch_item(1, "COMPLETED", after=BPA_TARGET),
+            batch_item(2, "FAILED", after=None),
+        ], decision="APPROVE")
+        plan = sample_plan(eligible_owned=0, current_batch=batch["summary"])
+        result = build_s3_investigation(plan, sample_status(), batch)
+        self.assertEqual(result["provider_evidence"]["mode"], "INCOMPLETE_OR_UNCERTAIN")
+        self.assertEqual(result["result"], "EVIDENCE_INCOMPLETE")
+        self.assertEqual(result["mutation"]["approval"], "NOT_READY")
+
+    def test_unknown_item_never_reports_provider_pass(self):
+        batch = sample_batch([
+            batch_item(1, "COMPLETED", after=BPA_TARGET),
+            batch_item(2, "UNKNOWN", after=None),
+        ], decision="APPROVE")
+        plan = sample_plan(eligible_owned=0, current_batch=batch["summary"])
+        investigation = build_s3_investigation(plan, sample_status(), batch)
+        timeline = build_decision_timeline(investigation, plan, sample_status())
+        stages = {item["stage"]: item for item in timeline["timeline"]}
+        self.assertEqual(stages["Provider Readback"]["status"], "UNKNOWN")
+        self.assertNotEqual(stages["Provider Readback"]["status"], "PASS")
+        self.assertEqual(stages["Recommendation"]["status"], "BLOCKED")
+
+    def test_partial_batch_never_classifies_from_first_item(self):
+        batch = sample_batch(
+            [batch_item(1, "COMPLETED", after=BPA_TARGET)],
+            decision="APPROVE",
+            complete=False,
+            total=2,
+        )
+        plan = sample_plan(eligible_owned=0, current_batch=batch["summary"])
+        result = build_s3_investigation(plan, sample_status(), batch)
+        self.assertEqual(result["provider_evidence"]["mode"], "PARTIAL_BATCH")
+        self.assertEqual(result["result"], "EVIDENCE_INCOMPLETE")
 
     def test_timeline_is_observable_evidence_not_chain_of_thought(self):
         plan = sample_plan()
         status = sample_status()
-        investigation = build_s3_investigation(plan, status, sample_page())
+        investigation = build_s3_investigation(plan, status, sample_batch())
         result = build_decision_timeline(investigation, plan, status)
         self.assertEqual(
             [item["stage"] for item in result["timeline"]],
@@ -115,23 +191,7 @@ class AgenticEvidenceTests(unittest.TestCase):
         self.assertEqual(stages["Policy"]["status"], "NOT_CALLED")
         self.assertEqual(stages["Human Decision"]["status"], "PENDING")
         self.assertEqual(stages["Exact Tool"]["status"], "NOT_CALLED")
-
-    def test_timeline_requires_provider_verification_for_pass(self):
-        plan = sample_plan(current_batch={
-            "decision": "APPROVE",
-            "counts": {"COMPLETED": 2},
-            "verified": 2,
-            "total": 2,
-            "execution_active": False,
-        })
-        status = sample_status(config={"counts": {}, "partial": False})
-        investigation = build_s3_investigation(plan, status, sample_page())
-        result = build_decision_timeline(investigation, plan, status)
-        stages = {item["stage"]: item for item in result["timeline"]}
-        self.assertEqual(stages["Human Decision"]["status"], "APPROVED")
-        self.assertEqual(stages["Exact Tool"]["status"], "COMPLETED")
-        self.assertEqual(stages["Provider Readback"]["status"], "PASS")
-        self.assertEqual(stages["Compliance Result"]["status"], "NO_CURRENT_NONCOMPLIANT_RETURNED")
+        self.assertEqual(stages["Provider Readback"]["status"], "PRECONDITION_ONLY")
 
 
 class MultiAccountReadTests(unittest.TestCase):
@@ -154,14 +214,30 @@ class MultiAccountReadTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_scopes(duplicate)
 
-    def test_two_account_summary_hides_raw_ids_and_has_no_mutation(self):
+    def test_operation_allowlist_is_exact(self):
+        self.assertEqual(
+            mar.ALLOWED_READS,
+            {("sts", "get-caller-identity"), ("configservice", "describe-compliance-by-config-rule")},
+        )
+        scope = parse_scopes(self.raw_scopes())[0]
+        with self.assertRaises(ValueError):
+            mar._aws_json(scope, "iam", "list-roles", [])
+        with self.assertRaises(ValueError):
+            mar._aws_json(scope, "s3api", "get-bucket-policy", [])
+        with self.assertRaises(ValueError):
+            mar._aws_json(scope, "configservice", "describe-compliance-by-config-rule", [])
+
+    def test_two_account_summary_hides_raw_identity_and_has_no_mutation(self):
         def fake_reader(scope, service, operation, arguments):
             if service == "sts":
                 self.assertEqual(operation, "get-caller-identity")
-                return {"Account": scope.account_id}
+                return {
+                    "Account": scope.account_id,
+                    "Arn": f"arn:aws:sts::{scope.account_id}:assumed-role/secops-read/session",
+                }
             self.assertEqual(service, "configservice")
             self.assertEqual(operation, "describe-compliance-by-config-rule")
-            self.assertEqual(arguments[0], "--config-rule-names")
+            self.assertEqual(arguments, ["--config-rule-names", S3_CONTROL, "restricted-ssh"])
             return {
                 "ComplianceByConfigRules": [
                     {"ConfigRuleName": S3_CONTROL, "Compliance": {"ComplianceType": "NON_COMPLIANT"}},
@@ -176,7 +252,10 @@ class MultiAccountReadTests(unittest.TestCase):
         self.assertEqual(len(result["accounts"]), 2)
         self.assertNotIn("111111111111", rendered)
         self.assertNotIn("222222222222", rendered)
-        self.assertEqual({item["authority"] for item in result["accounts"]}, {"READ_ONLY"})
+        self.assertNotIn("arn:aws:sts", rendered)
+        self.assertEqual({item["authority"] for item in result["accounts"]}, {"READ_ONLY_OPERATION_ALLOWLIST"})
+        self.assertEqual({item["principal_kind"] for item in result["accounts"]}, {"ASSUMED_ROLE"})
+        self.assertEqual({item["iam_scope"] for item in result["accounts"]}, {"RUNTIME_VERIFICATION_REQUIRED"})
 
 
 class IntegrationSafetyTests(unittest.TestCase):

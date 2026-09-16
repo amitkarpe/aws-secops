@@ -18,6 +18,10 @@ S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
 SUPPORTED_CONTROLS = (S3_CONTROL, SG_CONTROL)
 ENV_NAME = "SECOPS_READ_ACCOUNTS_JSON"
+ALLOWED_READS = {
+    ("sts", "get-caller-identity"),
+    ("configservice", "describe-compliance-by-config-rule"),
+}
 
 
 @dataclass(frozen=True)
@@ -63,9 +67,17 @@ def parse_scopes(raw: str | None = None) -> tuple[AccountScope, AccountScope]:
     return scopes[0], scopes[1]
 
 
+def _expected_arguments(service: str, operation: str) -> list[str]:
+    if (service, operation) == ("sts", "get-caller-identity"):
+        return []
+    if (service, operation) == ("configservice", "describe-compliance-by-config-rule"):
+        return ["--config-rule-names", *SUPPORTED_CONTROLS]
+    raise ValueError("multi-account proof permits only the exact approved read operations")
+
+
 def _aws_json(scope: AccountScope, service: str, operation: str, arguments: list[str]) -> dict[str, Any]:
-    if not operation.startswith(("get-", "list-", "describe-")):
-        raise ValueError("multi-account proof permits read operations only")
+    if (service, operation) not in ALLOWED_READS or arguments != _expected_arguments(service, operation):
+        raise ValueError("multi-account proof permits only the exact approved read operations")
     command = [
         "aws", "--profile", scope.profile, "--region", scope.region,
         "--cli-connect-timeout", "10", "--cli-read-timeout", "30",
@@ -89,10 +101,25 @@ def _aws_json(scope: AccountScope, service: str, operation: str, arguments: list
     return value
 
 
+def _principal_kind(arn: str) -> str:
+    if ":assumed-role/" in arn:
+        return "ASSUMED_ROLE"
+    if ":role/" in arn:
+        return "ROLE"
+    if ":user/" in arn:
+        return "USER"
+    if arn.endswith(":root"):
+        return "ROOT"
+    return "OTHER"
+
+
 def read_account(scope: AccountScope, reader: Callable[[AccountScope, str, str, list[str]], dict[str, Any]] = _aws_json) -> dict[str, Any]:
     identity = reader(scope, "sts", "get-caller-identity", [])
+    arn = identity.get("Arn")
     if identity.get("Account") != scope.account_id:
         raise PermissionError("configured profile does not match the expected account")
+    if not isinstance(arn, str) or not arn.startswith("arn:aws:"):
+        raise RuntimeError("caller identity ARN missing")
     result = reader(
         scope,
         "configservice",
@@ -115,7 +142,10 @@ def read_account(scope: AccountScope, reader: Callable[[AccountScope, str, str, 
         "account_ref": scope.account_ref,
         "region": scope.region,
         "controls": controls,
-        "authority": "READ_ONLY",
+        "authority": "READ_ONLY_OPERATION_ALLOWLIST",
+        "principal_kind": _principal_kind(arn),
+        "principal_ref": hashlib.sha256(arn.encode()).hexdigest()[:10],
+        "iam_scope": "RUNTIME_VERIFICATION_REQUIRED",
     }
 
 
@@ -130,7 +160,8 @@ def read_two_accounts(
         "mode": "two-account-read-only",
         "accounts": accounts,
         "account_ids": "hidden-by-default",
+        "principal_arns": "hidden-by-default",
         "controls": list(SUPPORTED_CONTROLS),
         "mutation": False,
-        "message": "Exactly two configured lab accounts were read independently; no cross-account write path exists in this proof.",
+        "message": "Exactly two configured lab accounts were read independently through an exact operation allowlist; IAM least-privilege remains a runtime acceptance check.",
     }

@@ -13,6 +13,7 @@ Repository: `amitkarpe/aws-secops`
 - The `aws_secops_operator` Harness is deployed and independently verified as the read-only operator reasoning/read layer for the two existing AWS Config controls.
 - Explicit `fix/apply/execute` requests do not mutate through the Harness; they route to the existing governed human-approval path.
 - Issue #58 / PR #59 operator-summary polish is complete.
+- PR #61 merged the Issue #60 contextual-investigation / Decision Timeline implementation, but live activation is gated by Issue #62 correctness hardening.
 
 ## Current operating model
 
@@ -37,27 +38,25 @@ ChatGPT Web is the default controller. GitHub is durable engineering state. AWS 
 
 https://github.com/amitkarpe/aws-secops/issues/60
 
-Implementation package: **PR #61**.
+Implementation package: **PR #61** (merged).
 
-## Issue #60 implementation state
+Correctness gate: **Issue #62 / PR #63**.
 
-The bounded implementation contains:
+## Issue #62 correction
 
-1. Contextual S3 investigation from existing Config/retained-scope/provider evidence.
-2. Factual Agent Decision Timeline with no hidden chain-of-thought.
-3. Exactly-two-account read-only Config summary code with raw account IDs hidden by default.
-4. A 2–3 minute agentic SecOps demo script.
-5. Regression tests preserving the existing human approval -> Gateway/Policy -> exact tool -> provider readback mutation boundary.
+Post-merge review found that PR #61 sampled one batch item's `before` value as provider state. The correction must be merged before live activation:
 
-Credential-free regression and documentation CI passed for the implementation package. No AWS deployment, IAM/OIDC change, Gateway/Policy widening, second-account configuration or cross-account mutation is part of that code integration.
+1. aggregate the whole durable S3 batch;
+2. treat `before` only as pending preview/precondition evidence;
+3. treat terminal `COMPLETED` / `SKIPPED` `after` values as provider remediation truth;
+4. return mixed/partial/unknown instead of a fleet-wide conclusion when evidence is incomplete;
+5. hard-allowlist the two-account AWS read helper to STS identity + Config compliance summary only;
+6. keep IAM least-privilege as a separate runtime verification claim.
 
 ## Current next action
 
-After PR #61 is integrated into `main`, runtime acceptance remains separate:
+Complete PR #63 with credential-free regression CI. Do **not** activate the new investigation/timeline tools or claim the two-account milestone live until #62 is merged and later runtime acceptance under #60 explicitly passes.
 
-- activate the investigation/timeline tools only through the existing governed deployment process;
-- independently verify read-only behavior and one live S3 investigation/timeline;
-- configure and verify exactly two owned lab read scopes before claiming the multi-account milestone live;
-- keep all cross-account mutation out of scope unless separately reviewed and approved.
+No AWS deployment, IAM/OIDC/Gateway/Policy change, or cross-account mutation is part of #62.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
