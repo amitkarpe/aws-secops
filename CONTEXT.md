@@ -37,26 +37,27 @@ ChatGPT Web is the default controller. GitHub is durable engineering state. AWS 
 
 https://github.com/amitkarpe/aws-secops/issues/60
 
-Implementation PR:
+Implementation package: **PR #61**.
 
-**PR #61 — Issue #60: plan next agentic SecOps phase**
+## Issue #60 implementation state
 
-https://github.com/amitkarpe/aws-secops/pull/61
-
-## Current implementation
-
-PR #61 now implements the bounded next-phase slice rather than remaining planning-only:
+The bounded implementation contains:
 
 1. Contextual S3 investigation from existing Config/retained-scope/provider evidence.
 2. Factual Agent Decision Timeline with no hidden chain-of-thought.
-3. Exactly-two-account read-only Config summary code with raw account IDs hidden by default; live second-account proof is still pending explicit configuration.
+3. Exactly-two-account read-only Config summary code with raw account IDs hidden by default.
 4. A 2–3 minute agentic SecOps demo script.
 5. Regression tests preserving the existing human approval -> Gateway/Policy -> exact tool -> provider readback mutation boundary.
 
+Credential-free regression and documentation CI passed for the implementation package. No AWS deployment, IAM/OIDC change, Gateway/Policy widening, second-account configuration or cross-account mutation is part of that code integration.
+
 ## Current next action
 
-Run/inspect credential-free PR validation for PR #61, fix any regression in the same PR, and review the final diff. Do not deploy AWS resources or widen IAM/OIDC/Gateway/Policy while validating this PR.
+After PR #61 is integrated into `main`, runtime acceptance remains separate:
 
-After merge, any live activation or two-account runtime proof is a separate authorized step and must be independently verified with AWS Core.
+- activate the investigation/timeline tools only through the existing governed deployment process;
+- independently verify read-only behavior and one live S3 investigation/timeline;
+- configure and verify exactly two owned lab read scopes before claiming the multi-account milestone live;
+- keep all cross-account mutation out of scope unless separately reviewed and approved.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
