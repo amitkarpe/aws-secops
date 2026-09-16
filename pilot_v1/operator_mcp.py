@@ -1,4 +1,4 @@
-"""Two bounded planning tools; none can choose resources or authorize AWS writes."""
+"""Bounded planning/investigation tools; none can choose resources or authorize AWS writes."""
 from __future__ import annotations
 
 import json
@@ -10,6 +10,7 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 from mcp.server.fastmcp import FastMCP
 from pydantic import ConfigDict
 
+from .agentic_evidence import build_decision_timeline, build_s3_investigation
 from .queries import identity
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
@@ -36,6 +37,29 @@ def backend() -> str:
     return value
 
 
+def _request(request: Request, *, timeout: int = 90) -> dict:
+    try:
+        with build_opener(ProxyHandler({}), NoRedirect()).open(request, timeout=timeout) as response:
+            raw = response.read(100_001)
+        if len(raw) > 100_000:
+            raise ValueError("operator response too large")
+        value = json.loads(raw)
+        if not isinstance(value, dict) or value.get("version") != 1:
+            raise ValueError("invalid operator response")
+        return value
+    except Exception as exc:
+        raise ValueError("Operator read unavailable or rejected; no AWS change requested.") from exc
+
+
+def read_path(path: str, query: dict[str, object] | None = None) -> dict:
+    if path not in {"/api/operator/status", "/api/operator/plan", "/api/v1/get_batch"}:
+        raise ValueError("unsupported operator read")
+    url = backend() + path
+    if query:
+        url += "?" + urlencode(query)
+    return _request(Request(url), timeout=90)
+
+
 def call(operation: str, control: str) -> dict:
     if control not in CONTROLS or operation not in {"plan", "prepare"}:
         raise ValueError("unsupported planner request")
@@ -51,18 +75,33 @@ def call(operation: str, control: str) -> dict:
             headers={"Origin": base, "Content-Type": "application/json"},
         )
     try:
-        with build_opener(ProxyHandler({}), NoRedirect()).open(request, timeout=90) as response:
-            raw = response.read(100_001)
-        if len(raw) > 100_000:
-            raise ValueError("planner response too large")
-        value = json.loads(raw)
-        if not isinstance(value, dict) or value.get("version") != 1:
-            raise ValueError("invalid planner response")
-        return value
-    except Exception:
+        return _request(request, timeout=90)
+    except ValueError:
         if operation == "prepare":
             raise ValueError("Batch preparation unavailable or rejected. No AWS remediation was authorized; read the plan before retrying.") from None
         raise ValueError("Remediation plan unavailable; no AWS change requested.") from None
+
+
+def _s3_evidence() -> tuple[dict, dict, dict | None]:
+    plan = read_path("/api/operator/plan", {"control": S3_CONTROL})
+    status = read_path("/api/operator/status")
+    page = None
+    batch = plan.get("current_batch")
+    if isinstance(batch, dict) and isinstance(batch.get("batch_id"), str):
+        batch_id = identity(batch["batch_id"])
+        page = read_path("/api/v1/get_batch", {"batch_id": batch_id, "offset": 0, "limit": 1})
+    return plan, status, page
+
+
+def investigate_s3() -> dict:
+    plan, status, page = _s3_evidence()
+    return build_s3_investigation(plan, status, page)
+
+
+def decision_timeline() -> dict:
+    plan, status, page = _s3_evidence()
+    investigation = build_s3_investigation(plan, status, page)
+    return build_decision_timeline(investigation, plan, status)
 
 
 def with_next_execution(control: str, value: dict) -> dict:
@@ -152,11 +191,24 @@ def prepare_eligible() -> dict:
 server = FastMCP(
     "AWS Compliance Planner",
     instructions=(
-        "Server-owned planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
+        "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
+        "investigate_s3_context and get_s3_decision_timeline are read-only evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution. "
         "The only preparation tool is prepare_remediation(control). For control=all it skips completed/ineligible families server-side; for one exact control it prepares only that family."
     ),
 )
+
+
+@server.tool()
+def investigate_s3_context() -> dict:
+    """Investigate the current retained S3 BPA finding using bounded Config/provider evidence. Read-only."""
+    return investigate_s3()
+
+
+@server.tool()
+def get_s3_decision_timeline() -> dict:
+    """Show factual S3 finding-to-verification stages. This is evidence, not model chain-of-thought."""
+    return decision_timeline()
 
 
 @server.tool()
