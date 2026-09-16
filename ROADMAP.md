@@ -7,48 +7,62 @@
 - 10 retained unattached Security Groups exercised with exact restricted-SSH remediation.
 - Read-only agent behavior, off-topic scope guardrail, separate native approvals, Gateway/Policy enforcement and direct provider verification recorded.
 - Repeatable Operator demo flow and AWS Config integration recorded.
-- MkDocs Material learning portal published successfully through GitHub Pages.
+- MkDocs Material learning portal published through GitHub Pages.
 - Read-only `aws_secops_operator` AgentCore Harness deployed and independently verified for the two existing AWS Config controls.
 - Harness operator-summary polish from Issue #58 / PR #59 completed.
+- Issue #60 Milestone 1 — bounded S3 contextual investigation — live-deployed and healthy-path accepted.
+- Issue #60 Milestone 2 — factual nine-stage Agent Decision Timeline — live-deployed and healthy-path accepted.
+- Unhealthy Config evidence verified to fail closed as `UNVERIFIED/BLOCKED`.
+- Healthy zero-finding Config path hardened so `CLEAR` cannot be misrepresented as provider verification.
 
 ## Now
 
-### Issue #60 — agentic SecOps next phase
+### Issue #60 — Milestone 4: short demo + documentation consolidation
 
-Move from simple `finding -> fix` demonstrations toward:
+The public story is being simplified around the verified architecture:
 
-`investigate context -> explain risk -> recommend exact action -> policy/human decision -> bounded execution -> provider verification -> auditable evidence`
+1. **3-minute demo** — Capability + Evidence Discipline + Trust + Auditability.
+2. **Architecture** — live read/investigation plane is separate from recorded governed mutation.
+3. **Governance** — prompt intent is not authorization; Harness has no write path.
+4. **Evidence/status** — distinguish Config evidence, provider readback and unverified/partial states.
 
-Implementation package: PR #61.
+The short demo must work even when the current lab is compliant. It should not require manufacturing a finding simply to tell the story.
 
-Implemented scope:
+A live non-compliant S3 contextual-investigation proof is optional proportional acceptance. If a reviewer specifically needs it, re-arm only one retained demo resource through the explicit operator-only path; never expose reset/re-arm to the Harness.
 
-1. **Contextual Investigation v1** — bounded S3 Config/retained-scope/provider evidence, explicit uncertainty, no resource selector supplied by the model.
-2. **Agent Decision Timeline** — factual nine-stage lifecycle; observable evidence only, no hidden chain-of-thought.
-3. **Two-account read-only SecOps** — exact two-scope implementation, read AWS operations only, raw account IDs hidden by default. Live proof remains pending explicit second-account configuration.
-4. **Short demo** — 2–3 minute operator/executive flow in `docs/operations/AGENTIC_DEMO_3_MIN.md`.
+## Blocked
 
-Credential-free regression and documentation CI passed for the implementation package. No AWS deployment, IAM/OIDC/Gateway/Policy expansion or cross-account mutation is included in code integration.
+### Issue #60 — Milestone 3: two-account read-only SecOps proof
+
+The milestone remains valid but is currently **blocked on external authorization**, not on implementation ambition.
+
+Read-only discovery found no existing second owned account/read path to reuse:
+
+- no AWS Organizations membership/path;
+- no recent reusable cross-account `AssumeRole` activity;
+- no suitable existing cross-account SecOps read role in the current account;
+- no second-account/session selector in the current AWS Core connection.
+
+Do not create a broad cross-account administration role merely to complete the milestone.
+
+When a second explicitly authorized owned read scope exists, prove only:
+
+- exactly two accounts;
+- account-distinguished read evidence;
+- existing supported controls where available;
+- zero cross-account mutation authority.
+
+Any cross-account remediation is a separate later security decision.
 
 ## Next
 
-### Runtime acceptance for Issue #60
-
-After PR #61 is integrated into `main` and live activation is separately authorized:
-
-- activate the new investigation/timeline tools through the existing governed deployment path;
-- independently verify that read-only investigation does not invoke mutation;
-- record one S3 investigation + timeline using live existing evidence;
-- configure exactly two owned lab read scopes before claiming the multi-account proof;
-- independently verify account identity/control summaries and zero mutation with AWS Core.
-
 ### Reviewer-driven follow-ons
 
-Consider only after Issue #60 runtime evidence exists:
+Consider only after Issue #60 is closed or explicitly descoped:
 
-- one bounded cross-account remediation path;
-- a third compliance/security control justified by a real operator use case;
-- CloudSCAPE/VAPT or Security Hub/GuardDuty ingestion and triage;
+- one bounded cross-account remediation path, only after the read-only two-account proof;
+- a third security/compliance use case justified by real operator value;
+- Security Hub / GuardDuty / CloudSCAPE / VAPT ingestion and investigation;
 - formal approval/audit reporting;
 - deeper AgentCore/Harness portability or runtime work.
 
@@ -64,8 +78,17 @@ Before broad promotion:
 
 ### Operations Console
 
-Evolve the current Operator UI into a long-term support console for health, investigation/remediation history, failure reconciliation, approval/Policy correlation, authoritative AWS evidence links, provider verification, and deployment metadata.
+Evolve the operator experience into a long-term support console for:
 
-The console should aggregate and correlate AWS sources of truth, not replace them, and must never become a generic arbitrary-AWS mutation panel.
+- service/agent health;
+- investigation and remediation history;
+- Decision Timeline evidence;
+- failure reconciliation;
+- approval/Policy correlation;
+- provider verification;
+- links to authoritative AWS evidence;
+- version/deployment metadata.
+
+The console should aggregate AWS sources of truth, not replace them, and must never become a generic arbitrary-AWS mutation panel.
 
 No 1,000-live-resource milestone is planned for Demo v1.
