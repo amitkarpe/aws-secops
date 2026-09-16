@@ -20,11 +20,7 @@ Repository: `amitkarpe/aws-secops`
 
 ChatGPT Web is the default controller. GitHub is durable engineering state. AWS MCP/Core is the live AWS discovery and verification path. Codex is used only when deeper implementation or independent runtime validation materially helps.
 
-## Completed milestone
-
-The read-only Harness milestone and operator-summary polish are complete.
-
-Verified baseline:
+## Verified baseline
 
 - one `aws_secops_operator` Harness in `ap-southeast-1`;
 - Nova 2 Lite;
@@ -41,21 +37,26 @@ Verified baseline:
 
 https://github.com/amitkarpe/aws-secops/issues/60
 
-Planning document:
+Implementation PR:
 
-`docs/planning/AGENTIC_SECOPS_NEXT_PHASE.md`
+**PR #61 — Issue #60: plan next agentic SecOps phase**
+
+https://github.com/amitkarpe/aws-secops/pull/61
+
+## Current implementation
+
+PR #61 now implements the bounded next-phase slice rather than remaining planning-only:
+
+1. Contextual S3 investigation from existing Config/retained-scope/provider evidence.
+2. Factual Agent Decision Timeline with no hidden chain-of-thought.
+3. Exactly-two-account read-only Config summary code with raw account IDs hidden by default; live second-account proof is still pending explicit configuration.
+4. A 2–3 minute agentic SecOps demo script.
+5. Regression tests preserving the existing human approval -> Gateway/Policy -> exact tool -> provider readback mutation boundary.
 
 ## Current next action
 
-Planning only until the Issue #60 planning PR is reviewed/merged.
+Run/inspect credential-free PR validation for PR #61, fix any regression in the same PR, and review the final diff. Do not deploy AWS resources or widen IAM/OIDC/Gateway/Policy while validating this PR.
 
-Planned delivery order:
-
-1. Contextual Investigation v1 using the existing S3 family.
-2. Agent Decision Timeline.
-3. Two-account read-only SecOps proof.
-4. Short 2–3 minute demo + documentation consolidation.
-
-Do not deploy AWS resources or widen IAM/OIDC/Gateway/Policy scope as part of the planning PR.
+After merge, any live activation or two-account runtime proof is a separate authorized step and must be independently verified with AWS Core.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
