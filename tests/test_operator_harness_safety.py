@@ -18,8 +18,13 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         self.assertIn("Memory:\n        Disabled: {}", self.text)
 
     def test_only_exact_read_tools_are_allowed(self):
-        self.assertIn("@secops_reads/SecOpsRead___get_config_summary", self.text)
-        self.assertIn("@secops_reads/SecOpsRead___list_config_findings", self.text)
+        for tool in (
+            "@secops_reads/SecOpsRead___get_config_summary",
+            "@secops_reads/SecOpsRead___list_config_findings",
+            "@secops_reads/SecOpsRead___investigate_s3_context",
+            "@secops_reads/SecOpsRead___get_s3_decision_timeline",
+        ):
+            self.assertIn(tool, self.text)
         allowed = self.text.split("AllowedTools:", 1)[1].split("Tools:", 1)[0]
         self.assertNotIn("request_approval", allowed)
         self.assertNotIn("apply_", allowed)
@@ -30,8 +35,13 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         self.assertIn("Mode: ENFORCE", self.text)
         self.assertIn("EnforcementMode: ACTIVE", self.text)
         self.assertIn("FAIL_ON_ANY_FINDINGS", self.text)
-        self.assertIn('AgentCore::Action::"SecOpsRead___get_config_summary"', self.text)
-        self.assertIn('AgentCore::Action::"SecOpsRead___list_config_findings"', self.text)
+        for action in (
+            'AgentCore::Action::"SecOpsRead___get_config_summary"',
+            'AgentCore::Action::"SecOpsRead___list_config_findings"',
+            'AgentCore::Action::"SecOpsRead___investigate_s3_context"',
+            'AgentCore::Action::"SecOpsRead___get_s3_decision_timeline"',
+        ):
+            self.assertIn(action, self.text)
 
     def test_config_scope_is_fixed_to_existing_controls(self):
         self.assertIn("s3-bucket-level-public-access-prohibited", self.text)
@@ -60,12 +70,23 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         self.assertIn("Effect: Deny", harness_policy)
 
     def test_read_lambda_has_no_aws_write_actions(self):
-        read_role = self.text.split("PolicyName: ExactConfigReads", 1)[1].split("OperatorReadFunction:", 1)[0]
+        read_role = self.text.split("PolicyName: ExactConfigAndDemoS3Reads", 1)[1].split("OperatorReadFunction:", 1)[0]
         self.assertIn("config:GetComplianceDetailsByConfigRule", read_role)
+        for required in (
+            "s3:GetBucketLocation",
+            "s3:GetBucketTagging",
+            "s3:GetBucketPublicAccessBlock",
+            "s3:GetBucketPolicyStatus",
+        ):
+            self.assertIn(required, read_role)
+        self.assertIn("arn:${AWS::Partition}:s3:::aws-secops-bpa-*", read_role)
         for forbidden in (
             "config:Put",
             "config:Delete",
             "s3:Put",
+            "s3:Delete",
+            "s3:GetObject",
+            "s3:ListAllMyBuckets",
             "ec2:Revoke",
             "ec2:Authorize",
             "ssm:Put",
@@ -75,7 +96,7 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
     def test_write_requests_are_explicitly_refused_by_contract(self):
         self.assertIn("existing governed human-approval path", self.text)
         self.assertIn("do not claim or attempt a change", self.text)
-        self.assertIn("If live evidence is unavailable, say UNVERIFIED", self.text)
+        self.assertIn("If live evidence is unavailable, partial or outside the retained scope, say UNVERIFIED or BLOCKED", self.text)
 
     def test_operator_summary_contract_is_concise_and_identifier_safe(self):
         self.assertIn("lead with the result", self.text)
@@ -84,7 +105,7 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         self.assertIn("⚠️ attention/partial", self.text)
         self.assertIn("❌ non-compliant/fail", self.text)
         self.assertIn("ℹ️ informational", self.text)
-        self.assertIn("Hide resource IDs, batch IDs, ARNs, account IDs, and internal identifiers by default", self.text)
+        self.assertIn("Hide resource IDs, bucket names, ARNs, account IDs and internal identifiers by default", self.text)
         self.assertIn("only when the operator explicitly asks", self.text)
         self.assertIn("no current non-compliant findings were returned by AWS Config", self.text)
 
