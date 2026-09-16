@@ -287,9 +287,13 @@ def build_decision_timeline(
         policy_status, policy_summary = "RECORDED_ELSEWHERE", "Use executor evidence for the exact historical Gateway Policy outcome."
         tool_status, tool_summary = "COMPLETED", "Whole-batch terminal provider evidence verifies the remediation target."
     elif decision == "APPROVE" or active:
-        human_status, human_summary = "APPROVED", "The saved batch indicates approval and execution may be in progress."
-        policy_status, policy_summary = "EVALUATED_OR_IN_PROGRESS", "Policy outcome is authoritative in executor/provider evidence, not inferred here."
-        tool_status, tool_summary = "IN_PROGRESS", "Exact bounded S3 execution is active or has been dispatched."
+        human_status, human_summary = "APPROVED", "The saved batch records approval."
+        if active:
+            policy_status, policy_summary = "EVALUATED_OR_IN_PROGRESS", "Policy outcome is authoritative in executor/provider evidence, not inferred here."
+            tool_status, tool_summary = "IN_PROGRESS", "Exact bounded S3 execution is active."
+        else:
+            policy_status, policy_summary = "RECORDED_ELSEWHERE", "The batch was approved, but this timeline does not infer the exact Gateway Policy outcome."
+            tool_status, tool_summary = "INCOMPLETE", "Execution is not active and whole-batch provider evidence is not terminal-success; reconcile before any retry."
     elif decision == "REJECT":
         human_status, human_summary = "REJECTED", "The saved batch was rejected and did not proceed as an approved remediation."
         policy_status, policy_summary = "NOT_INFERRED", "No Gateway Policy result is invented from a rejected batch."
