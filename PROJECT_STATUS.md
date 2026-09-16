@@ -1,6 +1,6 @@
 # Project Status
 
-**Current public baseline:** Demo v1 governed remediation remains the recorded mutation proof. The separate `aws_secops_operator` AgentCore Harness is live as the read-only investigation/operator layer. Issue #60 Milestones 1–2 are live-deployed and healthy-path accepted; Milestone 3 is blocked pending a second explicitly authorized owned AWS read scope; Milestone 4 is consolidating the short demo and public documentation.
+**Current public baseline:** Demo v1 governed remediation remains the recorded mutation proof. The separate `aws_secops_operator` AgentCore Harness is live as the read-only investigation/operator layer. Issue #60 is complete. Issue #70 adds bounded recent-change attribution from CloudTrail Event History. The exactly-two-account proof remains deferred in Issue #68 until a second explicitly authorized owned AWS read scope exists.
 
 ## What is current
 
@@ -10,13 +10,13 @@
   - Restricted SSH on 10 retained owned unattached Security Groups.
 - The live `aws_secops_operator` AgentCore Harness uses Nova 2 Lite and exactly four bounded read tools.
 - Harness Gateway Policy is `ENFORCE`.
-- Harness read scope covers the two existing AWS Config controls plus bounded retained-demo S3 provider context when a current Config finding exists.
+- Harness read scope covers the two existing AWS Config controls plus bounded retained-demo S3 provider context and bounded CloudTrail Event History when a current retained-owned S3 finding exists.
 - The Harness has no model-accessible S3 write, EC2 write, SSM, shell, generic AWS, arbitrary resource-selection or remediation tool.
 - Explicit `fix/apply/execute` requests remain outside the Harness write boundary.
 - Recorded Demo v1 mutation remains a separate path: human decision -> Gateway/Policy -> exact tool -> AWS API -> provider readback.
 - AWS Config supplies independent asynchronous compliance evidence.
 
-## Issue #60 live acceptance
+## Issue #60 — completed agentic SecOps phase
 
 Milestone 1 — **Contextual Investigation v1**: live-deployed and accepted.
 
@@ -33,12 +33,46 @@ Milestone 2 — **Agent Decision Timeline**: live-deployed and accepted.
 - evidence/status only, never hidden chain-of-thought;
 - governance stages show `NOT_CALLED` / `NOT_REQUESTED` when no mutation path ran.
 
-The live acceptance covered both important evidence states:
+Milestone 4 — **3-minute demo + public documentation consolidation**: complete and Pages-deployed.
 
-1. **Unhealthy Config** — fail closed as `UNVERIFIED/BLOCKED`; no fabricated current result and no mutation.
-2. **Healthy Config with zero bounded findings** — Config-only `CLEAR` with `provider_state=NOT_READ`, `risk_context=NOT_ASSESSED`, and no provider-verification claim.
+The former Milestone 3 was moved to standalone Issue #68 because its required second-account prerequisite is not currently available.
 
-An explicit live fix request through the Harness produced no AWS mutation.
+## Issue #70 — recent-change attribution v1
+
+Completed and live-accepted.
+
+The existing S3 investigation now includes bounded CloudTrail Event History only when a deterministic retained-owned current finding exists.
+
+Boundaries:
+
+- no new Harness tool;
+- no model-selected bucket/resource input;
+- only Region-bound `cloudtrail:LookupEvents` added to the existing read Lambda role;
+- relevant S3 management-event allowlist only;
+- at most five newest relevant events;
+- output exposes action + observed time only;
+- raw username/principal/account/session identity is suppressed by default;
+- recorded API history is not presented as proof of actor identity, intent, root cause, exposure or business impact.
+
+When no current bounded finding exists:
+
+- `provider_state=NOT_READ`;
+- `risk_context=NOT_ASSESSED`;
+- `provider_evidence=null`;
+- recent changes are `NOT_EVALUATED`;
+- Config-only CLEAR explicitly does not establish current provider state or absence of exposure/risk.
+
+Final live acceptance verified:
+
+- CloudFormation stack `aws-secops-operator-harness`: `UPDATE_COMPLETE`;
+- Harness READY, version 6;
+- Gateway READY, Policy mode `ENFORCE`;
+- exactly four allowed read tools remain;
+- live Decision Timeline reports `Risk / Context = NOT_ASSESSED` for Config-only CLEAR;
+- live `Fix this S3 compliance issue` request used only the four read tools and invoked no executor;
+- Region-aware IAM simulation allows `cloudtrail:LookupEvents` and denies CloudTrail trail creation, S3 BPA write, EC2 ingress write and SSM `SendCommand`;
+- final CloudTrail audit found zero S3 BPA/policy/ACL, SG-ingress or SSM mutation events;
+- read Lambda produced zero ERROR events during final acceptance.
 
 ## Current Harness boundary
 
@@ -49,7 +83,7 @@ Exactly four allowed tools:
 3. `investigate_s3_context`
 4. `get_s3_decision_timeline`
 
-The read Lambda remains bounded to Config reads, four retained-prefix S3 read APIs, and logs. Gateway/Policy remains the independent exact read-tool governance layer.
+The read Lambda remains bounded to Config reads, four retained-prefix S3 read APIs, Region-bound CloudTrail `LookupEvents`, and logs. Gateway/Policy remains the independent exact read-tool governance layer.
 
 ## Recorded mutation evidence
 
@@ -62,9 +96,11 @@ The read Lambda remains bounded to Config reads, four retained-prefix S3 read AP
 - PR #64: Harness-native contextual S3 investigation + Decision Timeline.
 - PR #65: unhealthy Config evidence returns structured `UNVERIFIED/BLOCKED` instead of a masked internal error.
 - PR #66: Config-only `CLEAR` is explicitly not provider verification.
-- Issue #60: durable live deployment/acceptance and security-boundary record.
+- PR #71: bounded CloudTrail recent-change attribution.
+- PR #72: Config-only CLEAR exposure/risk semantics hardened after live acceptance.
+- Issues #60 and #70: durable deployment/acceptance and security-boundary records.
 
-## Milestone 3 — blocked, not claimed
+## Issue #68 — blocked, not claimed
 
 The exactly-two-account read-only proof is **not live-proven**.
 
@@ -77,19 +113,7 @@ Current read-only discovery found:
 
 No cross-account role, trust or broad administration capability was created merely to complete the milestone.
 
-Milestone 3 requires a second explicitly authorized owned AWS read scope before any two-account claim is made.
-
-## Milestone 4 — current documentation/demo work
-
-The public story is being consolidated around:
-
-1. [3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md)
-2. [current architecture](docs/architecture.md)
-3. [governance / security model](docs/governance.md)
-4. [long Demo v1](docs/demo-v1.md)
-5. this current status page
-
-The short demo emphasizes **Capability + Evidence Discipline + Trust + Auditability**. It does not pretend that the read-only Harness can remediate AWS.
+Issue #68 requires a second explicitly authorized owned AWS read scope before any two-account claim is made.
 
 ## Known limits
 
@@ -98,12 +122,15 @@ The short demo emphasizes **Capability + Evidence Discipline + Trust + Auditabil
 - No cross-account remediation path is implemented or authorized.
 - No generic autonomous AWS administration.
 - A Config control finding alone does not prove sensitive-data exposure, attacker activity, exploitability or business impact.
-- A Config-only `CLEAR` does not prove provider state.
+- A Config-only `CLEAR` does not prove provider state or absence of exposure/risk.
+- CloudTrail Event History records API activity; it does not prove a human actor's identity or intent.
 - Recorded Demo v1 does not claim named-human identity is itself evaluated by the current Policy decision.
 - Complete host-wide least-privilege isolation is not claimed.
 
 ## Current work
 
-Issue #60 remains the current authority. Milestones 1–2 are accepted; Milestone 3 is blocked on external second-account authorization; Milestone 4 is the current documentation/demo milestone.
+Issues #60 and #70 are complete. Issue #68 is the only deferred active milestone and must not start until a second explicitly authorized owned AWS read scope exists.
+
+For new unblocked work, create a separate standalone Issue from `ROADMAP.md` rather than mixing unrelated scope into #68.
 
 Follow `ROADMAP.md` for planned work. Contributors and coding agents use `CONTEXT.md` for compact working continuity.
