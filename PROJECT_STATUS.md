@@ -1,59 +1,109 @@
 # Project Status
 
-**Current public baseline:** Demo v1 is frozen and validated. The MkDocs learning portal is live. The separate read-only `aws_secops_operator` AgentCore Harness has been deployed and independently verified. Issue #60 is the current next-phase authority for contextual investigation, a factual agent decision timeline, and a bounded two-account read-only proof.
+**Current public baseline:** Demo v1 governed remediation remains the recorded mutation proof. The separate `aws_secops_operator` AgentCore Harness is live as the read-only investigation/operator layer. Issue #60 Milestones 1–2 are live-deployed and healthy-path accepted; Milestone 3 is blocked pending a second explicitly authorized owned AWS read scope; Milestone 4 is consolidating the short demo and public documentation.
 
 ## What is current
 
 - Personal Singapore lab / POC only.
-- Supported remediation families:
+- Supported remediation families remain:
   - S3 bucket-level Block Public Access on 100 retained owned empty demo buckets.
   - Restricted SSH on 10 retained owned unattached Security Groups.
-- Current Demo v1 interaction path: LibreChat AWS Compliance Agent using native Bedrock Nova 2 Lite with bounded MCP tools.
-- Approved Demo v1 execution path: separate human decision per family -> AgentCore Gateway -> Policy -> exact tool -> AWS API -> provider readback.
-- AWS Config supplies compliance evidence and converges independently after provider changes.
-- Current planners use complete retained-family readiness gates; Demo v1 is not an arbitrary-subset remediation engine.
-- The separate `aws_secops_operator` AgentCore Harness is a **read-only** operator path for the two existing Config controls. It has no model-accessible write, shell, generic AWS, or arbitrary resource-selection tool.
-- Explicit `fix/apply/execute` requests remain outside the Harness write boundary and route to the existing governed human-approval/executor path.
+- The live `aws_secops_operator` AgentCore Harness uses Nova 2 Lite and exactly four bounded read tools.
+- Harness Gateway Policy is `ENFORCE`.
+- Harness read scope covers the two existing AWS Config controls plus bounded retained-demo S3 provider context when a current Config finding exists.
+- The Harness has no model-accessible S3 write, EC2 write, SSM, shell, generic AWS, arbitrary resource-selection or remediation tool.
+- Explicit `fix/apply/execute` requests remain outside the Harness write boundary.
+- Recorded Demo v1 mutation remains a separate path: human decision -> Gateway/Policy -> exact tool -> AWS API -> provider readback.
+- AWS Config supplies independent asynchronous compliance evidence.
 
-## Recorded evidence
+## Issue #60 live acceptance
+
+Milestone 1 — **Contextual Investigation v1**: live-deployed and accepted.
+
+- bounded current Config evidence;
+- deterministic retained-demo S3 candidate selection when a finding exists;
+- direct S3 provider context only within the fixed read scope;
+- explicit uncertainty;
+- no model-selected bucket input;
+- no mutation authority added.
+
+Milestone 2 — **Agent Decision Timeline**: live-deployed and accepted.
+
+- nine observable stages from Finding through Compliance Result;
+- evidence/status only, never hidden chain-of-thought;
+- governance stages show `NOT_CALLED` / `NOT_REQUESTED` when no mutation path ran.
+
+The live acceptance covered both important evidence states:
+
+1. **Unhealthy Config** — fail closed as `UNVERIFIED/BLOCKED`; no fabricated current result and no mutation.
+2. **Healthy Config with zero bounded findings** — Config-only `CLEAR` with `provider_state=NOT_READ`, `risk_context=NOT_ASSESSED`, and no provider-verification claim.
+
+An explicit live fix request through the Harness produced no AWS mutation.
+
+## Current Harness boundary
+
+Exactly four allowed tools:
+
+1. `get_config_summary`
+2. `list_config_findings`
+3. `investigate_s3_context`
+4. `get_s3_decision_timeline`
+
+The read Lambda remains bounded to Config reads, four retained-prefix S3 read APIs, and logs. Gateway/Policy remains the independent exact read-tool governance layer.
+
+## Recorded mutation evidence
 
 - PR #23: governed S3 execution, native approval, Gateway/Policy and provider verification.
 - PR #25: Config + exact restricted-SSH family and unified-agent direction.
-- PR #27: current Config-driven planner, separate S3/SG approvals, repeatable Operator flow and recorded 100-S3 + 10-SG end-to-end acceptance.
-- PR #45: read-only AgentCore Harness package for the two existing Config controls.
-- PR #50: exact repo/main GitHub OIDC deployment path for the Harness stack.
-- PR #53 plus workflow run `34927383714`: GitHub OIDC deployment succeeded from `main`; the exact Harness stack reached `CREATE_COMPLETE`; required CloudFormation outputs were present; Demo v1 mutation was `NO`.
-- Issues #49 and #55: independent live Harness/Gateway/Policy/Lambda read verification and negative `fix/apply/execute` boundary completed.
-- PR #59: concise operator-summary contract completed with no AWS authority expansion.
+- PR #27: recorded Config-driven planner, separate S3/SG approvals and 100-S3 + 10-SG end-to-end acceptance.
 
-See `docs/demo-v1.md` for the Demo v1 evidence digest and exact claim boundaries.
+## Current agentic evidence
 
-## Issue #60 next-phase implementation
+- PR #64: Harness-native contextual S3 investigation + Decision Timeline.
+- PR #65: unhealthy Config evidence returns structured `UNVERIFIED/BLOCKED` instead of a masked internal error.
+- PR #66: Config-only `CLEAR` is explicitly not provider verification.
+- Issue #60: durable live deployment/acceptance and security-boundary record.
 
-PR #61 adds a bounded agentic workflow without changing the trusted mutation path:
+## Milestone 3 — blocked, not claimed
 
-- contextual S3 investigation from existing Config, retained-scope and provider/batch evidence;
-- a nine-stage Agent Decision Timeline showing observable evidence/status only, never hidden model chain-of-thought;
-- an exactly-two-account **read-only** Config summary implementation with raw account IDs hidden by default;
-- a 2–3 minute operator/executive demo path;
-- regression tests preserving human approval -> Gateway/Policy -> exact tool -> provider readback.
+The exactly-two-account read-only proof is **not live-proven**.
 
-The two-account implementation is not a live multi-account claim. Runtime proof requires a second explicitly configured owned lab account and independent verification.
+Current read-only discovery found:
+
+- no AWS Organizations membership/path to reuse;
+- no recent reusable cross-account `AssumeRole` path;
+- no existing local cross-account SecOps read role suitable for reuse;
+- no second account/session selector in the current AWS Core connection.
+
+No cross-account role, trust or broad administration capability was created merely to complete the milestone.
+
+Milestone 3 requires a second explicitly authorized owned AWS read scope before any two-account claim is made.
+
+## Milestone 4 — current documentation/demo work
+
+The public story is being consolidated around:
+
+1. [3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md)
+2. [current architecture](docs/architecture.md)
+3. [governance / security model](docs/governance.md)
+4. [long Demo v1](docs/demo-v1.md)
+5. this current status page
+
+The short demo emphasizes **Capability + Evidence Discipline + Trust + Auditability**. It does not pretend that the read-only Harness can remediate AWS.
 
 ## Known limits
 
-- This is not production-ready or arbitrary-resource remediation.
-- The two-account feature is read-only and not yet live-proven across two configured owned accounts.
+- Not production-ready or arbitrary-resource remediation.
+- No live multi-account proof yet.
 - No cross-account remediation path is implemented or authorized.
-- Read-only vs execution intent is partly an agent-behavior rule; hard AWS-change controls remain human approval, Gateway/Policy, exact tools and IAM.
-- S3 Operator refresh primarily presents saved durable batch/provider-verification evidence; it should not be described as a fresh full S3 scan on every refresh.
-- Issue #32 adds offline-tested S3 and SG safe terminalization plus Config page/token bounds. It does not add automatic continuation, mixed-subset chat retries, or production recovery certification.
-- Demo v1 does not claim that a named human identity is itself evaluated by the current Policy decision.
-- Demo v1 does not certify complete host-wide least-privilege isolation.
-- A Config control finding does not by itself prove sensitive-data exposure, attacker activity, exploitability, or business impact.
+- No generic autonomous AWS administration.
+- A Config control finding alone does not prove sensitive-data exposure, attacker activity, exploitability or business impact.
+- A Config-only `CLEAR` does not prove provider state.
+- Recorded Demo v1 does not claim named-human identity is itself evaluated by the current Policy decision.
+- Complete host-wide least-privilege isolation is not claimed.
 
 ## Current work
 
-Issue #60 is current authority. After PR #61 code integration, live activation of the new read-only investigation/timeline tools and the two-account runtime proof are separate authorized verification steps.
+Issue #60 remains the current authority. Milestones 1–2 are accepted; Milestone 3 is blocked on external second-account authorization; Milestone 4 is the current documentation/demo milestone.
 
 Follow `ROADMAP.md` for planned work. Contributors and coding agents use `CONTEXT.md` for compact working continuity.
