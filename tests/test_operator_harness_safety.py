@@ -93,6 +93,18 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, read_role)
 
+    def test_unhealthy_config_fails_closed_with_structured_output(self):
+        self.assertIn("CONFIG_UNAVAILABLE = 'AWS Config recorder is not active and successful'", self.text)
+        self.assertIn("x.get('lastStatus') == 'SUCCESS'", self.text)
+        self.assertIn("raise RuntimeError(CONFIG_UNAVAILABLE)", self.text)
+        self.assertIn("def unavailable_result(tool):", self.text)
+        self.assertIn("'status': 'UNVERIFIED'", self.text)
+        self.assertIn("'partial': True", self.text)
+        self.assertIn("stage('Finding', 'UNVERIFIED'", self.text)
+        self.assertIn("stage('Investigation', 'BLOCKED'", self.text)
+        self.assertIn("if str(exc) != CONFIG_UNAVAILABLE:", self.text)
+        self.assertIn("raise\n                  result = unavailable_result(tool)", self.text)
+
     def test_write_requests_are_explicitly_refused_by_contract(self):
         self.assertIn("existing governed human-approval path", self.text)
         self.assertIn("do not claim or attempt a change", self.text)
