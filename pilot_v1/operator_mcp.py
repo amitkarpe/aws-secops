@@ -83,7 +83,7 @@ def call(operation: str, control: str) -> dict:
 
 
 def _read_whole_batch(batch_id: str) -> dict:
-    """Read every item from one immutable batch without returning resource IDs to the model."""
+    """Read every item from one stable batch snapshot without exposing resource IDs."""
     batch_id = identity(batch_id)
     items: list[dict] = []
     offset = 0
@@ -99,7 +99,7 @@ def _read_whole_batch(batch_id: str) -> dict:
         if expected_total is None:
             expected_total = page_total
             expected_summary = summary
-        elif page_total != expected_total or summary.get("batch_id") != expected_summary.get("batch_id"):
+        elif page_total != expected_total or summary != expected_summary:
             raise ValueError("batch changed during read")
         items.extend(page_items)
         offset += len(page_items)
