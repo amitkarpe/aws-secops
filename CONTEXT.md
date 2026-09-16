@@ -45,7 +45,7 @@ Correctness hardening: **Issue #62 / PR #63** (complete).
 
 ## Issue #60 runtime acceptance checkpoint
 
-Read-only runtime acceptance began on 2026-09-16 from `main` after PR #63.
+Read-only runtime acceptance began on 2026-09-16 after PR #63.
 
 AWS Core verified privately:
 
@@ -56,7 +56,7 @@ AWS Core verified privately:
 - `aws-secops-operator-harness` CloudFormation stack remains `CREATE_COMPLETE`;
 - the current account is not a member of AWS Organizations.
 
-Runtime-host discovery found exactly one online SSM-managed EC2 in the connected account, but bounded read-only inspection found **no** `/opt/LibreChat`, `/opt/aws-secops`, `/opt/aws-secops-bulk`, `/opt/aws-secops-sg`, `aws-secops-bulk.service`, or `aws-secops-sg.service` on that instance.
+SSM managed-instance discovery was checked across all 18 enabled AWS Regions in the connected account. Exactly one managed EC2 exists, in Singapore, and its tags identify the separate Security Copilot / `agentic-ai-cybersecurity-lab` project. Bounded read-only inspection found **no** `/opt/LibreChat`, `/opt/aws-secops`, `/opt/aws-secops-bulk`, `/opt/aws-secops-sg`, `aws-secops-bulk.service`, or `aws-secops-sg.service` on that instance.
 
 Therefore that instance is **not** treated as the retained AWS SecOps runtime target and no deployment was attempted there.
 
