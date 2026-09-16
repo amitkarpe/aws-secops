@@ -13,28 +13,28 @@
 
 ## Now
 
-### Issue #60 / PR #61 — agentic SecOps next phase
+### Issue #60 — agentic SecOps next phase
 
 Move from simple `finding -> fix` demonstrations toward:
 
 `investigate context -> explain risk -> recommend exact action -> policy/human decision -> bounded execution -> provider verification -> auditable evidence`
 
-Current implementation:
+Implementation package: PR #61.
+
+Implemented scope:
 
 1. **Contextual Investigation v1** — bounded S3 Config/retained-scope/provider evidence, explicit uncertainty, no resource selector supplied by the model.
 2. **Agent Decision Timeline** — factual nine-stage lifecycle; observable evidence only, no hidden chain-of-thought.
 3. **Two-account read-only SecOps** — exact two-scope implementation, read AWS operations only, raw account IDs hidden by default. Live proof remains pending explicit second-account configuration.
 4. **Short demo** — 2–3 minute operator/executive flow in `docs/operations/AGENTIC_DEMO_3_MIN.md`.
 
-Implementation details: `docs/planning/AGENTIC_SECOPS_NEXT_PHASE.md`.
-
-Current gate: credential-free PR #61 validation and final review. No AWS deployment, IAM/OIDC/Gateway/Policy expansion or cross-account mutation belongs in that gate.
+Credential-free regression and documentation CI passed for the implementation package. No AWS deployment, IAM/OIDC/Gateway/Policy expansion or cross-account mutation is included in code integration.
 
 ## Next
 
-### Runtime acceptance after PR #61
+### Runtime acceptance for Issue #60
 
-After the implementation is merged and separately authorized:
+After PR #61 is integrated into `main` and live activation is separately authorized:
 
 - activate the new investigation/timeline tools through the existing governed deployment path;
 - independently verify that read-only investigation does not invoke mutation;
@@ -44,7 +44,7 @@ After the implementation is merged and separately authorized:
 
 ### Reviewer-driven follow-ons
 
-Consider only after Issue #60 evidence exists:
+Consider only after Issue #60 runtime evidence exists:
 
 - one bounded cross-account remediation path;
 - a third compliance/security control justified by a real operator use case;
