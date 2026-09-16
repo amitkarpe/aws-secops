@@ -14,43 +14,31 @@
 - Issue #60 Milestone 2 — factual nine-stage Agent Decision Timeline — live-deployed and healthy-path accepted.
 - Unhealthy Config evidence verified to fail closed as `UNVERIFIED/BLOCKED`.
 - Healthy zero-finding Config path hardened so `CLEAR` cannot be misrepresented as provider verification.
+- Issue #60 Milestone 4 — 3-minute demo + public documentation consolidation — merged, Pages-deployed and regression-verified.
+- Issue #60 parent phase completed with blocked Milestone 3 replaced by standalone Issue #68.
 
-## Now
+## Blocked / deferred
 
-### Issue #60 — Milestone 4: short demo + documentation consolidation
+### Issue #68 — two-account read-only SecOps proof
 
-The public story is being simplified around the verified architecture:
+This is the former Issue #60 Milestone 3. It remains valid but is blocked on an external prerequisite: a second explicitly authorized owned AWS read scope.
 
-1. **3-minute demo** — Capability + Evidence Discipline + Trust + Auditability.
-2. **Architecture** — live read/investigation plane is separate from recorded governed mutation.
-3. **Governance** — prompt intent is not authorization; Harness has no write path.
-4. **Evidence/status** — distinguish Config evidence, provider readback and unverified/partial states.
-
-The short demo must work even when the current lab is compliant. It should not require manufacturing a finding simply to tell the story.
-
-A live non-compliant S3 contextual-investigation proof is optional proportional acceptance. If a reviewer specifically needs it, re-arm only one retained demo resource through the explicit operator-only path; never expose reset/re-arm to the Harness.
-
-## Blocked
-
-### Issue #60 — Milestone 3: two-account read-only SecOps proof
-
-The milestone remains valid but is currently **blocked on external authorization**, not on implementation ambition.
-
-Read-only discovery found no existing second owned account/read path to reuse:
+Current verified blocker:
 
 - no AWS Organizations membership/path;
 - no recent reusable cross-account `AssumeRole` activity;
-- no suitable existing cross-account SecOps read role in the current account;
+- no suitable existing second-account SecOps read role;
 - no second-account/session selector in the current AWS Core connection.
 
-Do not create a broad cross-account administration role merely to complete the milestone.
+Do not create a broad cross-account administration role merely to complete the proof.
 
-When a second explicitly authorized owned read scope exists, prove only:
+When the prerequisite exists, prove only:
 
-- exactly two accounts;
+- exactly two explicit owned account scopes;
 - account-distinguished read evidence;
-- existing supported controls where available;
-- zero cross-account mutation authority.
+- minimum identity + existing supported compliance reads;
+- zero cross-account mutation authority;
+- unchanged single-account governed mutation path.
 
 Any cross-account remediation is a separate later security decision.
 
@@ -58,9 +46,9 @@ Any cross-account remediation is a separate later security decision.
 
 ### Reviewer-driven follow-ons
 
-Consider only after Issue #60 is closed or explicitly descoped:
+Choose a new standalone Issue only when there is a concrete operator/reviewer need. Candidates:
 
-- one bounded cross-account remediation path, only after the read-only two-account proof;
+- one bounded cross-account remediation path, only after Issue #68 succeeds;
 - a third security/compliance use case justified by real operator value;
 - Security Hub / GuardDuty / CloudSCAPE / VAPT ingestion and investigation;
 - formal approval/audit reporting;
