@@ -98,24 +98,18 @@ Reuse the operating pattern from `mytestlab123/chatgpt-aws`, not its account IDs
 
 If the GitHub connector cannot perform a required repository-setting action, ask Amit only for the smallest one-time UI action needed.
 
-## Current next milestone
+## Current work authority
 
-Issue #36 is the next engineering authority after the bootstrap PR merges.
+`CONTEXT.md` is the single pointer to the **current** Issue/PR and next action. Do not hard-code a historical Issue number in this bootstrap file.
 
-Order:
+At the start of work:
 
-1. Verify GitHub and AWS identity/state.
-2. Audit existing workflows, scripts, IaC and retained AWS resources before designing replacements.
-3. Review reusable OIDC/security patterns from `mytestlab123/chatgpt-aws`.
-4. Design repo-specific GitHub OIDC trust and the smallest practical deployment role for `amitkarpe/aws-secops`.
-5. Add/adjust IaC and a main-only/manual deployment workflow through a PR.
-6. Run existing offline tests and strict MkDocs checks without AWS credentials.
-7. Merge after review.
-8. Run live deployment only when explicitly authorized.
-9. Verify actual AWS state independently with AWS Core.
-10. Record reusable learning in `docs/` and keep the public site current.
+1. read the current authority from `CONTEXT.md`;
+2. read that Issue/PR and latest relevant comments;
+3. reconcile it with current GitHub/AWS state;
+4. continue only from the reconciled durable state.
 
-Do not add another framework merely to demonstrate OIDC. Fit the mechanism around the existing project.
+Historical milestone text in older Issues, PRs, proofs or comments is evidence/history, not current authority unless `CONTEXT.md` explicitly points to it.
 
 ## AWS Compliance Agent trust boundary
 
