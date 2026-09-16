@@ -12,6 +12,7 @@ Repository: `amitkarpe/aws-secops`
 - The model has no generic AWS mutation tool.
 - The `aws_secops_operator` Harness is deployed and independently verified as the read-only operator reasoning/read layer for the two existing AWS Config controls.
 - Explicit `fix/apply/execute` requests do not mutate through the Harness; they route to the existing governed human-approval path.
+- Issue #58 / PR #59 operator-summary polish is complete.
 
 ## Current operating model
 
@@ -21,33 +22,40 @@ ChatGPT Web is the default controller. GitHub is durable engineering state. AWS 
 
 ## Completed milestone
 
-Issues #44, #49, and #55 are completed.
+The read-only Harness milestone and operator-summary polish are complete.
 
-Verified outcome:
+Verified baseline:
 
 - one `aws_secops_operator` Harness in `ap-southeast-1`;
 - Nova 2 Lite;
 - exact two read-only AWS Config tools through AgentCore Gateway;
-- Gateway ready with Policy mode `ENFORCE`;
-- Policy engine/operator policy active;
-- read Lambda present with no S3/EC2/SSM mutation authority;
+- Gateway Policy mode `ENFORCE`;
+- read Lambda has no S3/EC2/SSM mutation authority;
 - live Config summary + focused findings reads passed for both supported controls;
 - negative `fix/apply/execute` boundary passed;
-- Demo v1 mutation: **NO**.
-
-PR #56 is a completed Codex verification handoff artifact. No further verification is required for this milestone.
+- Demo v1 mutation path remains separate and governed.
 
 ## Current authority
 
-**Issue #58 — polish Harness operator summaries**
+**Issue #60 — next agentic SecOps phase**
 
-https://github.com/amitkarpe/aws-secops/issues/58
+https://github.com/amitkarpe/aws-secops/issues/60
+
+Planning document:
+
+`docs/planning/AGENTIC_SECOPS_NEXT_PHASE.md`
 
 ## Current next action
 
-Complete PR #59 as a prompt/documentation-only operator-summary polish:
-concise result-first responses, small Markdown tables, and minimal identifiers
-by default. Run credential-free CI only; do not deploy or change the existing
-AWS authorization/remediation boundary.
+Planning only until the Issue #60 planning PR is reviewed/merged.
+
+Planned delivery order:
+
+1. Contextual Investigation v1 using the existing S3 family.
+2. Agent Decision Timeline.
+3. Two-account read-only SecOps proof.
+4. Short 2–3 minute demo + documentation consolidation.
+
+Do not deploy AWS resources or widen IAM/OIDC/Gateway/Policy scope as part of the planning PR.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
