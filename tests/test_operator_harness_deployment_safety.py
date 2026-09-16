@@ -93,10 +93,52 @@ class OperatorHarnessDeploymentSafetyTests(unittest.TestCase):
     def test_existing_harness_contract_remains_read_only(self):
         self.assertIn("HarnessName: aws_secops_operator", self.harness_template)
         self.assertIn("Mode: ENFORCE", self.harness_template)
-        self.assertIn("@secops_reads/SecOpsRead___get_config_summary", self.harness_template)
-        self.assertIn("@secops_reads/SecOpsRead___list_config_findings", self.harness_template)
-        for forbidden in ("ssm:SendCommand", "ec2:RevokeSecurityGroupIngress", "s3:PutBucketPublicAccessBlock"):
+        for tool in (
+            "@secops_reads/SecOpsRead___get_config_summary",
+            "@secops_reads/SecOpsRead___list_config_findings",
+            "@secops_reads/SecOpsRead___investigate_s3_context",
+            "@secops_reads/SecOpsRead___get_s3_decision_timeline",
+        ):
+            self.assertIn(tool, self.harness_template)
+        for forbidden in (
+            "ssm:SendCommand",
+            "ec2:RevokeSecurityGroupIngress",
+            "s3:PutBucketPublicAccessBlock",
+            "s3:PutBucketPolicy",
+            "s3:DeleteBucket",
+            "s3:GetObject",
+            "s3:ListAllMyBuckets",
+        ):
             self.assertNotIn(forbidden, self.harness_template)
+
+    def test_harness_native_s3_investigation_is_exact_read_only_scope(self):
+        for action in (
+            "s3:GetBucketLocation",
+            "s3:GetBucketTagging",
+            "s3:GetBucketPublicAccessBlock",
+            "s3:GetBucketPolicyStatus",
+        ):
+            self.assertIn(action, self.harness_template)
+        self.assertIn("arn:${AWS::Partition}:s3:::aws-secops-bpa-*", self.harness_template)
+        self.assertIn("DEMO_PREFIX = 'aws-secops-bpa-'", self.harness_template)
+        for tag in (
+            "'owner': 'amit'",
+            "'phase': 'bulk-bpa'",
+            "'project': 'aws-secops'",
+            "'environment': 'dev'",
+            "'version': 'r01'",
+        ):
+            self.assertIn(tag, self.harness_template)
+        self.assertIn("No remediation tool is available to this read-only Harness.", self.harness_template)
+        self.assertIn("chain_of_thought': 'not-collected-and-not-displayed'", self.harness_template)
+
+    def test_new_harness_tools_take_no_model_selected_resource_input(self):
+        investigation = self.harness_template.split("- Name: investigate_s3_context", 1)[1].split("- Name: get_s3_decision_timeline", 1)[0]
+        timeline = self.harness_template.split("- Name: get_s3_decision_timeline", 1)[1].split("OperatorHarnessRole:", 1)[0]
+        for block in (investigation, timeline):
+            self.assertIn("Properties: {}", block)
+            self.assertNotIn("bucket:", block.lower())
+            self.assertNotIn("resource_id", block.lower())
 
 
 if __name__ == "__main__":
