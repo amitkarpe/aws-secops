@@ -43,29 +43,37 @@ Implementation package: **PR #61** (merged).
 
 Correctness hardening: **Issue #62 / PR #63** (complete).
 
-## Issue #62 verified correction
+## Issue #60 runtime acceptance checkpoint
 
-PR #63 corrected the investigation semantics before live activation:
+Read-only runtime acceptance began on 2026-09-16 from `main` after PR #63.
 
-1. whole durable S3 batch is aggregated in bounded pages;
-2. `before` is preview/precondition evidence only;
-3. terminal `COMPLETED` / `SKIPPED` `after` values are provider remediation truth;
-4. mixed/partial/unknown states block fleet-wide remediation conclusions;
-5. batch pagination rejects a changing batch snapshot;
-6. two-account reads are hard-allowlisted to STS identity + Config compliance summary only;
-7. IAM least-privilege remains a separate runtime verification claim.
+AWS Core verified privately:
 
-Credential-free offline regression and integration syntax checks passed before squash merge.
+- current AWS identity and `ap-southeast-1`;
+- AWS Config recorder is recording with successful status;
+- both supported Config rules are currently COMPLIANT;
+- current rule evaluations are 107 compliant S3 bucket evaluations and 15 compliant restricted-SSH evaluations;
+- `aws-secops-operator-harness` CloudFormation stack remains `CREATE_COMPLETE`;
+- the current account is not a member of AWS Organizations.
+
+Runtime-host discovery found exactly one online SSM-managed EC2 in the connected account, but bounded read-only inspection found **no** `/opt/LibreChat`, `/opt/aws-secops`, `/opt/aws-secops-bulk`, `/opt/aws-secops-sg`, `aws-secops-bulk.service`, or `aws-secops-sg.service` on that instance.
+
+Therefore that instance is **not** treated as the retained AWS SecOps runtime target and no deployment was attempted there.
 
 ## Current next action
 
-Runtime acceptance remains under Issue #60:
+Runtime activation is currently blocked on locating/reconnecting the retained AWS SecOps LibreChat/operator runtime, or explicitly designating its current host.
 
-- activate the investigation/timeline tools only through the existing governed deployment process;
-- independently verify read-only behavior and one live S3 investigation/timeline;
-- configure and verify exactly two owned lab read scopes before claiming the multi-account milestone live;
-- keep all cross-account mutation out of scope unless separately reviewed and approved.
+Once the correct runtime is reachable:
 
-No AWS deployment, IAM/OIDC/Gateway/Policy change, or cross-account mutation was part of Issue #62.
+1. deploy only the merged investigation/timeline runtime delta through the existing reviewed update-code-only path;
+2. independently verify `investigate_s3_context` and `get_s3_decision_timeline` remain read-only;
+3. intentionally re-arm the bounded demo only through the existing operator-only path if a live non-compliant finding is needed;
+4. record one live S3 investigation + Decision Timeline and provider/Config evidence;
+5. do not claim the two-account milestone until a second explicit owned read scope is configured and independently verified.
+
+The current account has no AWS Organizations membership, so there is no existing Organizations-based second-account path to reuse.
+
+No IAM/OIDC/Gateway/Policy/Config/resource mutation was performed during this checkpoint. The only SSM action was a read-only topology command.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future work use `ROADMAP.md`.
