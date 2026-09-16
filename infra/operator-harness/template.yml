@@ -81,6 +81,7 @@ Resources:
           STATUSES = {'COMPLIANT', 'NON_COMPLIANT', 'INSUFFICIENT_DATA', 'NOT_APPLICABLE'}
           MAX_RESULTS = 250
           MAX_PAGES = 10
+          CONFIG_UNAVAILABLE = 'AWS Config recorder is not active and successful'
           DEMO_PREFIX = 'aws-secops-bpa-'
           DEMO_TAGS = {
               'owner': 'amit',
@@ -113,7 +114,7 @@ Resources:
               if control not in RULES:
                   raise ValueError('unsupported Config control')
               if not recorder_ready():
-                  raise RuntimeError('AWS Config recorder is not active and successful')
+                  raise RuntimeError(CONFIG_UNAVAILABLE)
               rules = cfg.describe_config_rules(ConfigRuleNames=[control]).get('ConfigRules', [])
               if len(rules) != 1 or rules[0].get('ConfigRuleName') != control:
                   raise RuntimeError('required Config rule unavailable')
@@ -335,25 +336,63 @@ Resources:
                   'message': 'Observable evidence/status timeline only; not hidden model reasoning.',
               }
 
+          def unavailable_result(tool):
+              reason = 'AWS Config recorder latest recording event is not successful; live Config evidence is UNVERIFIED.'
+              if tool == 'get_s3_decision_timeline':
+                  return {
+                      'version': 1,
+                      'control': S3_CONTROL,
+                      'timeline': [
+                          stage('Finding', 'UNVERIFIED', reason, 'AWS Config'),
+                          stage('Investigation', 'BLOCKED', 'Recorder health gate blocked evidence reads.', 'AWS Config'),
+                          stage('Risk / Context', 'UNKNOWN', 'No risk conclusion is made without healthy Config evidence.', 'evidence-backed summary'),
+                          stage('Recommendation', 'BLOCKED', 'Do not prepare remediation until Config recorder health is successful.', 'deterministic control contract'),
+                          stage('Policy', 'NOT_CALLED', 'No mutation request is permitted from unavailable evidence.', 'AgentCore Gateway Policy'),
+                          stage('Human Decision', 'NOT_REQUESTED', 'No remediation decision is requested.', 'governed remediation path'),
+                          stage('Exact Tool', 'NOT_CALLED', 'No remediation tool was invoked.', 'bounded executor'),
+                          stage('Provider Readback', 'UNKNOWN', 'No bounded provider conclusion is attempted while Config evidence is unhealthy.', 'S3'),
+                          stage('Compliance Result', 'UNVERIFIED', reason, 'AWS Config'),
+                      ],
+                      'identifiers': 'hidden-by-default',
+                      'chain_of_thought': 'not-collected-and-not-displayed',
+                      'read_only': True,
+                      'message': 'Observable evidence/status timeline only; Config health gate failed closed.',
+                  }
+              return {
+                  'version': 1,
+                  'source': 'AWS Config',
+                  'region': REGION,
+                  'status': 'UNVERIFIED',
+                  'tool': tool,
+                  'partial': True,
+                  'message': reason,
+                  'read_only': True,
+              }
+
           def handler(event, context):
               custom = getattr(getattr(context, 'client_context', None), 'custom', {}) or {}
               tool = custom.get('bedrockAgentCoreToolName', '').rsplit('___', 1)[-1]
-              if tool == 'get_config_summary':
-                  if event != {}:
-                      raise ValueError('summary accepts no input')
-                  result = summary()
-              elif tool == 'list_config_findings':
-                  result = list_findings(event)
-              elif tool == 'investigate_s3_context':
-                  if event != {}:
-                      raise ValueError('investigation accepts no input')
-                  result = s3_investigation()
-              elif tool == 'get_s3_decision_timeline':
-                  if event != {}:
-                      raise ValueError('timeline accepts no input')
-                  result = s3_timeline()
-              else:
-                  raise ValueError('Gateway tool context required')
+              try:
+                  if tool == 'get_config_summary':
+                      if event != {}:
+                          raise ValueError('summary accepts no input')
+                      result = summary()
+                  elif tool == 'list_config_findings':
+                      result = list_findings(event)
+                  elif tool == 'investigate_s3_context':
+                      if event != {}:
+                          raise ValueError('investigation accepts no input')
+                      result = s3_investigation()
+                  elif tool == 'get_s3_decision_timeline':
+                      if event != {}:
+                          raise ValueError('timeline accepts no input')
+                      result = s3_timeline()
+                  else:
+                      raise ValueError('Gateway tool context required')
+              except RuntimeError as exc:
+                  if str(exc) != CONFIG_UNAVAILABLE:
+                      raise
+                  result = unavailable_result(tool)
               print(json.dumps({'event': 'OPERATOR_READ', 'tool': tool, 'read_only': True}))
               return result
 
