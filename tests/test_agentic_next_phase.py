@@ -79,11 +79,16 @@ class AgenticEvidenceTests(unittest.TestCase):
 
     def test_partial_config_blocks_remediation_recommendation(self):
         plan = sample_plan(partial=True)
-        result = build_s3_investigation(plan, sample_status(), sample_page())
+        status = sample_status(config={"counts": {"NON_COMPLIANT": 2}, "partial": True})
+        result = build_s3_investigation(plan, status, sample_page())
         self.assertEqual(result["confidence"], "LOW")
         self.assertEqual(result["mutation"]["approval"], "NOT_READY")
         self.assertIn("incomplete", result["conclusion"].lower())
         self.assertIn("Refresh bounded Config evidence", result["recommendation"])
+        timeline = build_decision_timeline(result, plan, status)
+        stages = {item["stage"]: item for item in timeline["timeline"]}
+        self.assertEqual(stages["Finding"]["status"], "PARTIAL")
+        self.assertEqual(stages["Compliance Result"]["status"], "PARTIAL")
 
     def test_provider_compliant_config_lag_does_not_recommend_mutation(self):
         plan = sample_plan(eligible_owned=0)
