@@ -4,27 +4,76 @@ The central design rule is:
 
 > **The model is an assistant, not the authorization boundary.**
 
-Demo v1 deliberately splits governance across independent layers.
+The current design makes that visible by separating the live read/investigation plane from the governed mutation plane.
 
-## 1. Topic scope
+## 1. Two governance planes
 
-The AWS Compliance Agent is a specialist assistant. Its instructions limit it to deployed AWS compliance operations and directly relevant education.
+### Live Harness: read / investigate only
 
-This boundary improves usability and reduces accidental tool use, but it is **not** the hard AWS authorization control.
+The `aws_secops_operator` AgentCore Harness can use exactly four bounded read tools for the two supported Config controls and retained-demo S3 context.
 
-## 2. Read-only vs execution intent
+It has no model-accessible AWS write, shell, generic AWS, arbitrary resource-selection or remediation tool.
 
-A request to read, check, explain, summarize, recommend or plan is intended to stay read-only.
+An operator saying `fix`, `apply` or `execute` does not change that authority. The Harness remains read-only and points to the separate governed remediation path.
 
-Only an explicit current request to fix/apply/execute can move into remediation preparation.
+### Recorded Demo v1: governed mutation
 
-Recorded read-only tests/smokes produced no executor request, but this distinction is still partly an **agent-behavior instruction**. Human approval, Gateway/Policy, exact tools and IAM remain the independent AWS-change controls.
+Actual AWS mutation remains:
 
-## 3. Server-owned scope
+`server-owned scope -> human approval -> Gateway/Policy -> exact tool -> provider readback`
 
-The model cannot choose arbitrary execution parameters.
+Recommendation, approval, Policy ALLOW and provider success are distinct facts.
 
-The server owns:
+## 2. Topic and intent are not hard authorization
+
+Agent instructions keep the AWS Compliance Agent focused on AWS compliance/security operations and help distinguish read-only questions from execution intent.
+
+Those instructions improve behavior, but **prompt intent is not the AWS security boundary**.
+
+For the live Harness, even an explicit execution request still has no mutation tool to call. For the recorded mutation path, AWS changes additionally require deterministic scope, human approval, Gateway/Policy and exact executor permissions.
+
+## 3. Read scope is deterministic
+
+The Harness does not accept arbitrary AWS targets.
+
+Current read scope is fixed to:
+
+- the two supported AWS Config controls;
+- bounded Config result pagination;
+- retained-demo S3 resources matching the expected prefix, Region and ownership tags;
+- four direct S3 read APIs only when a current bounded S3 finding requires investigation.
+
+The model cannot supply a bucket name to expand the investigation target.
+
+## 4. Evidence claims are bounded
+
+The agent may explain only what the evidence supports.
+
+Examples:
+
+- Config says `NON_COMPLIANT` → this is a Config finding, not proof of sensitive-data exposure or attacker activity.
+- Config returns no current bounded finding → `CLEAR` is Config evidence only.
+- If direct S3 provider state was not read → report `provider_state=NOT_READ` and `risk_context=NOT_ASSESSED`.
+- Provider readback may support a provider-state statement only when the bounded provider read actually occurred.
+
+The Harness must not turn Config-only `CLEAR` into “safe”, “not public”, “provider verified” or equivalent language.
+
+## 5. Fail closed on unhealthy evidence
+
+The read path checks AWS Config recorder health before treating current Config evidence as usable.
+
+If that health gate fails:
+
+- result is `UNVERIFIED/BLOCKED`;
+- no provider/remediation conclusion is invented;
+- the Decision Timeline shows which stages were not called;
+- no mutation occurs.
+
+This behavior was exercised live during Issue #60 before the recorder was recovered.
+
+## 6. Server-owned mutation scope
+
+For the recorded Demo v1 mutation path, deterministic server code owns:
 
 - supported controls;
 - retained resource manifests;
@@ -34,9 +83,9 @@ The server owns:
 
 A caller/model-supplied resource ID is not enough to expand the blast radius.
 
-Demo v1 currently uses a conservative family-complete readiness rule: a family is prepared only when the whole retained family passes the relevant readiness/eligibility gates. This is not arbitrary-subset remediation.
+Demo v1 uses conservative family-complete readiness gates rather than arbitrary model-selected subsets.
 
-## 4. Human approval
+## 7. Human approval
 
 S3 and Security Group changes remain independently approved.
 
@@ -45,74 +94,92 @@ S3 request -> Approve / Reject
 SG request -> Approve / Reject
 ```
 
-If a UI presents both decisions together, the submission is only batching the two independent decisions. There is no session-wide approval.
+Approval means only:
 
-Approval means: **this exact request may proceed to the next governance layer**. It does not mean the change succeeded.
+> **This exact supported request may proceed to the next governance layer.**
 
-The approval/batch identity binds exact workflow scope. It is not presented as a secret credential or as proof that a particular human identity is part of the later Policy decision.
+It does not prove the AWS change happened or succeeded.
 
-## 5. Gateway + Policy
+## 8. Gateway + Policy
 
-After approval, the bounded executor invokes AgentCore Gateway. Policy independently evaluates the exact invocation.
+Gateway exposes bounded tool entry points. Policy independently evaluates the exact permitted action.
 
-This creates an important separation:
+The separation is intentional:
 
 - model recommendation is not authorization;
 - human approval is not Policy ALLOW;
-- Policy ALLOW is not provider success.
+- Policy ALLOW is not provider success;
+- Config compliance is not provider readback.
 
-Each layer answers a different question.
+For the live Harness, Gateway Policy is `ENFORCE` and the active policy permits exactly the four read actions.
 
-The inspected current design constrains the bounded invocation and environment. Demo v1 does not claim that Policy itself proves who clicked the human approval button.
+## 9. Exact tools and IAM
 
-## 6. Exact tools
+The current read Lambda is bounded to:
 
-Demo v1 exposes narrow tools for only the supported actions.
+- Config recorder/rule/compliance reads;
+- `GetBucketLocation`;
+- `GetBucketTagging`;
+- `GetBucketPublicAccessBlock`;
+- `GetBucketPolicyStatus`;
+- CloudWatch Logs writes.
 
-It intentionally does **not** expose a generic model-driven AWS CLI/API mutation surface.
+The retained S3 read permissions are prefix-bounded. The Harness receives no S3 write, EC2 write, SSM or generic AWS action.
 
-Execution-time account, Region, API, action and target scope are bounded by server configuration and current provider guards.
+The recorded mutation plane uses separate exact tools for the supported S3 BPA and restricted-SSH actions.
 
-This claim is deliberately narrow: it describes the **model-accessible tool surface**. It is not a certification that every permission available to the retained host is least-privilege isolated from every other local process.
+## 10. Provider verification
 
-## 7. Provider verification
+After a governed mutation, AWS is read again.
 
-After mutation, AWS is read again.
+A remediation may be reported completed only when direct provider state matches the approved target. `FAILED` and `UNKNOWN` remain explicit outcomes.
 
-A job may be reported completed only when direct provider state matches the approved target. `FAILED` and `UNKNOWN` remain explicit outcomes.
+AWS Config is independent asynchronous evidence and may converge later.
 
-AWS Config is independent compliance evidence and may update later.
+## 11. Operator maintenance is separate
 
-## What is trusted in Demo v1
+`Prepare demo` / reset / re-arm is privileged operator maintenance for retained lab resources.
 
-Demo v1 is a personal-lab POC. Its trust model includes:
+It is:
 
-- the retained host and its deployment configuration;
-- the LibreChat approval configuration;
-- the reverse proxy/authentication configuration protecting operator surfaces;
-- the server-owned manifests and durable local state;
-- the exact Gateway/Policy/tool configuration installed for the demo.
+- not a Harness tool;
+- not normal remediation approval;
+- not evidence that the model can reset AWS;
+- not something to expose merely to simplify a demo.
 
-The project does not claim hostile multi-tenant isolation, tamper-proof approval records, production identity governance or complete host-wide IAM isolation.
+## 12. Multi-account remains read-only-first
 
-## Operator maintenance is a separate branch
+Issue #60 Milestone 3 requires a second explicitly authorized owned AWS read scope.
 
-`Prepare demo` is intentionally privileged operator maintenance. It can change the owned lab resources to the known non-compliant demo state after a confirmation and provider guards.
+Current discovery found no reusable second-account path. No broad cross-account role, Organizations trust or admin capability was created just to satisfy the milestone.
 
-It is **not** exposed to the agent, is **not** normal remediation approval and should not be used as evidence that the model can reset AWS resources.
+If a second scope is later configured, the first proof remains read-only. Cross-account mutation requires a separate design/review decision.
 
 ## Evidence sources
 
 | Question | Authoritative evidence |
 |---|---|
 | Did an AWS API call happen? | CloudTrail |
-| What did the executor log? | CloudWatch Logs |
+| What did the read/executor function log? | CloudWatch Logs |
 | What does the compliance rule report? | AWS Config |
 | What is the resource state now? | Direct provider readback |
 | What did the workflow approve/track? | Durable batch/approval state |
 | What did Policy decide? | Gateway/Policy evidence |
 
-A future Operations Console should correlate these sources, not replace them.
+The Decision Timeline and any future Operations Console should correlate these sources, not replace them.
+
+## Trust and limits
+
+This remains a personal-lab POC. It does not claim:
+
+- production identity governance;
+- hostile multi-tenant isolation;
+- arbitrary-resource remediation;
+- generic autonomous AWS administration;
+- live multi-account proof without a second configured account;
+- that a Config finding alone proves business impact or exploitability.
+
+For the shortest current walkthrough, use the [3-minute demo](operations/AGENTIC_DEMO_3_MIN.md). For the recorded mutation proof, use [Demo v1](demo-v1.md).
 
 ## Public safety
 
