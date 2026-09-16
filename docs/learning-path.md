@@ -1,54 +1,66 @@
 # Learning path
 
-Use this page as the **beginner reading order**. It separates the current Demo v1 architecture from the newer AgentCore research track so they are not confused.
+Use this page as the **beginner reading order**. It separates the current live read/investigation architecture from the recorded Demo v1 mutation proof and from older research/history.
 
 ## 1. Understand the current system first
 
 Read these in order:
 
 1. [Home](index.md) — what the project is trying to achieve.
-2. [Current architecture](architecture.md) — how reasoning, approval, execution and verification are separated today.
-3. [Demo v1](demo-v1.md) — the current supported S3 BPA + restricted-SSH walkthrough.
-4. [Governance](governance.md) — why the model does not get broad AWS mutation authority.
-5. [Project status](project-status.md) — current public baseline, known limits and what is actually live.
+2. [3-minute demo](operations/AGENTIC_DEMO_3_MIN.md) — the shortest current operator/executive story.
+3. [Current architecture](architecture.md) — live read/investigation plane versus governed mutation plane.
+4. [Governance](governance.md) — why prompt intent cannot create AWS write authority.
+5. [Project status](project-status.md) — what is actually live, recorded, blocked and still planned.
+6. [Long Demo v1](demo-v1.md) — the recorded S3 BPA + restricted-SSH remediation walkthrough.
 
 !!! important "Current architecture"
-    Demo v1 currently uses the **LibreChat AWS Compliance Agent** with bounded tools. AgentCore Harness is an active research/next-direction track, not a replacement that should be assumed live today.
+    The `aws_secops_operator` AgentCore Harness is **live today as the read-only operator/investigation layer**. It exposes exactly four bounded read tools. The recorded Demo v1 human-approval + Gateway/Policy + exact-tool path remains the separate mutation proof. Do not describe the Harness as the remediation executor.
 
-## 2. Then learn the AgentCore direction
+## 2. Understand the evidence boundary
 
-When the current system makes sense, continue with the [AgentCore Research & Learning hub](research/index.md).
+Three distinctions matter most:
 
-Recommended AgentCore order:
+- **AWS Config evidence** is not the same as direct provider state.
+- **Config-only `CLEAR`** means no current bounded non-compliant finding was returned; provider state may still be `NOT_READ` and risk `NOT_ASSESSED`.
+- **Recommendation** is not authorization; AWS mutation remains behind the separate governed path.
 
-1. [AgentCore Research & Learning](research/index.md) — beginner mental model and current-vs-historical framing.
-2. [Harness operator experiments](research/agentcore-harness-operator-experiments.md) — five concrete pre-deployment tests for the proposed read-only operator Harness.
+The [Governance](governance.md) page explains these boundaries in detail.
+
+## 3. Then learn how the AgentCore work evolved
+
+Continue with the [AgentCore Research & Learning hub](research/index.md) for component-level background and earlier experiments.
+
+Recommended order:
+
+1. [AgentCore Research & Learning](research/index.md) — component mental model and historical context.
+2. [Harness operator experiments](research/agentcore-harness-operator-experiments.md) — pre-deployment investigation that informed the current live Harness.
 3. [AgentCore feature matrix](research/AGENTCORE_FEATURE_MATRIX.md) — which AgentCore component solves which problem.
 4. [Gateway + Policy live proof](research/GATEWAY_POLICY_LIVE_PROOF.md) — earlier feasibility evidence for governed exact tools.
-5. [Harness runtime proof](research/HARNESS_NOVA2_LITE_LIVE_PROOF.md) — earlier Harness feasibility observations.
+5. [Harness runtime proof](research/HARNESS_NOVA2_LITE_LIVE_PROOF.md) — earlier runtime feasibility observations.
 
-## 3. Read technical proof when you need evidence
+These pages are valuable engineering history. Where they conflict with `PROJECT_STATUS.md`, current Architecture/Governance, or Issue #60 acceptance evidence, the newer current sources win.
 
-[Issue #32 hardening evidence](implementation/RELIABILITY_HARDENING_PROOF.md) covers Config termination, SG safe-stop recovery, truthful status timestamps and AWS-free validation.
+## 4. Read technical proof when you need evidence
 
-Then continue with:
+- [Reliability hardening](implementation/RELIABILITY_HARDENING_PROOF.md) — Config termination, SG safe-stop recovery, truthful status and AWS-free validation.
+- [Governed S3 execution proof](implementation/PLATFORM_PHASE11_13_PROOF.md) — recorded exact S3 execution path.
+- [PR #25](https://github.com/amitkarpe/aws-secops/pull/25) — Config + exact restricted-SSH direction.
+- [PR #27](https://github.com/amitkarpe/aws-secops/pull/27) — recorded Demo v1 acceptance.
+- [Issue #60](https://github.com/amitkarpe/aws-secops/issues/60) — current Harness deployment, failure-mode, healthy-path and security-boundary evidence.
 
-- [Governed S3 execution proof](implementation/PLATFORM_PHASE11_13_PROOF.md)
-- [PR #25](https://github.com/amitkarpe/aws-secops/pull/25) for the Config + exact-SG/unified-agent milestone
-- [PR #27](https://github.com/amitkarpe/aws-secops/pull/27) for current Config-driven planning, separate approvals and Demo v1 acceptance
+## 5. Operations
 
-## 4. Operations
+For current presentation/use:
 
-For operator/support material:
-
-- [LibreChat bulk demo](operations/LIBRECHAT_BULK_DEMO.md) — S3-specific operations material
+- [3-minute demo](operations/AGENTIC_DEMO_3_MIN.md) — use this first.
+- [Long Demo v1](demo-v1.md) — use when you need the recorded mutation story.
 - [Cost and cleanup](operations/COST_AND_CLEANUP.md)
 
-The current two-family walkthrough is [Demo v1](demo-v1.md). Do not use the older multi-source pilot demo as the primary current demo.
+The older [LibreChat bulk demo](operations/LIBRECHAT_BULK_DEMO.md) remains S3-specific historical operations material; it is not the current live Harness walkthrough.
 
-## 5. Historical material
+## 6. Historical material
 
-These pages explain how the project evolved, but they are not the current primary architecture:
+These pages explain how the project evolved, but they are not current architecture authority:
 
 - [Earlier multi-source pilot demo](operations/DEMO_SCRIPT.md)
 - [Phase 0B research plan](research/PHASE0B_PLAN.md)
@@ -59,6 +71,8 @@ These pages explain how the project evolved, but they are not the current primar
 - [Operations Console direction](operator-console.md)
 - [Roadmap](roadmap.md)
 
+Issue #60 Milestone 3 remains blocked pending a second explicitly authorized owned AWS read scope. Do not infer a live multi-account capability from code or historical plans alone.
+
 ## Reading rule
 
-For current human-facing truth, prefer `README.md`, `PROJECT_STATUS.md`, `SPEC.md` and this curated site. `CONTEXT.md` is for coding-agent/session continuity and should not be treated as the public introduction.
+For current human-facing truth, prefer `README.md`, `PROJECT_STATUS.md`, current Architecture/Governance, Issue #60 acceptance evidence and this curated site. `CONTEXT.md` is for coding-agent/session continuity rather than the public introduction.
