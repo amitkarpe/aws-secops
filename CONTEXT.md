@@ -12,8 +12,9 @@ Repository: `amitkarpe/aws-secops`
 - The model has no generic AWS mutation tool.
 - The `aws_secops_operator` AgentCore Harness is the live read-only operator reasoning layer.
 - Explicit `fix/apply/execute` requests do not mutate through the Harness; they remain on the separate governed human-approval path.
-- Issue #60 Milestones 1–2 are live-deployed on the Harness: bounded S3 contextual investigation + factual Agent Decision Timeline.
+- Issue #60 Milestones 1–2 are live-deployed and healthy-path accepted: bounded S3 contextual investigation + factual Agent Decision Timeline.
 - Milestone 3, exactly-two-account read-only SecOps, remains unclaimed until a second explicit owned read scope is configured and independently verified.
+- Milestone 4, short demo/documentation consolidation, remains pending after Milestone 3 or an explicit descope/reorder decision.
 
 ## Current operating model
 
@@ -34,13 +35,14 @@ Implementation history:
 - Issue #62 / PR #63 — provider-evidence correctness hardening (complete)
 - PR #64 — Harness-native S3 investigation + Decision Timeline (merged at `2f896fe86e99c4e4096c321a40040f33daff644d`, live-deployed)
 - PR #65 — unhealthy Config evidence surfaced as structured `UNVERIFIED/BLOCKED` instead of a masked Gateway error (merged at `25f835068a835ee79fd9c01adc486de82334a0ba`, live-deployed)
+- PR #66 — Config-only CLEAR semantics hardened so zero findings cannot be presented as provider verification (merged at `f78e680cab2154f0ff40d30084d79e5f979fbd20`, live-deployed)
 
 ## Live verified Harness baseline — 2026-09-16
 
-AWS Core independently verified after PR #65 deployment:
+AWS Core independently verified after PR #66 deployment:
 
 - CloudFormation stack `aws-secops-operator-harness`: `UPDATE_COMPLETE`;
-- one `aws_secops_operator` Harness in `ap-southeast-1`, READY, version 3;
+- one `aws_secops_operator` Harness in `ap-southeast-1`, READY, version 4;
 - Nova 2 Lite;
 - exactly four allowed read tools:
   1. `get_config_summary`
@@ -57,45 +59,66 @@ AWS Core independently verified after PR #65 deployment:
 
 The retained S3 demo family still contains exactly 100 `aws-secops-bpa-*` buckets (`000`–`099`); sampled ownership tags match the retained demo contract.
 
-## Current AWS Config health condition
+## AWS Config recovery and healthy-path acceptance
 
-The Config recorder is still `recording=true`, but its latest recording event is unhealthy:
+The recorder failure first observed at `2026-09-16T03:30:25.797Z` was not caused by the Harness deployment. A reversible retained-demo tag probe was not captured in Config history, proving the recorder was functionally stale rather than merely showing an old status.
 
-- `lastStatus=FAILURE`;
-- `lastStatusChangeTime=2026-09-16T03:30:25.797Z`.
+Recovery used one bounded stop/start of the existing `default` recorder only:
+- no recorder scope change;
+- no role change;
+- no Config-rule change;
+- no delivery-channel change.
 
-This failure began before the PR #64 stack deployment started at `03:35:33Z`.
+Observed transition:
 
-Read-only diagnosis found:
-- both required Config rules remain ACTIVE;
-- existing rule evaluation data remains readable;
-- delivery history had a prior successful delivery;
-- CloudTrail around the failure shows `AWSServiceRoleForConfig` resource-composition scans encountering unavailable/subscription-only services, including service/provider errors outside this project's two recorded resource types.
+`FAILURE -> PENDING -> SUCCESS`
 
-One bounded `StartConfigurationRecorder(default)` attempt made no state change. Do not stop/recreate/reconfigure the recorder or weaken the health gate merely to make the demo pass.
+Current recorder state:
+- `recording=true`;
+- `lastStatus=SUCCESS`;
+- last successful status change: `2026-09-16T04:17:17.537Z`.
 
-## Fail-closed live acceptance proof
+The transient tag probe restored the original bucket tags exactly and left all four S3 Block Public Access flags `true`.
 
-While Config remains unhealthy:
+Healthy-path live acceptance then proved:
+- Config summary returned 107/107 S3 compliant and 15/15 restricted-SSH compliant, `partial=false`;
+- S3 investigation returned Config-only CLEAR because no current retained-demo non-compliant S3 finding exists;
+- Decision Timeline returned all nine observable stages;
+- explicit fix request performed no Harness mutation.
 
-- `investigate_s3_context` returns structured `UNVERIFIED`, `partial=true`, read-only evidence instead of a generic internal error;
-- `get_s3_decision_timeline` returns all nine observable stages with `UNVERIFIED / BLOCKED / UNKNOWN / NOT_CALLED / NOT_REQUESTED` as appropriate;
-- explicit `Fix this S3 compliance issue now` performs no Harness mutation and reports that evidence is unavailable and remediation remains governed;
-- post-deployment Lambda logs contain `OPERATOR_READ` events with no runtime error/traceback.
+## Config-only CLEAR evidence boundary
 
-Independent CloudTrail review from the first trusted-bootstrap deployment through final verification found zero:
-- `PutBucketPublicAccessBlock`;
-- `DeletePublicAccessBlock`;
-- `PutBucketPolicy`;
-- `DeleteBucketPolicy`;
-- `AuthorizeSecurityGroupIngress`;
-- `RevokeSecurityGroupIngress`.
+Healthy-path acceptance exposed one model-language overclaim: the first response described bucket provider state as if it had been verified even though `provider_evidence=null`.
+
+PR #66 corrected that boundary. Zero-finding S3 investigation now returns:
+- `provider_state=NOT_READ`;
+- `risk_context=NOT_ASSESSED`;
+- `provider_evidence=null`;
+- explicit statement that direct S3 provider state was not read.
+
+The Harness must not say or imply that a bucket is not public, protected, safe, secure, provider-verified or free from exposure from a Config-only CLEAR result.
+
+The Decision Timeline now shows:
+- `Provider Readback = NOT_READ`;
+- `Risk / Context = NOT_ASSESSED`;
+when no current Config finding requires provider investigation.
+
+## Security boundary verification
+
+Independent verification after PR #66 found:
+- Harness READY, version 4;
+- exactly four allowed read tools;
+- Gateway READY, Policy mode `ENFORCE`;
+- Cedar policy ACTIVE for exactly those four actions;
+- read Lambda IAM unchanged and read-only;
+- no Lambda runtime errors during healthy-path acceptance;
+- zero `PutBucketPublicAccessBlock`, `DeletePublicAccessBlock`, `PutBucketPolicy`, `DeleteBucketPolicy`, `AuthorizeSecurityGroupIngress`, or `RevokeSecurityGroupIngress` events during recovery/deployment/acceptance.
 
 ## Current next actions
 
-1. Keep the strict Config health gate. Observe/re-diagnose the recorder until a subsequent recording event becomes successful; do not broaden Config scope or bypass the gate just for the demo.
-2. Once recorder health is successful, run one positive live S3 investigation + Decision Timeline acceptance. Re-arm the bounded retained demo only if a non-compliant finding is actually needed, through the existing operator-only path—not through Harness.
-3. Milestone 3 remains pending: configure exactly one second explicit owned read scope, then independently prove the two-account read-only path. The current account has no AWS Organizations membership/path to reuse.
-4. Keep Issue #60 open until the remaining acceptance is complete or explicitly descoped.
+1. Milestone 3: configure exactly one second explicit owned AWS read scope and prove account-distinguished read-only evidence. Do not add cross-account write authority.
+2. Milestone 4: package the proven flow into a 2–3 minute operator/executive demo and consolidate README/demo/architecture/security/evidence entry points.
+3. A live non-compliant S3 contextual-investigation proof is optional proportional acceptance only. If needed, re-arm one retained demo resource through an explicit operator-only path, never through the Harness, and preserve the existing governed remediation boundary.
+4. Keep Issue #60 open until Milestones 3–4 are completed or explicitly descoped/replaced with a recorded reason.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future scope use `ROADMAP.md`.
