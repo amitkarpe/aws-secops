@@ -23,9 +23,9 @@ class OperatorHarnessClearSemanticsTests(unittest.TestCase):
 
     def test_prompt_forbids_zero_finding_provider_and_risk_overclaim(self):
         self.assertIn("the CLEAR result is not evidence that exposure or risk is absent", TEMPLATE)
-        self.assertIn('Never say or imply \\"no risk\\", \\"low risk\\", \\"no exposure risk is indicated\\"', TEMPLATE)
-        self.assertIn('that the buckets \\"appear safe\\"', TEMPLATE)
-        self.assertIn('or that they \\"appear compliant\\" beyond the narrow statement', TEMPLATE)
+        self.assertIn('Never say or imply "no risk", "low risk", "no exposure risk is indicated"', TEMPLATE)
+        self.assertIn('that the buckets "appear safe"', TEMPLATE)
+        self.assertIn('or that they "appear compliant" beyond the narrow statement', TEMPLATE)
         self.assertIn("Never say or imply that the bucket is not public, protected, safe, secure, provider-verified or free from exposure", TEMPLATE)
         self.assertIn("direct S3 provider state and change history were not read", TEMPLATE)
         self.assertNotIn("The S3 bucket configuration does not expose public access", TEMPLATE)
