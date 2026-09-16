@@ -90,16 +90,28 @@ def build_s3_investigation(
         })
 
     if partial:
+        result = "PARTIAL"
         conclusion = "Investigation is incomplete because AWS Config evidence is partial. Do not prepare remediation from this result."
         recommendation = "Refresh bounded Config evidence before any remediation preparation."
         confidence = "LOW"
         approval = "NOT_READY"
     elif candidate_count == 0:
+        result = "NO_CURRENT_OWNED_FINDING"
         conclusion = "No retained owned S3 resource is currently identified by the bounded evidence intersection."
         recommendation = "No remediation preparation is recommended from this result."
         confidence = "HIGH"
         approval = "NOT_REQUIRED"
+    elif provider_state == "COMPLIANT":
+        result = "PROVIDER_COMPLIANT_CONFIG_LAG"
+        conclusion = (
+            "AWS Config still identifies the supported S3 control as non-compliant, but the sampled direct provider evidence is already compliant. "
+            "Provider state is the immediate remediation truth; Config may be converging."
+        )
+        recommendation = "Do not prepare remediation from provider-compliant evidence; refresh or allow AWS Config to converge."
+        confidence = "HIGH_PROVIDER"
+        approval = "NOT_REQUIRED"
     else:
+        result = "ATTENTION"
         conclusion = (
             "The supported S3 control is non-compliant within the retained owned demo scope. "
             "This proves the control state, not public data exposure, attacker activity, or data sensitivity."
@@ -111,7 +123,7 @@ def build_s3_investigation(
     return {
         "version": 1,
         "control": S3_CONTROL,
-        "result": "ATTENTION" if candidate_count else "NO_CURRENT_OWNED_FINDING",
+        "result": result,
         "scope": "retained-owned-demo-only",
         "resource_identity": "hidden-by-default",
         "counts": {
@@ -160,7 +172,7 @@ def build_decision_timeline(
     total = int(batch.get("total", 0) or 0)
     active = bool(batch.get("execution_active"))
 
-    finding_status = "ATTENTION" if investigation.get("result") == "ATTENTION" else "CLEAR"
+    finding_status = "ATTENTION" if investigation.get("result") in {"ATTENTION", "PROVIDER_COMPLIANT_CONFIG_LAG"} else "CLEAR"
     investigation_status = "PARTIAL" if investigation.get("confidence") == "LOW" else "COMPLETE"
     recommendation_status = "READY" if investigation["mutation"]["approval"] == "REQUIRED_FOR_MUTATION" else "NO_ACTION"
 
@@ -168,18 +180,19 @@ def build_decision_timeline(
         human_status, human_summary = "PENDING", "A separate native human decision is still required before execution."
         policy_status, policy_summary = "NOT_CALLED", "Gateway Policy is evaluated only when the exact executor is invoked."
         tool_status, tool_summary = "NOT_CALLED", "No remediation tool call is implied by investigation or planning."
-    elif decision in {"APPROVED", "EXECUTING"} or active:
-        human_status, human_summary = "APPROVED", "The saved batch indicates approval/execution has begun."
+    elif verified and total and verified == total:
+        human_status = "APPROVED" if decision == "APPROVE" else "RECORDED"
+        human_summary = "The saved batch decision is recorded; identifiers remain hidden by default."
+        policy_status, policy_summary = "RECORDED_ELSEWHERE", "Use executor evidence for the exact historical Gateway Policy outcome."
+        tool_status, tool_summary = "COMPLETED", "All batch items have direct provider verification."
+    elif decision == "APPROVE" or active:
+        human_status, human_summary = "APPROVED", "The saved batch indicates approval and execution may be in progress."
         policy_status, policy_summary = "EVALUATED_OR_IN_PROGRESS", "Policy outcome is authoritative in executor/provider evidence, not inferred here."
         tool_status, tool_summary = "IN_PROGRESS", "Exact bounded S3 execution is active or has been dispatched."
-    elif decision in {"REJECT", "REJECTED", "DENIED"}:
-        human_status, human_summary = "REJECTED_OR_DENIED", "The saved batch did not proceed as an approved remediation."
-        policy_status, policy_summary = "NOT_INFERRED", "No policy result is invented from a rejected/denied batch summary."
-        tool_status, tool_summary = "NOT_CLAIMED", "No successful mutation is claimed."
-    elif verified and total and verified == total:
-        human_status, human_summary = "RECORDED", "Historical batch decision is saved; identifiers remain hidden by default."
-        policy_status, policy_summary = "RECORDED_ELSEWHERE", "Use executor evidence for the exact historical policy outcome."
-        tool_status, tool_summary = "COMPLETED", "All batch items have direct provider verification."
+    elif decision == "REJECT":
+        human_status, human_summary = "REJECTED", "The saved batch was rejected and did not proceed as an approved remediation."
+        policy_status, policy_summary = "NOT_INFERRED", "No Gateway Policy result is invented from a rejected batch."
+        tool_status, tool_summary = "NOT_CALLED", "No successful mutation is claimed."
     else:
         human_status, human_summary = "NOT_REQUESTED", "No current remediation decision is recorded."
         policy_status, policy_summary = "NOT_CALLED", "No mutation request means no policy execution is required."
