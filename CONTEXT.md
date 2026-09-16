@@ -10,11 +10,11 @@ Repository: `amitkarpe/aws-secops`
 - Supported remediation families remain S3 Block Public Access and restricted SSH on retained owned demo resources.
 - Approved execution remains human approval -> Gateway/Policy -> exact family tool -> provider readback.
 - The model has no generic AWS mutation tool.
-- The `aws_secops_operator` AgentCore Harness is the live read-only operator reasoning layer.
+- The `aws_secops_operator` AgentCore Harness is the live read-only operator reasoning/investigation layer.
 - Explicit `fix/apply/execute` requests do not mutate through the Harness; they remain on the separate governed human-approval path.
 - Issue #60 Milestones 1–2 are live-deployed and healthy-path accepted: bounded S3 contextual investigation + factual Agent Decision Timeline.
-- Milestone 3, exactly-two-account read-only SecOps, remains unclaimed until a second explicit owned read scope is configured and independently verified.
-- Milestone 4, short demo/documentation consolidation, remains pending after Milestone 3 or an explicit descope/reorder decision.
+- Issue #60 Milestone 4 is complete: the 3-minute demo and public documentation now reflect the verified current architecture.
+- Issue #60 Milestone 3 remains BLOCKED until a second explicitly authorized owned AWS read scope is available and independently verified.
 
 ## Current operating model
 
@@ -36,6 +36,7 @@ Implementation history:
 - PR #64 — Harness-native S3 investigation + Decision Timeline (merged at `2f896fe86e99c4e4096c321a40040f33daff644d`, live-deployed)
 - PR #65 — unhealthy Config evidence surfaced as structured `UNVERIFIED/BLOCKED` instead of a masked Gateway error (merged at `25f835068a835ee79fd9c01adc486de82334a0ba`, live-deployed)
 - PR #66 — Config-only CLEAR semantics hardened so zero findings cannot be presented as provider verification (merged at `f78e680cab2154f0ff40d30084d79e5f979fbd20`, live-deployed)
+- PR #67 — Milestone 4 short demo + public documentation consolidation (merged at `c798abf7b73e21c933fe0a9ee930728959f7328a`, Pages-deployed)
 
 ## Live verified Harness baseline — 2026-09-16
 
@@ -73,7 +74,7 @@ Observed transition:
 
 `FAILURE -> PENDING -> SUCCESS`
 
-Current recorder state:
+Current recorder state after recovery:
 - `recording=true`;
 - `lastStatus=SUCCESS`;
 - last successful status change: `2026-09-16T04:17:17.537Z`.
@@ -88,17 +89,15 @@ Healthy-path live acceptance then proved:
 
 ## Config-only CLEAR evidence boundary
 
-Healthy-path acceptance exposed one model-language overclaim: the first response described bucket provider state as if it had been verified even though `provider_evidence=null`.
-
-PR #66 corrected that boundary. Zero-finding S3 investigation now returns:
+PR #66 makes zero-finding S3 investigation explicit:
 - `provider_state=NOT_READ`;
 - `risk_context=NOT_ASSESSED`;
 - `provider_evidence=null`;
-- explicit statement that direct S3 provider state was not read.
+- direct S3 provider state was not read.
 
 The Harness must not say or imply that a bucket is not public, protected, safe, secure, provider-verified or free from exposure from a Config-only CLEAR result.
 
-The Decision Timeline now shows:
+The Decision Timeline shows:
 - `Provider Readback = NOT_READ`;
 - `Risk / Context = NOT_ASSESSED`;
 when no current Config finding requires provider investigation.
@@ -114,11 +113,40 @@ Independent verification after PR #66 found:
 - no Lambda runtime errors during healthy-path acceptance;
 - zero `PutBucketPublicAccessBlock`, `DeletePublicAccessBlock`, `PutBucketPolicy`, `DeleteBucketPolicy`, `AuthorizeSecurityGroupIngress`, or `RevokeSecurityGroupIngress` events during recovery/deployment/acceptance.
 
+## Milestone 3 blocker
+
+Read-only discovery found no existing second-account path that can be safely reused:
+- current account is not a member of AWS Organizations;
+- no cross-account `AssumeRole` activity was found in the checked 90-day CloudTrail window;
+- matching local IAM roles are same-account service/GitHub/Lambda/AgentCore roles, not a reusable second-account SecOps read path;
+- the current AWS Core connection exposes only the active account/session and no account/profile switch action.
+
+No cross-account role/trust was created merely to complete the milestone.
+
+Milestone 3 remains BLOCKED until a second explicitly authorized owned AWS read scope is provided. The first proof remains read-only; cross-account mutation is a separate later security decision.
+
+## Milestone 4 completion
+
+PR #67 consolidated the current public story around:
+
+1. `docs/operations/AGENTIC_DEMO_3_MIN.md` — Capability + Evidence Discipline + Trust + Auditability;
+2. `docs/architecture.md` — live read/investigation plane vs separate recorded mutation plane;
+3. `docs/governance.md` — prompt intent is not authorization and Harness has no write path;
+4. README / portal home / navigation / learning path / project status / roadmap — current routing and status.
+
+Verification:
+- strict MkDocs build passed on PR;
+- offline regression + integration syntax passed on PR;
+- post-merge strict MkDocs build passed;
+- GitHub Pages deployment passed;
+- post-merge offline regression + integration syntax passed.
+
+PR #67 changed documentation only; no runtime code, IaC, IAM/OIDC, Gateway/Policy or AWS resource was changed.
+
 ## Current next actions
 
-1. Milestone 3: configure exactly one second explicit owned AWS read scope and prove account-distinguished read-only evidence. Do not add cross-account write authority.
-2. Milestone 4: package the proven flow into a 2–3 minute operator/executive demo and consolidate README/demo/architecture/security/evidence entry points.
+1. Keep Issue #60 open for Milestone 3 unless the milestone is explicitly descoped/replaced with a recorded reason.
+2. When a second explicitly authorized owned AWS read scope becomes available, design the smallest exact two-account read-only proof in Git/IaC first, then independently verify account-distinguished evidence and zero mutation with AWS Core.
 3. A live non-compliant S3 contextual-investigation proof is optional proportional acceptance only. If needed, re-arm one retained demo resource through an explicit operator-only path, never through the Harness, and preserve the existing governed remediation boundary.
-4. Keep Issue #60 open until Milestones 3–4 are completed or explicitly descoped/replaced with a recorded reason.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future scope use `ROADMAP.md`.
