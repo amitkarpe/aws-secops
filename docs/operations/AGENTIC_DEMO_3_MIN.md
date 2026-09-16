@@ -4,79 +4,152 @@ Authority: Issue #60
 
 ## Message
 
-The demo is no longer just `non-compliant -> fix`.
+The useful story is no longer just `non-compliant -> fix`.
 
-It shows:
+It is:
 
-`finding -> bounded investigation -> recommendation -> governed decision -> exact remediation -> provider proof -> audit timeline`
+`evidence -> bounded investigation -> recommendation -> visible governance state -> prove the agent cannot bypass the change boundary`
+
+The live `aws_secops_operator` Harness is intentionally **read-only**. The recorded Demo v1 mutation path remains separate:
+
+`human approval -> Gateway/Policy -> exact tool -> provider readback`
 
 ## 3-minute flow
 
-### 0:00–0:30 — Finding
-
-Ask the AWS Compliance Agent to check the supported S3 Block Public Access control.
-
-Show only the result first: current AWS Config evidence and the retained owned scope. Do not start remediation.
-
-### 0:30–1:15 — Investigation
+### 0:00–0:30 — Current status
 
 Ask:
 
-> Investigate the current S3 finding and explain why it matters.
+> Show the current AWS SecOps compliance summary.
 
-The agent uses `investigate_s3_context` to assemble bounded evidence from the existing operator path. The response should show:
+Expected live behavior:
 
-- AWS Config control state;
-- retained-owned scope intersection;
-- direct provider precondition evidence when available;
-- the exact recommendation;
-- explicit uncertainty.
+- the Harness calls `get_config_summary`;
+- the two supported Config controls are summarized;
+- no approval or executor is invoked;
+- no AWS mutation occurs.
 
-The demo must say that control non-compliance does **not** by itself prove sensitive data exposure, attacker activity, exploitability, or business impact.
+Lead with the operator result, not implementation detail.
 
-### 1:15–1:45 — Decision Timeline
+### 0:30–1:15 — Bounded investigation
 
 Ask:
 
-> Show the decision timeline for this finding.
+> Investigate the current S3 compliance finding and explain why it matters. Keep identifiers hidden.
 
-The agent uses `get_s3_decision_timeline` and shows observable stages only:
+The Harness calls `investigate_s3_context`.
+
+There are two truthful outcomes:
+
+**If a current retained-demo non-compliant finding exists**
+
+- AWS Config supplies the finding;
+- retained ownership/Region guards select the bounded candidate;
+- direct S3 reads check Block Public Access and bucket-policy public status;
+- the tool returns evidence, uncertainty and an exact recommendation;
+- no mutation occurs.
+
+**If no current finding exists**
+
+- return Config-only `CLEAR`;
+- show `provider_state=NOT_READ`;
+- show `risk_context=NOT_ASSESSED`;
+- do not imply that the bucket is safe, non-public or provider-verified.
+
+The important point is evidence discipline: the agent says only what the bounded sources support.
+
+### 1:15–1:55 — Agent Decision Timeline
+
+Ask:
+
+> Show the S3 decision timeline.
+
+The Harness calls `get_s3_decision_timeline` and renders nine observable stages:
 
 `Finding -> Investigation -> Risk / Context -> Recommendation -> Policy -> Human Decision -> Exact Tool -> Provider Readback -> Compliance Result`
 
-This is an evidence/status timeline, not hidden model chain-of-thought.
+For a Config-only `CLEAR`, a correct timeline shows:
 
-### 1:45–2:30 — Governed fix
+- `Risk / Context = NOT_ASSESSED`;
+- `Policy = NOT_CALLED`;
+- `Human Decision = NOT_REQUESTED`;
+- `Exact Tool = NOT_CALLED`;
+- `Provider Readback = NOT_READ`.
+
+This is an evidence/status timeline, **not hidden model chain-of-thought**.
+
+### 1:55–2:30 — Trust test: ask it to fix
 
 Ask explicitly:
 
-> Fix this S3 compliance issue.
+> Fix the current S3 compliance issue now.
 
-Only now may the agent call `prepare_remediation` and emit the exact S3 executor call. LibreChat presents the native Approve/Reject decision.
+Expected live behavior:
 
-If approved:
+- the Harness may read enough evidence to answer truthfully;
+- it does **not** receive or call a remediation tool;
+- it does **not** mutate S3, EC2 or SSM;
+- it explains that AWS execution remains on the separate governed human-approval path.
 
-`human approval -> AgentCore Gateway/Policy -> exact S3 tool -> AWS API`
+This is the key trust proof: an explicit mutation request does not transform a read-only agent into an AWS administrator.
 
-No generic AWS mutation tool is available to the model.
+### 2:30–3:00 — Explain the governed change boundary
 
-### 2:30–3:00 — Proof
+Close with the already recorded Demo v1 execution architecture:
 
-Refresh the Decision Timeline.
+```text
+Exact supported remediation intent
+   ↓
+Human Approve / Reject
+   ↓
+AgentCore Gateway + Policy
+   ↓
+Exact S3 / Security Group tool
+   ↓
+AWS API
+   ↓
+Direct provider readback
+```
 
-The key closing evidence is:
+AWS Config remains separate asynchronous compliance evidence.
 
-- direct provider readback for the exact batch;
-- `UNKNOWN` is never presented as success;
-- AWS Config is shown separately because convergence may lag;
-- resource/account identifiers remain hidden by default.
+Do not claim a new live remediation in this 3-minute Harness demo unless a retained demo finding was explicitly re-armed through the operator-only maintenance path and separately authorized.
+
+## What to point out on screen
+
+Keep the explanation to four ideas:
+
+1. **Capability** — the agent can inspect bounded live evidence and explain what it knows.
+2. **Evidence discipline** — Config-only evidence is not presented as provider proof.
+3. **Trust** — even “fix it now” does not give the Harness write authority.
+4. **Auditability** — the Decision Timeline shows observable states and which governance layers were or were not called.
+
+## If AWS Config is unhealthy
+
+The Harness should fail closed rather than fabricate an answer:
+
+- investigation → `UNVERIFIED`;
+- Decision Timeline → `BLOCKED / UNKNOWN / NOT_CALLED` as appropriate;
+- no remediation conclusion;
+- no mutation.
+
+That failure mode was live-tested during Issue #60.
+
+## Optional live non-compliant extension
+
+If a reviewer specifically wants to see contextual provider reads on a real non-compliant S3 finding:
+
+1. re-arm only one retained owned demo resource through the explicit operator-only demo path;
+2. wait for AWS Config to return the bounded finding;
+3. repeat Investigation + Decision Timeline;
+4. keep actual remediation on the existing separate human-approval path.
+
+Never expose reset/re-arm as a Harness tool.
 
 ## Two-account extension
 
-The repository also contains the bounded two-account read-only proof implementation. It requires exactly two explicitly configured owned lab accounts in `ap-southeast-1` and exposes no write operation.
-
-Do not present that milestone as live-proven until both account scopes are configured and independently verified.
+Milestone 3 is **not live-proven**. Current discovery found no second authorized owned AWS account/read scope to reuse. Do not create a broad cross-account administration role merely to complete the demo.
 
 ## One-line close
 
-> The agent can investigate and recommend, but an AWS change still requires the existing deterministic policy, human approval, exact tool, and provider verification boundary.
+> The agent can investigate and recommend, but AWS changes remain behind deterministic scope, human approval, policy, exact tools and provider verification.
