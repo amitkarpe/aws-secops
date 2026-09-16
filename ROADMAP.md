@@ -13,24 +13,34 @@
 
 ## Now
 
-### Issue #60 — next agentic SecOps phase
+### Issue #60 / PR #61 — agentic SecOps next phase
 
-Move from simple `finding -> fix` demonstrations toward a stronger operator story:
+Move from simple `finding -> fix` demonstrations toward:
 
 `investigate context -> explain risk -> recommend exact action -> policy/human decision -> bounded execution -> provider verification -> auditable evidence`
 
-Planning details: `docs/planning/AGENTIC_SECOPS_NEXT_PHASE.md`.
+Current implementation:
 
-Delivery order:
+1. **Contextual Investigation v1** — bounded S3 Config/retained-scope/provider evidence, explicit uncertainty, no resource selector supplied by the model.
+2. **Agent Decision Timeline** — factual nine-stage lifecycle; observable evidence only, no hidden chain-of-thought.
+3. **Two-account read-only SecOps** — exact two-scope implementation, read AWS operations only, raw account IDs hidden by default. Live proof remains pending explicit second-account configuration.
+4. **Short demo** — 2–3 minute operator/executive flow in `docs/operations/AGENTIC_DEMO_3_MIN.md`.
 
-1. Contextual Investigation v1 — start with the existing S3 family and add bounded read-only evidence/context before recommendation.
-2. Agent Decision Timeline — reusable evidence-backed lifecycle view from finding through provider/compliance result.
-3. Two-account read-only SecOps proof — exactly two owned lab accounts; no cross-account mutation.
-4. Short demo + documentation consolidation — 2–3 minute value story plus simplified entry points.
+Implementation details: `docs/planning/AGENTIC_SECOPS_NEXT_PHASE.md`.
 
-Preserve Demo v1 and the current mutation boundary throughout.
+Current gate: credential-free PR #61 validation and final review. No AWS deployment, IAM/OIDC/Gateway/Policy expansion or cross-account mutation belongs in that gate.
 
 ## Next
+
+### Runtime acceptance after PR #61
+
+After the implementation is merged and separately authorized:
+
+- activate the new investigation/timeline tools through the existing governed deployment path;
+- independently verify that read-only investigation does not invoke mutation;
+- record one S3 investigation + timeline using live existing evidence;
+- configure exactly two owned lab read scopes before claiming the multi-account proof;
+- independently verify account identity/control summaries and zero mutation with AWS Core.
 
 ### Reviewer-driven follow-ons
 
