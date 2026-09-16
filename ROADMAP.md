@@ -13,9 +13,16 @@
 - Issue #60 Milestone 1 — bounded S3 contextual investigation — live-deployed and healthy-path accepted.
 - Issue #60 Milestone 2 — factual nine-stage Agent Decision Timeline — live-deployed and healthy-path accepted.
 - Unhealthy Config evidence verified to fail closed as `UNVERIFIED/BLOCKED`.
-- Healthy zero-finding Config path hardened so `CLEAR` cannot be misrepresented as provider verification.
+- Healthy zero-finding Config path hardened so `CLEAR` cannot be misrepresented as provider verification or absence of exposure/risk.
 - Issue #60 Milestone 4 — 3-minute demo + public documentation consolidation — merged, Pages-deployed and regression-verified.
 - Issue #60 parent phase completed with blocked Milestone 3 replaced by standalone Issue #68.
+- Issue #70 — bounded S3 recent-change attribution using CloudTrail Event History — implemented, regression-verified, live-deployed and independently accepted.
+  - no new Harness tool or arbitrary resource selector;
+  - only Region-bound `cloudtrail:LookupEvents` added to the existing read Lambda role;
+  - relevant S3 management-event allowlist, max-five output, action/time only, identity suppressed by default;
+  - Config-only CLEAR leaves provider state `NOT_READ`, recent changes `NOT_EVALUATED`, and exposure/risk `NOT_ASSESSED`;
+  - live negative-fix test used only read tools;
+  - final CloudTrail audit showed zero S3/SG/SSM mutation events.
 
 ## Blocked / deferred
 
