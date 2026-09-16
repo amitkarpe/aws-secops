@@ -2,15 +2,17 @@
 
 Repository: `amitkarpe/aws-secops`
 
-## Fresh ChatGPT session
+## Bootstrap / Recovery
 
 A new ChatGPT session may begin with only:
 
 > `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
 
-Treat that as a complete bootstrap instruction.
+Treat that as a complete bootstrap instruction when the session lacks usable repository context, governing files materially changed, or state is stale/incomplete/contradictory.
 
-The session must:
+For normal continuation, use the named Issue/PR as the execution packet, its latest relevant authorized comment/handoff as the delta, and fetch current HEAD before acting. Do not force a full `AGENTS.md` / `CONTEXT.md` / `PROMPT.md` reload on every handoff.
+
+For bootstrap/recovery the session must:
 
 1. Read `AGENTS.md` and `CONTEXT.md` first.
 2. Read `PROMPT.md` automatically for the full ChatGPT + GitHub + AWS Core operating model; the user does not need to mention it separately.
