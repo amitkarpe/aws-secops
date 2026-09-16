@@ -172,7 +172,12 @@ def build_decision_timeline(
     total = int(batch.get("total", 0) or 0)
     active = bool(batch.get("execution_active"))
 
-    finding_status = "ATTENTION" if investigation.get("result") in {"ATTENTION", "PROVIDER_COMPLIANT_CONFIG_LAG"} else "CLEAR"
+    if investigation.get("result") == "PARTIAL":
+        finding_status = "PARTIAL"
+    elif investigation.get("result") in {"ATTENTION", "PROVIDER_COMPLIANT_CONFIG_LAG"}:
+        finding_status = "ATTENTION"
+    else:
+        finding_status = "CLEAR"
     investigation_status = "PARTIAL" if investigation.get("confidence") == "LOW" else "COMPLETE"
     recommendation_status = "READY" if investigation["mutation"]["approval"] == "REQUIRED_FOR_MUTATION" else "NO_ACTION"
 
