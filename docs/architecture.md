@@ -195,5 +195,5 @@ For the fastest review:
 - [3-minute demo](operations/AGENTIC_DEMO_3_MIN.md)
 - [Governance](governance.md)
 - [Demo v1](demo-v1.md)
-- [Project status](../PROJECT_STATUS.md)
+- [Project status](project-status.md)
 - Issue [#60](https://github.com/amitkarpe/aws-secops/issues/60)
