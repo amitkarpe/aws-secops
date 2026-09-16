@@ -43,6 +43,7 @@ approval.ask = approval.ask.filter(name => !retiredPlannerTools.includes(name));
 const reads = [
   'get_config_summary_mcp_aws_compliance','list_config_findings_mcp_aws_compliance',
   'list_sg_batches_mcp_aws_compliance','get_sg_batch_mcp_aws_compliance',
+  'investigate_s3_context_mcp_aws_compliance_planner','get_s3_decision_timeline_mcp_aws_compliance_planner',
   'get_remediation_plan_mcp_aws_compliance_planner','prepare_remediation_mcp_aws_compliance_planner',
 ];
 for (const name of reads) {
@@ -61,4 +62,4 @@ for(const name of executorNames){
 const rendered=yaml.dump(updated,{lineWidth:-1,noRefs:true});
 if(!isDeepStrictEqual(yaml.load(rendered),updated))throw Error('YAML round trip differs');
 if(rendered!==raw){const backup=file+'.before-aws-compliance';if(!fs.existsSync(backup))fs.writeFileSync(backup,raw,{mode:0o600,flag:'wx'});fs.writeFileSync(file+'.compliance-new',rendered,{mode:fs.statSync(file).mode&0o777,flag:'wx'});fs.renameSync(file+'.compliance-new',file);}
-console.log('AWS_COMPLIANCE_MCP=READY CONFIG_SG_READS=ALLOW PLANNER=ONE_PREPARE_TOOL SG_EXECUTOR=ASK S3_CONFIG=PRESERVED');
+console.log('AWS_COMPLIANCE_MCP=READY CONFIG_SG_READS=ALLOW INVESTIGATION=ALLOW TIMELINE=ALLOW PLANNER=ONE_PREPARE_TOOL SG_EXECUTOR=ASK S3_CONFIG=PRESERVED');

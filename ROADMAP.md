@@ -8,27 +8,55 @@
 - Read-only agent behavior, off-topic scope guardrail, separate native approvals, Gateway/Policy enforcement and direct provider verification recorded.
 - Repeatable Operator demo flow and AWS Config integration recorded.
 - MkDocs Material learning portal published successfully through GitHub Pages.
-- PR #31 public-release navigation, history labels, claim precision, and PR docs validation completed.
+- Read-only `aws_secops_operator` AgentCore Harness deployed and independently verified for the two existing AWS Config controls.
+- Harness operator-summary polish from Issue #58 / PR #59 completed.
 
 ## Now
 
-- Validate Issue #32 bounded reliability corrections: Config page/token/recorder checks, safe SG interruption terminalization, truthful status timestamps, and existing offline PR tests.
-- Keep the recorded live Demo v1 separate from new code validation. A live rollout requires an explicit deployment handoff; no reset/re-arm is implied.
-- Share the documented scope and known limits with technical reviewers.
+### Issue #60 — agentic SecOps next phase
+
+Move from simple `finding -> fix` demonstrations toward:
+
+`investigate context -> explain risk -> recommend exact action -> policy/human decision -> bounded execution -> provider verification -> auditable evidence`
+
+Implementation package: PR #61.
+
+Implemented scope:
+
+1. **Contextual Investigation v1** — bounded S3 Config/retained-scope/provider evidence, explicit uncertainty, no resource selector supplied by the model.
+2. **Agent Decision Timeline** — factual nine-stage lifecycle; observable evidence only, no hidden chain-of-thought.
+3. **Two-account read-only SecOps** — exact two-scope implementation, read AWS operations only, raw account IDs hidden by default. Live proof remains pending explicit second-account configuration.
+4. **Short demo** — 2–3 minute operator/executive flow in `docs/operations/AGENTIC_DEMO_3_MIN.md`.
+
+Credential-free regression and documentation CI passed for the implementation package. No AWS deployment, IAM/OIDC/Gateway/Policy expansion or cross-account mutation is included in code integration.
 
 ## Next
 
-### Operator-summary polish
+### Runtime acceptance for Issue #60
 
-Improve the AWS Compliance Agent default response style for concise operator summaries: Markdown tables, a small consistent emoji vocabulary, and hidden batch/resource IDs unless explicitly requested.
+After PR #61 is integrated into `main` and live activation is separately authorized:
 
-### Bounded reliability hardening
+- activate the new investigation/timeline tools through the existing governed deployment path;
+- independently verify that read-only investigation does not invoke mutation;
+- record one S3 investigation + timeline using live existing evidence;
+- configure exactly two owned lab read scopes before claiming the multi-account proof;
+- independently verify account identity/control summaries and zero mutation with AWS Core.
 
-Issue #32 implements a safe stop/reconcile/replan lifecycle, not an automatic resume capability. Follow-up acceptance is a proportional authorized deployment check of the same retained scope. Mixed-family/subset planning, live interruption tests, and production recovery remain separate decisions, not assumed results of an offline green test suite.
+### Reviewer-driven follow-ons
+
+Consider only after Issue #60 runtime evidence exists:
+
+- one bounded cross-account remediation path;
+- a third compliance/security control justified by a real operator use case;
+- CloudSCAPE/VAPT or Security Hub/GuardDuty ingestion and triage;
+- formal approval/audit reporting;
+- deeper AgentCore/Harness portability or runtime work.
 
 ### Publication assurance
 
-- complete a full reachable-history/publication review for accidental sensitive material before broad social promotion;
+Before broad promotion:
+
+- complete reachable-history/publication review for accidental sensitive material;
 - decide and document repository licensing/reuse intent;
 - improve repository About metadata.
 
@@ -36,24 +64,8 @@ Issue #32 implements a safe stop/reconcile/replan lifecycle, not an automatic re
 
 ### Operations Console
 
-Evolve the current Operator UI and raw `/bulk` engineering view into a long-term admin/support console for:
+Evolve the current Operator UI into a long-term support console for health, investigation/remediation history, failure reconciliation, approval/Policy correlation, authoritative AWS evidence links, provider verification, and deployment metadata.
 
-- platform/service health;
-- remediation job history and progress;
-- failure/UNKNOWN troubleshooting and reconciliation;
-- approval and Policy-result correlation;
-- links to authoritative CloudTrail, CloudWatch and AWS Config evidence;
-- direct provider-verification status;
-- version/deployment metadata and audit correlation IDs.
-
-The console should **aggregate and correlate**, not replace AWS sources of truth. It must never become a generic arbitrary-AWS mutation panel.
-
-### Possible reviewer-driven milestones
-
-- a third compliance control only when justified by a real use case;
-- multi-account design;
-- CloudSCAPE/VAPT ingestion and triage;
-- formal approval/audit reporting;
-- deeper AgentCore/Harness portability or runtime work.
+The console should aggregate and correlate AWS sources of truth, not replace them, and must never become a generic arbitrary-AWS mutation panel.
 
 No 1,000-live-resource milestone is planned for Demo v1.
