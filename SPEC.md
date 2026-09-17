@@ -1,6 +1,6 @@
 # Specification
 
-Status: **Demo v1 live acceptance is recorded. Issue #32 hardens the same scope; new code requires separate deployment validation.**
+Status: **Demo v1 live acceptance is recorded. Multi-account read-only expansion is active under Issue #68.**
 
 This file defines the current trusted contract. Historical phase-specific authority and proofs remain under `docs/implementation/` and `docs/research/`.
 
@@ -9,6 +9,58 @@ This file defines the current trusted contract. Historical phase-specific author
 AWS Config and other security tools can detect compliance findings, but operations teams still need a safe path from **finding -> explanation -> approval -> exact remediation -> verified evidence**.
 
 The project must accelerate that path **without giving the model broad AWS mutation authority**.
+
+## Personal LAB / DEV operating principle
+
+This project is a personal learning/demo lab. For these explicitly registered personal LAB/DEV accounts, optimize for **demonstration velocity, broad visibility, and repeatable automation** rather than spending engineering time repeatedly micro-tuning read permissions service-by-service.
+
+### Broad read-only is intentional
+
+For registered personal LAB/DEV accounts:
+
+- a reusable broad read-only role is acceptable and preferred over many narrow per-service read policies;
+- the role may cover account/resource/security inventory such as read/list/get/describe operations across AWS services, including IAM/account metadata needed to explain effective permissions and security posture;
+- exact implementation may use an AWS-managed broad read-only policy or an equivalent repo-owned read-only policy, provided representative mutation actions remain denied;
+- do not repeatedly narrow the read role merely to satisfy least-privilege aesthetics when doing so slows the lab/demo without reducing mutation authority;
+- account inclusion must still be explicit and registered; do not auto-enroll company, work, production, or unrelated accounts.
+
+Broad **read** authority does not imply broad **write** authority.
+
+### ChatGPT/AWS-MCP hub-and-spoke model
+
+AWS Core/MCP may expose only one AWS account/session directly. The preferred multi-account pattern is therefore:
+
+```text
+ChatGPT / AWS Core
+       |
+       | active hub AWS identity
+       v
+SecOps hub account
+       |
+       +-- sts:AssumeRole --> registered LAB/DEV account A read role
+       +-- sts:AssumeRole --> registered LAB/DEV account B read role
+       +-- sts:AssumeRole --> later registered account C/D read role
+```
+
+Contract:
+
+- determine the actual hub account/principal at runtime with STS; do not hard-code private account IDs in this public repository;
+- each spoke role trusts only the intended hub principal/account path;
+- the hub may assume the registered spoke read roles without requiring a separate user copy/paste workflow;
+- the spoke role is broad read-only for inventory, IAM/policy inspection, Config/compliance reads, CloudTrail Event History and other non-mutating evidence needed by the demo;
+- representative write APIs must remain denied through the read role;
+- no cross-account remediation authority is inherited by the read role;
+- cross-account mutation, if later required for a demo, uses a separate role/path and separate milestone.
+
+### Multi-account acceptance sequence
+
+Issue #68 uses staged acceptance rather than keeping the product permanently limited to two accounts:
+
+1. **2-account gate** — prove hub identity, one spoke role, account-distinguished evidence, and zero mutation.
+2. **3-4 account demo** — reuse the same contract for additional explicitly registered owned LAB/DEV accounts.
+3. **Later only** — evaluate one governed cross-account remediation path through a separate role and separate reviewed milestone.
+
+The first two-account proof is the debugging/acceptance gate, not the final product ceiling.
 
 ## Current supported scope
 
@@ -103,7 +155,7 @@ Provider readback
 - no generic AWS CLI/API mutation tool for the model;
 - no caller/model-selected arbitrary AWS resource IDs at execution time;
 - no cross-account write path in Demo v1;
-- no company, production or Organizations-management resources;
+- no company, production or Organizations-management workload mutation;
 - no WAF/third-control claim in Demo v1;
 - no automatic retry of an uncertain mutation;
 - no claim that model text, approval, Gateway invocation or Config timing alone proves success;
@@ -168,4 +220,6 @@ The repository and GitHub Pages site are public learning material.
 
 ## Change authority
 
-Any future expansion of mutation scope, resource families, accounts, identity model or production use requires a new explicit milestone with its own safety/verification acceptance. Reviewer feedback should drive that next milestone rather than silently expanding Demo v1.
+For personal LAB/DEV **read-only** account expansion, Issue #68 and this contract permit a reusable broad read role and staged 2 -> 3-4 account proof without repeated per-service least-privilege redesign.
+
+Any future expansion of **mutation** scope, resource families, identity model, company/work accounts or production use requires a new explicit milestone with its own safety/verification acceptance. Reviewer feedback should drive that next milestone rather than silently expanding Demo v1.
