@@ -12,24 +12,53 @@ Repository: `amitkarpe/aws-secops`
 - The model has no generic AWS mutation tool.
 - The `aws_secops_operator` AgentCore Harness is the live read-only operator reasoning/investigation layer.
 - Explicit `fix/apply/execute` requests do not mutate through the Harness; they remain on the separate governed human-approval path.
-- Issue #60 is complete: bounded S3 contextual investigation, factual Agent Decision Timeline, short demo and documentation are live/accepted; its blocked two-account milestone was moved to Issue #68.
+- Issue #60 is complete: bounded S3 contextual investigation, factual Agent Decision Timeline, short demo and documentation are live/accepted; its multi-account milestone moved to Issue #68.
 - Issue #70 is complete: the existing S3 investigation now has bounded CloudTrail Event History attribution for a deterministic retained-owned candidate, with no new Harness tool or mutation authority.
+- Issue #68 is now **ACTIVE**: the `management-lab` prerequisite passed on 2026-09-17 and the project contract now permits a broad read-only hub/spoke role for personal LAB/DEV accounts.
 
 ## Current operating model
 
 > **AWS Core discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS Core independently verifies.**
 
-ChatGPT Web is the default controller. GitHub is durable engineering state. AWS Core is the live AWS discovery/verification path. Codex is optional for deeper implementation or independent validation.
+ChatGPT Web is the default controller. GitHub is durable engineering state. AWS Core is the live AWS discovery/verification path. Codex is used when a bundled implementation materially needs local/profile/runtime access or deeper engineering; do not hand X isolated one-command checks that G can perform directly.
+
+For personal LAB/DEV multi-account discovery, demonstration velocity is preferred over repeated micro-tuning of read permissions. Broad read-only cross-account access is intentional; broad mutation is not.
+
+Preferred topology:
+
+```text
+ChatGPT / AWS Core
+       |
+       v
+active SecOps hub account
+       |
+       +-- AssumeRole -> registered LAB/DEV account A broad read-only
+       +-- AssumeRole -> management-lab broad read-only
+       +-- AssumeRole -> later registered account C/D broad read-only
+```
 
 When the GitHub connector cannot start the repo's manual `workflow_dispatch`, the repo-documented fallback may be used only with explicit user authorization: trusted bootstrap of reviewed desired state followed by independent AWS verification. Do not widen the workflow trigger merely to bypass connector limitations.
 
 ## Current authority
 
-**Issue #68 — two-account read-only SecOps proof when a second owned scope is available**
+**Issue #68 — multi-account read-only SecOps proof: 2-account gate -> 3-4 account demo**
 
 https://github.com/amitkarpe/aws-secops/issues/68
 
-Status: **BLOCKED / deferred prerequisite**. Do not create cross-account access merely to make the milestone pass.
+Status: **ACTIVE**.
+
+Prerequisite evidence already passed:
+- private AWS Platform `management-lab` Environment exists;
+- local AWS CLI profile hint `amit` passed expected account-identity and `ap-southeast-1` Region equality checks;
+- no AWS resource, IAM, OIDC, remediation or workload change was made by that bootstrap.
+
+Current contract:
+- start with a 2-account technical acceptance gate;
+- use one ChatGPT/AWS-MCP-visible hub account plus a reusable broad read-only spoke role;
+- allow broad read/list/get/describe-style discovery needed for resource, IAM/policy, compliance and audit visibility;
+- keep representative mutation APIs denied through the read role;
+- after the 2-account gate passes, scale the same pattern to 3-4 explicitly registered owned LAB/DEV accounts;
+- cross-account remediation remains a separate later milestone/role.
 
 Completed recent authority:
 - Issue #60 — completed parent agentic SecOps phase.
@@ -38,13 +67,13 @@ Completed recent authority:
 Implementation history:
 - PR #61 — contextual investigation / Decision Timeline implementation (merged)
 - Issue #62 / PR #63 — provider-evidence correctness hardening (complete)
-- PR #64 — Harness-native S3 investigation + Decision Timeline (merged at `2f896fe86e99c4e4096c321a40040f33daff644d`, live-deployed)
-- PR #65 — unhealthy Config evidence surfaced as structured `UNVERIFIED/BLOCKED` instead of a masked Gateway error (merged at `25f835068a835ee79fd9c01adc486de82334a0ba`, live-deployed)
-- PR #66 — Config-only CLEAR semantics hardened so zero findings cannot be presented as provider verification (merged at `f78e680cab2154f0ff40d30084d79e5f979fbd20`, live-deployed)
-- PR #67 — short demo + public documentation consolidation (merged at `c798abf7b73e21c933fe0a9ee930728959f7328a`, Pages-deployed)
-- PR #69 — Issue #60 closure / Issue #68 deferred-authority governance update (merged)
-- PR #71 — bounded CloudTrail recent-change attribution (merged at `3e201ff3cae5798de034bfdba5c969fc7799e56a`, live-deployed)
-- PR #72 — Config-only CLEAR risk/exposure wording hardening after live acceptance (merged at `0261a75e1f44c3fb2d646ceb5686c6704dfd84cb`, live-deployed)
+- PR #64 — Harness-native S3 investigation + Decision Timeline (live-deployed)
+- PR #65 — unhealthy Config evidence surfaced as structured `UNVERIFIED/BLOCKED` (live-deployed)
+- PR #66 — Config-only CLEAR semantics hardened (live-deployed)
+- PR #67 — short demo + public documentation consolidation (Pages-deployed)
+- PR #69 — Issue #60 closure / Issue #68 governance update
+- PR #71 — bounded CloudTrail recent-change attribution (live-deployed)
+- PR #72 — Config-only CLEAR risk/exposure wording hardening (live-deployed)
 
 ## Live verified Harness baseline — 2026-09-16
 
@@ -77,7 +106,7 @@ Healthy-path live acceptance proved:
 - Decision Timeline: all nine observable stages;
 - explicit fix request: no Harness mutation.
 
-Config-only CLEAR semantics are now explicit:
+Config-only CLEAR semantics are explicit:
 - `provider_state=NOT_READ`;
 - `risk_context=NOT_ASSESSED`;
 - `provider_evidence=null`;
@@ -93,31 +122,18 @@ Bounded recent-change attribution is live and accepted.
 Verified behavior:
 - no new Harness tool or arbitrary resource selector;
 - CloudTrail Event History is queried only for the deterministic retained-owned S3 candidate when one exists;
-- allowlist is limited to relevant S3 public-access management events;
-- output is capped to five events and exposes action/time only, with identity suppressed by default;
+- output is capped to five relevant events and exposes action/time only, with identity suppressed by default;
 - when no current bounded finding exists, provider state and CloudTrail history are honestly `NOT_READ` / `NOT_EVALUATED`;
 - live Decision Timeline reports `Risk / Context = NOT_ASSESSED` for Config-only CLEAR;
 - live `Fix this S3 compliance issue` request invoked only the four read tools and did not invoke any executor;
-- Region-aware IAM simulation: `cloudtrail:LookupEvents` allowed; `cloudtrail:CreateTrail`, `s3:PutBucketPublicAccessBlock`, `ec2:AuthorizeSecurityGroupIngress`, and `ssm:SendCommand` denied;
-- CloudTrail after the final deployment showed zero S3 BPA/policy/ACL, SG-ingress, or SSM `SendCommand` mutation events;
-- read Lambda showed zero ERROR events during final acceptance.
+- representative AWS mutation APIs remained denied;
+- final CloudTrail audit showed zero S3/SG/SSM mutation events.
 
-## Issue #68 prerequisite blocker
+## Issue #68 current next actions
 
-Read-only discovery found no existing second-account path that can be safely reused:
-- current account is not a member of AWS Organizations;
-- no cross-account `AssumeRole` activity was found in the checked 90-day CloudTrail window;
-- matching local IAM roles are same-account service/GitHub/Lambda/AgentCore roles, not a reusable second-account SecOps read path;
-- the current AWS Core connection exposes only the active account/session and no account/profile switch action.
-
-No cross-account role/trust was created merely to complete the proof.
-
-Start Issue #68 only when a second explicitly authorized owned AWS read scope is provided. The first proof remains read-only; cross-account mutation is a separate later security decision.
-
-## Current next actions
-
-1. Do not implement Issue #68 until its explicit second-account prerequisite exists.
-2. When it exists, design the smallest exact two-account read-only proof in Git/IaC first, then independently verify account-distinguished evidence and zero mutation with AWS Core.
-3. If new unblocked product work is desired before then, create a separate standalone Issue from `ROADMAP.md`; do not mix it into Issue #68.
+1. Define the reusable hub/spoke **broad read-only** role contract in Git/IaC, using the actual AWS Core hub identity discovered by STS at runtime rather than hard-coding private account IDs here.
+2. Prove the first 2-account path end-to-end: hub identity -> AssumeRole -> account-distinguished inventory/security evidence -> zero mutation.
+3. After that gate passes, register/reuse the same role contract for 1-2 more owned LAB/DEV accounts and present a 3-4 account security overview for the stakeholder demo.
+4. Keep cross-account remediation out of this role. If needed later, create a separate demo automation/remediation role and milestone.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future scope use `ROADMAP.md`.
