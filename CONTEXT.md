@@ -70,11 +70,10 @@ active SecOps hub account
 
 ## Next Actions
 
-1. Complete Issue #80 / PR #81 only after a deployed Harness account and an
-   authorized backend principal can use the existing spoke read-role path.
-   The current role trusts the fixed hub IAM principal, while the Harness
-   Lambda is intentionally denied `sts:AssumeRole`; do not bypass either
-   boundary or claim dynamic AWS-MCP credential switching.
+1. The Platform-owned exact Harness read-role trust is live in all eight
+   registered targets and its hub/user read proof remains PASS. Complete
+   Issue #80 / PR #81 by applying the fixed four-role Harness configuration,
+   then prove overview, drill-down, and mutation refusal from the live Harness.
 2. Keep multi-account output public-safe: aliases, bounded inventory/IAM/
    Config evidence, explicit `UNAVAILABLE`, and no raw account or resource
    identifiers.
