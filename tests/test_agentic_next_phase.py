@@ -217,7 +217,12 @@ class MultiAccountReadTests(unittest.TestCase):
     def test_operation_allowlist_is_exact(self):
         self.assertEqual(
             mar.ALLOWED_READS,
-            {("sts", "get-caller-identity"), ("configservice", "describe-compliance-by-config-rule")},
+            {
+                ("sts", "get-caller-identity"),
+                ("configservice", "describe-compliance-by-config-rule"),
+                ("ec2", "describe-vpcs"),
+                ("iam", "get-account-summary"),
+            },
         )
         scope = parse_scopes(self.raw_scopes())[0]
         with self.assertRaises(ValueError):
@@ -256,6 +261,73 @@ class MultiAccountReadTests(unittest.TestCase):
         self.assertEqual({item["authority"] for item in result["accounts"]}, {"READ_ONLY_OPERATION_ALLOWLIST"})
         self.assertEqual({item["principal_kind"] for item in result["accounts"]}, {"ASSUMED_ROLE"})
         self.assertEqual({item["iam_scope"] for item in result["accounts"]}, {"RUNTIME_VERIFICATION_REQUIRED"})
+
+    def test_three_to_four_account_overview_and_drill_down_hide_identifiers(self):
+        raw = json.dumps([
+            {"label": "lab-dev", "profile": "read-a", "account_id": "111111111111", "region": "ap-southeast-1"},
+            {"label": "lab-poc", "profile": "read-b", "account_id": "222222222222", "region": "ap-southeast-1"},
+            {"label": "lab-qa", "profile": "read-c", "account_id": "333333333333", "region": "ap-southeast-1"},
+            {"label": "lab-sec", "profile": "read-d", "account_id": "444444444444", "region": "ap-southeast-1"},
+        ])
+
+        def fake_reader(scope, service, operation, arguments):
+            if service == "sts":
+                return {"Account": scope.account_id, "Arn": f"arn:aws:sts::{scope.account_id}:assumed-role/secops-read/session"}
+            if service == "configservice":
+                return {"ComplianceByConfigRules": [{"ConfigRuleName": S3_CONTROL, "Compliance": {"ComplianceType": "NON_COMPLIANT"}}]}
+            if service == "ec2":
+                self.assertEqual((operation, arguments), ("describe-vpcs", []))
+                return {"Vpcs": [{}, {}]}
+            if service == "iam":
+                self.assertEqual((operation, arguments), ("get-account-summary", []))
+                return {"SummaryMap": {"Users": 1, "Roles": 2, "Policies": 3}}
+            self.fail("unexpected read")
+
+        overview = mar.read_security_overview(raw, fake_reader)
+        drill_down = mar.drill_down_control(overview, "lab-sec", S3_CONTROL)
+        rendered = json.dumps({"overview": overview, "drill_down": drill_down})
+        self.assertEqual(overview["mode"], "3-4-account-read-only-overview")
+        self.assertEqual(len(overview["accounts"]), 4)
+        self.assertFalse(overview["mutation"])
+        self.assertEqual(drill_down["config_state"], "NON_COMPLIANT")
+        self.assertFalse(drill_down["mutation"])
+        self.assertNotIn("111111111111", rendered)
+        self.assertNotIn("arn:aws:sts", rendered)
+
+    def test_overview_rejects_out_of_range_or_duplicate_scopes(self):
+        with self.assertRaises(ValueError):
+            mar.parse_overview_scopes(self.raw_scopes())
+        duplicate = json.dumps([
+            {"label": "lab-a", "profile": "read-a", "account_id": "111111111111", "region": "ap-southeast-1"},
+            {"label": "lab-b", "profile": "read-a", "account_id": "222222222222", "region": "ap-southeast-1"},
+            {"label": "lab-c", "profile": "read-c", "account_id": "333333333333", "region": "ap-southeast-1"},
+        ])
+        with self.assertRaises(ValueError):
+            mar.parse_overview_scopes(duplicate)
+
+    def test_overview_marks_config_unavailable_without_mutation(self):
+        raw = json.dumps([
+            {"label": "lab-a", "profile": "read-a", "account_id": "111111111111", "region": "ap-southeast-1"},
+            {"label": "lab-b", "profile": "read-b", "account_id": "222222222222", "region": "ap-southeast-1"},
+            {"label": "lab-c", "profile": "read-c", "account_id": "333333333333", "region": "ap-southeast-1"},
+        ])
+
+        def fake_reader(scope, service, operation, arguments):
+            if service == "sts":
+                return {"Account": scope.account_id, "Arn": f"arn:aws:sts::{scope.account_id}:assumed-role/secops-read/session"}
+            if service == "configservice":
+                raise RuntimeError("Config is unavailable")
+            if service == "ec2":
+                return {"Vpcs": []}
+            if service == "iam":
+                return {"SummaryMap": {"Users": 0, "Roles": 0, "Policies": 0}}
+            self.fail("unexpected read")
+
+        overview = mar.read_security_overview(raw, fake_reader)
+        drill_down = mar.drill_down_control(overview, "lab-a", S3_CONTROL)
+        self.assertEqual(overview["accounts"][0]["security"]["evidence"], "CONFIG_UNAVAILABLE")
+        self.assertEqual(drill_down["config_state"], "UNAVAILABLE")
+        self.assertFalse(drill_down["mutation"])
 
 
 class IntegrationSafetyTests(unittest.TestCase):

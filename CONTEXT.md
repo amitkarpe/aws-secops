@@ -11,7 +11,8 @@ Repository: `amitkarpe/aws-secops`
 - Approved mutation remains human approval -> Gateway/Policy -> exact bounded tool -> provider readback.
 - The model has no generic AWS mutation tool.
 - `aws_secops_operator` remains the read-only AgentCore Harness investigation/reasoning layer; explicit `fix/apply/execute` requests do not mutate through it.
-- Issue #68 is **ACTIVE** after the `management-lab` prerequisite passed on 2026-09-17.
+- Issue #76 is **ACTIVE** as the stakeholder-ready continuation of the Issue
+  #68 hub/spoke proof.
 - Personal LAB/DEV multi-account discovery intentionally permits broad read-only audit/discovery access; broad mutation is not implied.
 
 ## Current Operating Model
@@ -22,16 +23,21 @@ ChatGPT Web is the default controller. GitHub is durable engineering state. AWS 
 
 ## Active Authority
 
-**Issue #68 — multi-account read-only SecOps proof: 2-account gate -> 3-4 account demo**
+**Issue #76 — 3-4 account SecOps organization security overview demo**
 
-https://github.com/amitkarpe/aws-secops/issues/68
+https://github.com/amitkarpe/aws-secops/issues/76
 
 Status: **ACTIVE**.
 
-Prerequisite evidence already passed:
-- private AWS Platform `management-lab` Environment exists;
-- local AWS CLI profile hint `amit` passed expected account-identity and `ap-southeast-1` Region equality checks;
-- that bootstrap made no AWS resource, IAM, OIDC, remediation, or workload change.
+Current role evidence:
+- the management hub can assume `ChatGPTCrossAccountReadRole` in every
+  explicitly registered personal LAB target;
+- each assumed target identity is re-read with STS;
+- the role remains bounded to broad read/audit policies; cross-account
+  remediation is not authorized;
+- account-label rename is separately blocked until AWS Organizations enables
+  trusted access for Account Management. Existing registered labels remain the
+  safe runtime resolution fallback.
 
 Current contract:
 - use one ChatGPT/AWS-MCP-visible hub account plus a reusable broad read-only spoke role;
@@ -65,10 +71,15 @@ active SecOps hub account
 
 ## Next Actions
 
-1. Define the reusable hub/spoke broad read-only role contract in Git/IaC, using the actual AWS-MCP-visible hub identity verified at runtime rather than hard-coding private account IDs here.
-2. Prove the first 2-account path end-to-end: hub identity -> AssumeRole -> account-distinguished inventory/security evidence -> zero mutation.
-3. After that gate passes, register/reuse the same role contract for 1-2 more owned LAB/DEV accounts and present a 3-4 account security overview for the stakeholder demo.
-4. If remediation is needed later, create a separate bounded remediation role and milestone.
+1. Produce the public-safe 3-4 account overview and one control drill-down
+   using the live role path.
+2. Keep the Platform role implementation in review; do not merge it from this
+   milestone handoff.
+3. Enable the separate Organizations Account Management trusted-access
+   prerequisite only if Amit explicitly approves it, then apply the requested
+   member display-name changes.
+4. If remediation is needed later, create a separate bounded remediation role
+   and milestone.
 
 Detailed completed Issue #60/#70 acceptance, Harness history, and prior deployment evidence remain in closed Issues/PRs, docs, and Git history rather than this restart file.
 

@@ -100,25 +100,19 @@ The read Lambda remains bounded to Config reads, four retained-prefix S3 read AP
 - PR #72: Config-only CLEAR exposure/risk semantics hardened after live acceptance.
 - Issues #60 and #70: durable deployment/acceptance and security-boundary records.
 
-## Issue #68 — blocked, not claimed
+## Issue #76 — active read-only overview
 
-The exactly-two-account read-only proof is **not live-proven**.
+The reusable cross-account read path is live-proven for the explicitly
+registered personal LAB targets. Issue #76 adds the public-safe 3-4 account
+overview and control drill-down; it does not add cross-account mutation.
 
-Current read-only discovery found:
-
-- no AWS Organizations membership/path to reuse;
-- no recent reusable cross-account `AssumeRole` path;
-- no existing local cross-account SecOps read role suitable for reuse;
-- no second account/session selector in the current AWS Core connection.
-
-No cross-account role, trust or broad administration capability was created merely to complete the milestone.
-
-Issue #68 requires a second explicitly authorized owned AWS read scope before any two-account claim is made.
+The current AWS MCP runtime still has no supported dynamic assumed-role
+credential switch. Local short-lived STS proof is therefore recorded
+separately, and the MCP UI does not claim account switching.
 
 ## Known limits
 
 - Not production-ready or arbitrary-resource remediation.
-- No live multi-account proof yet.
 - No cross-account remediation path is implemented or authorized.
 - No generic autonomous AWS administration.
 - A Config control finding alone does not prove sensitive-data exposure, attacker activity, exploitability or business impact.
@@ -129,7 +123,8 @@ Issue #68 requires a second explicitly authorized owned AWS read scope before an
 
 ## Current work
 
-Issues #60 and #70 are complete. Issue #68 is the only deferred active milestone and must not start until a second explicitly authorized owned AWS read scope exists.
+Issues #60 and #70 are complete. Issue #76 is the active read-only
+multi-account overview milestone.
 
 For new unblocked work, create a separate standalone Issue from `ROADMAP.md` rather than mixing unrelated scope into #68.
 
