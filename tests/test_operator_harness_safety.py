@@ -23,6 +23,8 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
             "@secops_reads/SecOpsRead___list_config_findings",
             "@secops_reads/SecOpsRead___investigate_s3_context",
             "@secops_reads/SecOpsRead___get_s3_decision_timeline",
+            "@secops_reads/SecOpsRead___get_multi_account_security_overview",
+            "@secops_reads/SecOpsRead___get_multi_account_control_drill_down",
         ):
             self.assertIn(tool, self.text)
         allowed = self.text.split("AllowedTools:", 1)[1].split("Tools:", 1)[0]
@@ -40,6 +42,8 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
             'AgentCore::Action::"SecOpsRead___list_config_findings"',
             'AgentCore::Action::"SecOpsRead___investigate_s3_context"',
             'AgentCore::Action::"SecOpsRead___get_s3_decision_timeline"',
+            'AgentCore::Action::"SecOpsRead___get_multi_account_security_overview"',
+            'AgentCore::Action::"SecOpsRead___get_multi_account_control_drill_down"',
         ):
             self.assertIn(action, self.text)
 
@@ -80,6 +84,9 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
         ):
             self.assertIn(required, read_role)
         self.assertIn("arn:${AWS::Partition}:s3:::aws-secops-bpa-*", read_role)
+        self.assertIn("Sid: ExactMultiAccountReadRoleAssumption", read_role)
+        self.assertIn("Action: sts:AssumeRole", read_role)
+        self.assertIn("Resource: !Split ['|', !Ref MultiAccountReadRoleArns]", read_role)
         for forbidden in (
             "config:Put",
             "config:Delete",
@@ -90,8 +97,26 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
             "ec2:Revoke",
             "ec2:Authorize",
             "ssm:Put",
+            "sts:TagSession",
+            "sts:SetSourceIdentity",
         ):
             self.assertNotIn(forbidden, read_role)
+
+    def test_multi_account_scope_is_exact_and_identifier_safe(self):
+        self.assertIn("MultiAccountReadRoleArns:", self.text)
+        self.assertIn("NoEcho: true", self.text)
+        self.assertIn(
+            r"ChatGPTCrossAccountReadRole(\|arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/ChatGPTCrossAccountReadRole){3}$'",
+            self.text,
+        )
+        self.assertIn("OVERVIEW_ALIASES = ('lab-dev', 'lab-poc', 'lab-qa', 'lab-sec')", self.text)
+        self.assertIn("def multi_account_security_overview(event):", self.text)
+        self.assertIn("def multi_account_control_drill_down(event):", self.text)
+        self.assertIn("'account_ids': 'hidden-by-default'", self.text)
+        self.assertIn("'resource_identifiers': 'not-collected'", self.text)
+        self.assertIn("'mutation': False", self.text)
+        self.assertIn("'CONFIG_UNAVAILABLE'", self.text)
+        self.assertNotIn("sts:TagSession", self.text)
 
     def test_unhealthy_config_fails_closed_with_structured_output(self):
         self.assertIn("CONFIG_UNAVAILABLE = 'AWS Config recorder is not active and successful'", self.text)

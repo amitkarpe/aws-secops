@@ -11,8 +11,8 @@ Repository: `amitkarpe/aws-secops`
 - Approved mutation remains human approval -> Gateway/Policy -> exact bounded tool -> provider readback.
 - The model has no generic AWS mutation tool.
 - `aws_secops_operator` remains the read-only AgentCore Harness investigation/reasoning layer; explicit `fix/apply/execute` requests do not mutate through it.
-- Issue #76 is **ACTIVE** as the stakeholder-ready continuation of the Issue
-  #68 hub/spoke proof.
+- Issue #80 / PR #81 is **ACTIVE** as the stakeholder-facing continuation of
+  the Issue #76 3-4 account read-only proof.
 - Personal LAB/DEV multi-account discovery intentionally permits broad read-only audit/discovery access; broad mutation is not implied.
 
 ## Current Operating Model
@@ -35,9 +35,8 @@ Current role evidence:
 - each assumed target identity is re-read with STS;
 - the role remains bounded to broad read/audit policies; cross-account
   remediation is not authorized;
-- account-label rename is separately blocked until AWS Organizations enables
-  trusted access for Account Management. Existing registered labels remain the
-  safe runtime resolution fallback.
+- the six approved LAB aliases are active and Account Management trusted access
+  is enabled; office/work accounts remain excluded.
 
 Current contract:
 - use one ChatGPT/AWS-MCP-visible hub account plus a reusable broad read-only spoke role;
@@ -71,15 +70,16 @@ active SecOps hub account
 
 ## Next Actions
 
-1. Produce the public-safe 3-4 account overview and one control drill-down
-   using the live role path.
-2. Keep the Platform role implementation in review; do not merge it from this
-   milestone handoff.
-3. Enable the separate Organizations Account Management trusted-access
-   prerequisite only if Amit explicitly approves it, then apply the requested
-   member display-name changes.
-4. If remediation is needed later, create a separate bounded remediation role
-   and milestone.
+1. Issue #80 / PR #81 live acceptance is complete: the fixed four-role Harness
+   configuration, overview, one account/control drill-down, explicit Config
+   `UNAVAILABLE`, and `fix`/`apply`/`execute` refusal all passed. The
+   Platform-owned exact backend trust remains live in all eight registered
+   targets and its hub/user read proof remains PASS.
+2. Keep multi-account output public-safe: aliases, bounded inventory/IAM/
+   Config evidence, explicit `UNAVAILABLE`, and no raw account or resource
+   identifiers.
+3. G reviews PR #81 and supporting Platform PR #29; X does not merge.
+   Cross-account remediation remains a separate future milestone.
 
 Detailed completed Issue #60/#70 acceptance, Harness history, and prior deployment evidence remain in closed Issues/PRs, docs, and Git history rather than this restart file.
 

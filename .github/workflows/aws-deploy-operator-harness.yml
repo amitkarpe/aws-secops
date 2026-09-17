@@ -22,6 +22,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ROLE_ARN: ${{ secrets.AWS_SECOPS_OPERATOR_HARNESS_DEPLOY_ROLE_ARN }}
       AWS_STACK_EXECUTION_ROLE_ARN: ${{ secrets.AWS_SECOPS_OPERATOR_HARNESS_STACK_EXECUTION_ROLE_ARN }}
+      AWS_MULTI_ACCOUNT_READ_ROLE_ARNS: ${{ secrets.AWS_SECOPS_MULTI_ACCOUNT_READ_ROLE_ARNS }}
       AWS_ALLOWED_ACCOUNT_ID: ${{ secrets.AWS_ALLOWED_ACCOUNT_ID }}
       STACK_NAME: aws-secops-operator-harness
       TEMPLATE_PATH: infra/operator-harness/template.yml
@@ -38,6 +39,7 @@ jobs:
           test -n "${AWS_ROLE_ARN:-}"
           test -n "${AWS_STACK_EXECUTION_ROLE_ARN:-}"
           test -n "${AWS_ALLOWED_ACCOUNT_ID:-}"
+          test -n "${AWS_MULTI_ACCOUNT_READ_ROLE_ARNS:-}"
 
       - name: Configure AWS credentials with GitHub OIDC
         uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
@@ -72,6 +74,7 @@ jobs:
               --stack-name "$STACK_NAME" \
               --template-body "file://${TEMPLATE_PATH}" \
               --role-arn "$AWS_STACK_EXECUTION_ROLE_ARN" \
+              --parameters "ParameterKey=MultiAccountReadRoleArns,ParameterValue=${AWS_MULTI_ACCOUNT_READ_ROLE_ARNS}" \
               --capabilities CAPABILITY_NAMED_IAM 2>&1)"
             UPDATE_RC=$?
             set -e
@@ -86,6 +89,7 @@ jobs:
               --stack-name "$STACK_NAME" \
               --template-body "file://${TEMPLATE_PATH}" \
               --role-arn "$AWS_STACK_EXECUTION_ROLE_ARN" \
+              --parameters "ParameterKey=MultiAccountReadRoleArns,ParameterValue=${AWS_MULTI_ACCOUNT_READ_ROLE_ARNS}" \
               --capabilities CAPABILITY_NAMED_IAM >/dev/null
             aws cloudformation wait stack-create-complete --stack-name "$STACK_NAME"
           fi

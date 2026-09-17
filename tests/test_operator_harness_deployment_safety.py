@@ -61,6 +61,7 @@ class OperatorHarnessDeploymentSafetyTests(unittest.TestCase):
             "AWS_ALLOWED_ACCOUNT_ID",
             "AWS_SECOPS_OPERATOR_HARNESS_DEPLOY_ROLE_ARN",
             "AWS_SECOPS_OPERATOR_HARNESS_STACK_EXECUTION_ROLE_ARN",
+            "AWS_SECOPS_MULTI_ACCOUNT_READ_ROLE_ARNS",
         ):
             self.assertIn(f"secrets.{secret}", self.workflow)
             self.assertNotIn(f"vars.{secret}", self.workflow)
@@ -98,6 +99,8 @@ class OperatorHarnessDeploymentSafetyTests(unittest.TestCase):
             "@secops_reads/SecOpsRead___list_config_findings",
             "@secops_reads/SecOpsRead___investigate_s3_context",
             "@secops_reads/SecOpsRead___get_s3_decision_timeline",
+            "@secops_reads/SecOpsRead___get_multi_account_security_overview",
+            "@secops_reads/SecOpsRead___get_multi_account_control_drill_down",
         ):
             self.assertIn(tool, self.harness_template)
         for forbidden in (
@@ -134,10 +137,20 @@ class OperatorHarnessDeploymentSafetyTests(unittest.TestCase):
 
     def test_new_harness_tools_take_no_model_selected_resource_input(self):
         investigation = self.harness_template.split("- Name: investigate_s3_context", 1)[1].split("- Name: get_s3_decision_timeline", 1)[0]
-        timeline = self.harness_template.split("- Name: get_s3_decision_timeline", 1)[1].split("OperatorHarnessRole:", 1)[0]
+        timeline = self.harness_template.split("- Name: get_s3_decision_timeline", 1)[1].split("- Name: get_multi_account_security_overview", 1)[0]
         for block in (investigation, timeline):
             self.assertIn("Properties: {}", block)
             self.assertNotIn("bucket:", block.lower())
+            self.assertNotIn("resource_id", block.lower())
+
+    def test_multi_account_tools_cannot_select_roles_or_resources(self):
+        overview = self.harness_template.split("- Name: get_multi_account_security_overview", 1)[1].split("- Name: get_multi_account_control_drill_down", 1)[0]
+        drill_down = self.harness_template.split("- Name: get_multi_account_control_drill_down", 1)[1].split("OperatorHarnessRole:", 1)[0]
+        self.assertIn("Properties: {}", overview)
+        self.assertIn("account_label:", drill_down)
+        self.assertIn("control:", drill_down)
+        for block in (overview, drill_down):
+            self.assertNotIn("role_arn", block.lower())
             self.assertNotIn("resource_id", block.lower())
 
 

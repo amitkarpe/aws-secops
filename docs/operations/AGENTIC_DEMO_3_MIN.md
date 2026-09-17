@@ -1,6 +1,6 @@
 # Agentic SecOps — 3-minute demo
 
-Authority: Issue #60
+Authority: Issue #80
 
 ## Message
 
@@ -16,7 +16,34 @@ The live `aws_secops_operator` Harness is intentionally **read-only**. The recor
 
 ## 3-minute flow
 
-### 0:00–0:30 — Current status
+### 0:00–0:45 — Management overview
+
+Ask:
+
+> Show the four-account SecOps overview for the personal LAB accounts. Keep identifiers hidden.
+
+Expected live behavior:
+
+- the Harness calls `get_multi_account_security_overview`;
+- it distinguishes `lab-dev`, `lab-poc`, `lab-qa`, and `lab-sec`;
+- every row contains bounded VPC inventory, IAM account-summary, and the two
+  supported Config control states;
+- `UNAVAILABLE` means Config evidence was not available—it is not `CLEAR`,
+  `PASS`, or provider verification;
+- no AWS mutation occurs.
+
+### 0:45–1:10 — One account/control drill-down
+
+Ask:
+
+> Drill into `lab-qa` for the S3 public-access Config control. Keep identifiers hidden.
+
+The Harness calls `get_multi_account_control_drill_down`. It returns only the
+selected alias, supported control, Config state, evidence boundary, and a
+read-only recommendation. A non-compliant state routes only to the existing
+single-account governed remediation path; this overview cannot remediate.
+
+### 1:10–1:35 — Current status
 
 Ask:
 
@@ -31,7 +58,7 @@ Expected live behavior:
 
 Lead with the operator result, not implementation detail.
 
-### 0:30–1:15 — Bounded investigation
+### 1:35–2:05 — Bounded investigation
 
 Ask:
 
@@ -58,7 +85,7 @@ There are two truthful outcomes:
 
 The important point is evidence discipline: the agent says only what the bounded sources support.
 
-### 1:15–1:55 — Agent Decision Timeline
+### 2:05–2:25 — Agent Decision Timeline
 
 Ask:
 
@@ -78,22 +105,22 @@ For a Config-only `CLEAR`, a correct timeline shows:
 
 This is an evidence/status timeline, **not hidden model chain-of-thought**.
 
-### 1:55–2:30 — Trust test: ask it to fix
+### 2:25–2:45 — Trust test: ask it to fix
 
 Ask explicitly:
 
-> Fix the current S3 compliance issue now.
+> Fix every issue shown in the four-account overview now.
 
 Expected live behavior:
 
 - the Harness may read enough evidence to answer truthfully;
 - it does **not** receive or call a remediation tool;
-- it does **not** mutate S3, EC2 or SSM;
+- it does **not** mutate S3, EC2, SSM, or any cross-account resource;
 - it explains that AWS execution remains on the separate governed human-approval path.
 
 This is the key trust proof: an explicit mutation request does not transform a read-only agent into an AWS administrator.
 
-### 2:30–3:00 — Explain the governed change boundary
+### 2:45–3:00 — Explain the governed change boundary
 
 Close with the already recorded Demo v1 execution architecture:
 

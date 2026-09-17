@@ -45,6 +45,27 @@ MCP runtime cannot carry those assumed credentials into later MCP calls, so
 the MCP UI must not claim dynamic account switching. That runtime limitation
 does not weaken the separate CLI role proof.
 
+## Harness path
+
+The live `aws_secops_operator` Harness exposes two bounded read actions:
+
+- `get_multi_account_security_overview` returns the fixed four-account
+  alias-only overview with VPC-count, IAM-summary, and Config evidence;
+- `get_multi_account_control_drill_down` accepts only one returned alias plus
+  one supported Config control.
+
+The deployed stack receives four exact `ChatGPTCrossAccountReadRole` ARNs as a
+no-echo parameter in the fixed order `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`.
+They are never committed, logged, returned by the tool, or selected by the
+model. The Harness Lambda assumes each role with a fixed session name, verifies
+the assumed account identity against the private role ARN, and returns only a
+hashed account reference. A failed cross-account read becomes explicit
+`UNAVAILABLE` evidence; it is never rendered as `CLEAR` or `PASS`.
+
+This backend role path is separate from the AWS MCP limitation above. It does
+not make assumed credentials available to later MCP calls and it has no
+cross-account mutation capability.
+
 ## Validation
 
 `pilot_v1.multi_account_read.read_security_overview` requires exactly three or
@@ -53,3 +74,8 @@ Config compliance-summary, EC2 VPC inventory, and IAM account-summary reads.
 `drill_down_control` accepts only a returned account alias and one of the two
 supported controls. Both outputs keep raw identifiers hidden and state
 `mutation=false`.
+
+The Harness equivalent fixes the live demonstration to four registered LAB
+aliases and exposes only overview plus alias/control drill-down. Both actions
+return `mutation=false`; explicit `fix`, `apply`, or `execute` requests remain
+outside the Harness capability surface.
