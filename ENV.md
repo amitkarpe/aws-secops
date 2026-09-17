@@ -26,6 +26,12 @@ Registered LAB aliases currently used by the multi-account work include:
 
 - `management-lab`
 - `personal-lab`
+- `lab-dev`
+- `lab-poc`
+- `lab-qa`
+- `lab-uat`
+- `lab-prod`
+- `lab-sec`
 
 Do not commit raw account IDs or credentials here.
 
