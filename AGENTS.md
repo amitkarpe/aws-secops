@@ -2,7 +2,7 @@
 
 Repository: `amitkarpe/aws-secops`
 
-## Read order
+## Bootstrap / Recovery Order
 
 1. `AGENTS.md`
 2. `CONTEXT.md`
@@ -12,6 +12,8 @@ Repository: `amitkarpe/aws-secops`
 6. `PROMPT.md` for the aws-secops ChatGPT + GitHub + AWS MCP operating model
 7. `SPEC.md` before implementation, mutation, deployment, cleanup, or trusted-contract changes
 8. `ROADMAP.md` when selecting future scope
+
+For warm continuation, use the named owning Issue/PR, latest relevant authorized delta, and current HEAD/state. Load the broader sequence above only for cold start/recovery or when context is stale, contradictory, incomplete, or otherwise unsafe to reuse.
 
 ## Fresh ChatGPT session
 
