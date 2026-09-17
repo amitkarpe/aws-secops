@@ -11,7 +11,7 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Four exact personal-LAB ChatGPTCrossAccountReadRole ARNs, pipe-delimited in the fixed overview alias order.
-    AllowedPattern: '^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/ChatGPTCrossAccountReadRole(\\|arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/ChatGPTCrossAccountReadRole){3}$'
+    AllowedPattern: '^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/ChatGPTCrossAccountReadRole(\|arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/ChatGPTCrossAccountReadRole){3}$'
 
 Resources:
   OperatorReadLog:

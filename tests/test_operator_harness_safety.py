@@ -105,6 +105,10 @@ class OperatorHarnessSafetyTests(unittest.TestCase):
     def test_multi_account_scope_is_exact_and_identifier_safe(self):
         self.assertIn("MultiAccountReadRoleArns:", self.text)
         self.assertIn("NoEcho: true", self.text)
+        self.assertIn(
+            r"ChatGPTCrossAccountReadRole(\|arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/ChatGPTCrossAccountReadRole){3}$'",
+            self.text,
+        )
         self.assertIn("OVERVIEW_ALIASES = ('lab-dev', 'lab-poc', 'lab-qa', 'lab-sec')", self.text)
         self.assertIn("def multi_account_security_overview(event):", self.text)
         self.assertIn("def multi_account_control_drill_down(event):", self.text)

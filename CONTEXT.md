@@ -70,15 +70,16 @@ active SecOps hub account
 
 ## Next Actions
 
-1. The Platform-owned exact Harness read-role trust is live in all eight
-   registered targets and its hub/user read proof remains PASS. Complete
-   Issue #80 / PR #81 by applying the fixed four-role Harness configuration,
-   then prove overview, drill-down, and mutation refusal from the live Harness.
+1. Issue #80 / PR #81 live acceptance is complete: the fixed four-role Harness
+   configuration, overview, one account/control drill-down, explicit Config
+   `UNAVAILABLE`, and `fix`/`apply`/`execute` refusal all passed. The
+   Platform-owned exact backend trust remains live in all eight registered
+   targets and its hub/user read proof remains PASS.
 2. Keep multi-account output public-safe: aliases, bounded inventory/IAM/
    Config evidence, explicit `UNAVAILABLE`, and no raw account or resource
    identifiers.
-3. Keep explicit `fix`, `apply`, and `execute` requests read-only in the
-   Harness. Cross-account remediation remains a separate future milestone.
+3. G reviews PR #81 and supporting Platform PR #29; X does not merge.
+   Cross-account remediation remains a separate future milestone.
 
 Detailed completed Issue #60/#70 acceptance, Harness history, and prior deployment evidence remain in closed Issues/PRs, docs, and Git history rather than this restart file.
 
