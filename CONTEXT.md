@@ -1,63 +1,75 @@
 # Agent Context
 
-Updated: 2026-09-17
-Status: current-only restart state
-Repository: `amitkarpe/aws-secops`
+This file is compact **current-only** restart state for ChatGPT/coding-agent continuity.
 
-> Keep detailed completed acceptance evidence in Git history, closed Issues/PRs, and existing evidence/docs. This file routes current work.
+Repository: `amitkarpe/aws-secops`
 
 ## Current Product Truth
 
-- Demo v1 remains the accepted personal Singapore lab baseline.
+- Demo v1 live acceptance remains established for the personal Singapore lab.
 - Supported remediation families remain S3 Block Public Access and restricted SSH on retained owned demo resources.
-- Governed execution remains human approval -> Gateway/Policy -> exact family tool -> provider readback.
+- Approved mutation remains human approval -> Gateway/Policy -> exact bounded tool -> provider readback.
 - The model has no generic AWS mutation tool.
-- `aws_secops_operator` remains the read-only AgentCore Harness reasoning/investigation layer.
-- Explicit `fix/apply/execute` requests do not mutate through the Harness; mutation remains on the separate governed human-approval path.
-- Issue #60 and Issue #70 are complete. Their implementation and acceptance detail is historical proof, not restart-state authority.
+- `aws_secops_operator` remains the read-only AgentCore Harness investigation/reasoning layer; explicit `fix/apply/execute` requests do not mutate through it.
+- Issue #68 is **ACTIVE** after the `management-lab` prerequisite passed on 2026-09-17.
+- Personal LAB/DEV multi-account discovery intentionally permits broad read-only audit/discovery access; broad mutation is not implied.
 
-## Operating Model
+## Current Operating Model
 
-> **AWS Core discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS Core independently verifies.**
+> **AWS MCP discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS MCP independently verifies where supported.**
 
-GitHub is durable engineering state. AWS is runtime state. ChatGPT Web is the default controller; Codex is optional for deeper implementation or independent validation.
+ChatGPT Web is the default controller. GitHub is durable engineering state. AWS is runtime state. Use X/Codex when a cohesive implementation or runtime package materially benefits from local/profile/runtime access or deeper engineering.
 
-A repository write never authorizes AWS mutation. If a connector cannot start a manual workflow, do not widen its trigger merely to bypass the connector; use only the explicitly authorized documented fallback.
+## Active Authority
 
-## Current Authority
-
-### Issue #68 — two-account read-only SecOps proof
+**Issue #68 — multi-account read-only SecOps proof: 2-account gate -> 3-4 account demo**
 
 https://github.com/amitkarpe/aws-secops/issues/68
 
-Status: **BLOCKED / deferred prerequisite**.
+Status: **ACTIVE**.
 
-Start it only when a second explicitly authorized owned AWS read scope already exists. Do not create cross-account access merely to make the milestone pass. The first proof remains read-only; cross-account mutation is a separate later security decision.
+Prerequisite evidence already passed:
+- private AWS Platform `management-lab` Environment exists;
+- local AWS CLI profile hint `amit` passed expected account-identity and `ap-southeast-1` Region equality checks;
+- that bootstrap made no AWS resource, IAM, OIDC, remediation, or workload change.
 
-## Current Safety Boundary
+Current contract:
+- use one ChatGPT/AWS-MCP-visible hub account plus a reusable broad read-only spoke role;
+- first prove the 2-account path end-to-end;
+- allow broad read/list/get/describe-style discovery needed for inventory, IAM/policy, compliance, and audit visibility;
+- keep representative mutation APIs denied through the read role;
+- after the 2-account gate passes, scale the same contract to 3-4 explicitly registered owned LAB/DEV accounts;
+- keep cross-account remediation as a separate later role and milestone.
 
-- Preserve human approval and exact bounded mutation tools.
-- No generic model-accessible AWS mutation capability.
-- No new cross-account role/trust merely for Issue #68.
-- No widening IAM/OIDC/Gateway/Policy authority without the owning Issue/SPEC and required review.
-- Re-verify AWS identity, Region and current provider state before any AWS-specific action.
-- Config-only CLEAR or historical acceptance must not be presented as current provider-state proof.
+Preferred topology:
 
-## Continuation
+```text
+ChatGPT / AWS MCP
+       |
+       v
+active SecOps hub account
+       |
+       +-- AssumeRole -> registered LAB/DEV account A (broad read-only)
+       +-- AssumeRole -> management-lab (broad read-only)
+       +-- AssumeRole -> later registered account C/D (broad read-only)
+```
 
-For a known objective:
+## Safety Boundary
 
-1. use the named Issue/PR as the execution packet;
-2. read its latest relevant authorized comment/handoff when there is a new delta;
-3. fetch current HEAD and fresh provider state only as required by the task;
-4. continue within the existing Issue/SPEC authority.
+- No generic model-accessible AWS mutation tool.
+- Cross-account remediation is out of scope for the Issue #68 read role.
+- Destructive or irreversible actions still require explicit approval.
+- Connector Safety Gate remains mandatory.
+- Do not hard-code unnecessary private account identifiers into this public repository; discover and verify live identity where practical.
+- Historical acceptance evidence is not standing runtime proof; re-verify current AWS state when a task depends on it.
 
-Reload `AGENTS.md`, this file, `PROMPT.md`, `SPEC.md`, or wider repository context only for cold start, materially changed governing files, ambiguous identity/objective, stale/incomplete/contradictory state, or a new authority/safety domain.
+## Next Actions
 
-## Next Action
+1. Define the reusable hub/spoke broad read-only role contract in Git/IaC, using the actual AWS-MCP-visible hub identity verified at runtime rather than hard-coding private account IDs here.
+2. Prove the first 2-account path end-to-end: hub identity -> AssumeRole -> account-distinguished inventory/security evidence -> zero mutation.
+3. After that gate passes, register/reuse the same role contract for 1-2 more owned LAB/DEV accounts and present a 3-4 account security overview for the stakeholder demo.
+4. If remediation is needed later, create a separate bounded remediation role and milestone.
 
-1. Do not implement Issue #68 until its second-account prerequisite exists.
-2. If that prerequisite appears, design the smallest exact two-account read-only proof in Git/IaC first and independently verify account-distinguished evidence and zero mutation.
-3. If new unblocked product work is desired before then, create a separate standalone Issue from `ROADMAP.md`; do not mix it into Issue #68.
+Detailed completed Issue #60/#70 acceptance, Harness history, and prior deployment evidence remain in closed Issues/PRs, docs, and Git history rather than this restart file.
 
 For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future scope use `ROADMAP.md`.
