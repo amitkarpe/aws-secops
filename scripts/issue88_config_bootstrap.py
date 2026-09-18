@@ -210,7 +210,6 @@ def _ensure_central_bucket(
                 "Principal": {"Service": "config.amazonaws.com"},
                 "Action": "s3:GetBucketAcl",
                 "Resource": bucket_arn,
-                "Condition": {"StringEquals": {"aws:SourceOrgID": org_id}},
             },
             {
                 "Sid": "AWSConfigBucketExistenceCheck",
@@ -218,7 +217,6 @@ def _ensure_central_bucket(
                 "Principal": {"Service": "config.amazonaws.com"},
                 "Action": "s3:ListBucket",
                 "Resource": bucket_arn,
-                "Condition": {"StringEquals": {"aws:SourceOrgID": org_id}},
             },
             {
                 "Sid": "AWSConfigBucketDelivery",
