@@ -393,7 +393,7 @@ def _ensure_org_rules(
     excluded = sorted(
         account_id
         for account_id in _active_org_accounts(management_env)
-        if account_id != management_account and account_id not in target_ids
+        if account_id not in target_ids
     )
     common_tags = [
         {"Key": "project", "Value": "aws-secops"},
