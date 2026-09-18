@@ -15,7 +15,7 @@ Updated: 2026-09-18
 - G/ChatGPT controls the workflow; **O = GitHub OIDC** performs bounded writes.
 - M/AWS MCP and `aws_secops_operator` AgentCore Harness remain read-only.
 - Direct S3/EC2 provider readback is remediation truth.
-- AWS Config remains an independent asynchronous evidence plane and was `UNAVAILABLE` for all four aliases during final Issue #82 acceptance.
+- AWS Config remains an independent asynchronous evidence plane. Issue #88 is bootstrapping Config recording + the two exact organization rules so the four-account demo can show real compliance convergence.
 
 ## Live Issue #82 Acceptance
 
@@ -86,13 +86,12 @@ For both controls and all four aliases:
 
 ## Current Authority
 
-- No active implementation milestone after Issue #85 / PR #86 merges.
-- aws-secops Issue #82 / PR #83/#84: completed multi-account S3 + SG + Config E2E.
-- aws-platform Issue #34 / PR #35: completed G-driven OIDC execution surface.
-- aws-platform Issue #36: completed autonomous G/O control-plane milestone.
+- aws-secops Issue #88: organization-wide AWS Config evidence for the four-account demo.
+- aws-platform Issue #44: bounded G/O bootstrap command for Issue #88.
+- aws-secops Issue #82 / PR #83/#84: completed provider E2E baseline.
 
 ## Next
 
-Verify the published management audit view, then choose the next standalone reviewer-driven milestone only if there is a concrete need.
+Merge the Issue #88 bootstrap implementation, run the bounded Config bootstrap, then repeat the S3 + SG Reject/Approve flow and verify Config convergence.
 
 For product/security rules use `SPEC.md`. For history use closed Issues/PRs and Git history.
