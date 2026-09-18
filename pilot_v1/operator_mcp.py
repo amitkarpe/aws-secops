@@ -52,7 +52,7 @@ def _request(request: Request, *, timeout: int = 90) -> dict:
 
 
 def read_path(path: str, query: dict[str, object] | None = None) -> dict:
-    if path not in {"/api/operator/status", "/api/operator/plan", "/api/operator/multi-account-plan", "/api/v1/get_batch"}:
+    if path not in {"/api/operator/status", "/api/operator/plan", "/api/operator/multi-account-plan", "/api/operator/multi-account-execution-preview", "/api/v1/get_batch"}:
         raise ValueError("unsupported operator read")
     url = backend() + path
     if query:
@@ -80,6 +80,40 @@ def call(operation: str, control: str) -> dict:
         if operation == "prepare":
             raise ValueError("Batch preparation unavailable or rejected. No AWS remediation was authorized; read the plan before retrying.") from None
         raise ValueError("Remediation plan unavailable; no AWS change requested.") from None
+
+
+def multi_account_call(operation: str, control: str, batch_id: str | None = None) -> dict:
+    if control not in ORDERED_CONTROLS or operation not in {"prepare", "execute"}:
+        raise ValueError("unsupported four-account execution request")
+    base = backend()
+    if operation == "prepare":
+        if batch_id is not None:
+            raise ValueError("prepare does not accept batch id")
+        path = "/api/operator/multi-account-execution-plan"
+        payload = {"control": control}
+        timeout = 170
+    else:
+        if not isinstance(batch_id, str) or len(batch_id) != 20:
+            raise ValueError("exact frozen batch id required")
+        identity(batch_id)
+        path = "/api/operator/multi-account-execute"
+        payload = {"control": control, "batch_id": batch_id}
+        timeout = 170
+    request = Request(
+        base + path,
+        data=json.dumps(payload).encode(),
+        headers={"Origin": base, "Content-Type": "application/json"},
+    )
+    try:
+        return _request(request, timeout=timeout)
+    except ValueError:
+        if operation == "execute":
+            raise ValueError(
+                "Four-account execution unavailable or rejected. Read current status before any retry; do not claim success."
+            ) from None
+        raise ValueError(
+            "Four-account batch preparation unavailable or rejected. No remediation was authorized."
+        ) from None
 
 
 def _read_whole_batch(batch_id: str) -> dict:
@@ -226,8 +260,9 @@ server = FastMCP(
     instructions=(
         "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
-        "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS change and does not approve execution. "
-        "The only preparation tool is prepare_remediation(control). For control=all it skips completed/ineligible families server-side; for one exact control it prepares only that family."
+        "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS resource change and does not approve execution. "
+        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control), then immediately invoke execute_multi_account_remediation(control,batch_id) so LibreChat can show its native Approve/Reject card. "
+        "Reject means no executor call. S3 and SG approvals remain separate. prepare_remediation(control) is legacy retained single-account behavior only."
     ),
 )
 
@@ -250,6 +285,28 @@ def get_multi_account_remediation_plan(
 ) -> dict:
     """Read live four-account Config planning evidence. No AWS mutation or approval."""
     return read_path("/api/operator/multi-account-plan", {"control": control})
+
+
+@server.tool()
+def prepare_multi_account_remediation(
+    control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
+) -> dict:
+    """Prepare one exact four-account frozen batch for an explicit fix request. No AWS resource mutation."""
+    return multi_account_call("prepare", control)
+
+
+@server.tool()
+def execute_multi_account_remediation(
+    control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
+    batch_id: str,
+) -> dict:
+    """ASK: Execute one exact frozen four-account remediation batch after native human approval.
+
+    Reject means this tool is not called. Approve dispatches only the exact
+    control + frozen batch through the fixed CodeBuild project and existing
+    G/O controller role. Direct provider readback must prove completion.
+    """
+    return multi_account_call("execute", control, batch_id)
 
 
 @server.tool()
