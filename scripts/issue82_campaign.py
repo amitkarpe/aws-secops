@@ -152,7 +152,7 @@ def _select_vpc(session: TargetSession) -> str:
     return rows[0]["VpcId"]
 
 
-def _ensure_sg(session: TargetSession) -> str:
+def _describe_demo_sgs(session: TargetSession) -> list[dict[str, Any]]:
     name = _sg_name(session.target)
     value = _json([
         "ec2", "describe-security-groups",
@@ -161,6 +161,31 @@ def _ensure_sg(session: TargetSession) -> str:
         "Name=tag:project,Values=aws-secops",
         "Name=tag:phase,Values=issue-82",
     ], env=session.env)
+    rows = value.get("SecurityGroups", [])
+    if not isinstance(rows, list):
+        raise AwsError("invalid Security Group inventory response")
+    return rows
+
+
+def _find_bucket(session: TargetSession) -> str:
+    bucket = _bucket_name(session.target)
+    head = _run(["s3api", "head-bucket", "--bucket", bucket], env=session.env, allow_failure=True)
+    if head.returncode:
+        raise AwsError("Issue #82 demo bucket is missing; run prepare first")
+    session.bucket = bucket
+    return bucket
+
+
+def _find_sg(session: TargetSession) -> str:
+    groups = _describe_demo_sgs(session)
+    if len(groups) != 1 or not isinstance(groups[0].get("GroupId"), str):
+        raise AwsError("Issue #82 demo Security Group is missing or ambiguous; run prepare first")
+    session.sg_id = groups[0]["GroupId"]
+    return session.sg_id
+
+
+def _ensure_sg(session: TargetSession) -> str:
+    groups = _describe_demo_sgs(session)
     groups = value.get("SecurityGroups", [])
     if len(groups) > 1:
         raise AwsError("multiple Issue #82 demo Security Groups found")
@@ -327,11 +352,11 @@ def _plan_for_control(sessions: list[TargetSession], control: str) -> tuple[str,
     config_states: dict[str, str] = {}
     for session in sessions:
         if control == S3_CONTROL:
-            bucket = session.bucket or _ensure_bucket(session)
+            bucket = session.bucket or _find_bucket(session)
             provider_ok = s3_bpa_compliant(_get_bpa(session, bucket))
             resource_id = bucket
         elif control == SG_CONTROL:
-            sg_id = session.sg_id or _ensure_sg(session)
+            sg_id = session.sg_id or _find_sg(session)
             group = _get_sg(session, sg_id)
             if not _sg_is_unattached(session, sg_id):
                 raise AwsError("demo Security Group is attached")
@@ -396,7 +421,7 @@ def execute(sessions: list[TargetSession], control: str, decision: str, expected
     mutation_count = 0
     for session in pending:
         if control == S3_CONTROL:
-            bucket = session.bucket or _ensure_bucket(session)
+            bucket = session.bucket or _find_bucket(session)
             _run([
                 "s3api", "put-public-access-block",
                 "--bucket", bucket,
@@ -405,7 +430,7 @@ def execute(sessions: list[TargetSession], control: str, decision: str, expected
             ], env=session.env)
             mutation_count += 1
         else:
-            sg_id = session.sg_id or _ensure_sg(session)
+            sg_id = session.sg_id or _find_sg(session)
             if not _sg_is_unattached(session, sg_id):
                 raise AwsError("demo Security Group is attached")
             rules = _open_ssh_rule_ids(session, sg_id)
