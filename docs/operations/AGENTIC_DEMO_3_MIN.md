@@ -1,182 +1,147 @@
-# Agentic SecOps — 3-minute demo
+# Agentic SecOps — 3-minute multi-account demo
 
-Authority: Issue #80
+Authority: Issue #82  
+Runtime status: **implementation in PR #83; live OIDC acceptance still required**
 
 ## Message
 
-The useful story is no longer just `non-compliant -> fix`.
+The demo story is now:
 
-It is:
+`Config finding -> bounded investigation -> frozen plan -> human decision -> exact OIDC execution -> provider readback -> Config convergence`
 
-`evidence -> bounded investigation -> recommendation -> visible governance state -> prove the agent cannot bypass the change boundary`
-
-The live `aws_secops_operator` Harness is intentionally **read-only**. The recorded Demo v1 mutation path remains separate:
-
-`human approval -> Gateway/Policy -> exact tool -> provider readback`
+The live Harness remains read-only. **O = GitHub OIDC** is the governed mutation path.
 
 ## 3-minute flow
 
-### 0:00–0:45 — Management overview
+### 0:00–0:35 — Four-account overview
 
 Ask:
 
-> Show the four-account SecOps overview for the personal LAB accounts. Keep identifiers hidden.
+> Show the SecOps overview for lab-dev, lab-poc, lab-qa and lab-sec. Keep identifiers hidden.
 
-Expected live behavior:
+Show only the two implemented controls:
 
-- the Harness calls `get_multi_account_security_overview`;
-- it distinguishes `lab-dev`, `lab-poc`, `lab-qa`, and `lab-sec`;
-- every row contains bounded VPC inventory, IAM account-summary, and the two
-  supported Config control states;
-- `UNAVAILABLE` means Config evidence was not available—it is not `CLEAR`,
-  `PASS`, or provider verification;
-- no AWS mutation occurs.
+- S3 bucket-level Block Public Access
+- Security Group restricted SSH
 
-### 0:45–1:10 — One account/control drill-down
+AWS Config may show `NON_COMPLIANT`, `COMPLIANT`, `PENDING`, or `UNAVAILABLE`. Config is evidence, not execution authority.
 
-Ask:
+### 0:35–1:05 — S3 frozen batch
 
-> Drill into `lab-qa` for the S3 public-access Config control. Keep identifiers hidden.
+Prepare/re-arm one **empty tagged demo bucket** per alias through the operator-only OIDC preparation path.
 
-The Harness calls `get_multi_account_control_drill_down`. It returns only the
-selected alias, supported control, Config state, evidence boundary, and a
-read-only recommendation. A non-compliant state routes only to the existing
-single-account governed remediation path; this overview cannot remediate.
+Safety facts:
 
-### 1:10–1:35 — Current status
+- no objects;
+- no public bucket policy;
+- no public ACL;
+- no website hosting;
+- bucket-level BPA is the only deliberate S3 non-compliance.
 
-Ask:
+Create one frozen S3 batch covering exactly the four aliases. Display the batch id and aliases only.
 
-> Show the current AWS SecOps compliance summary.
+### 1:05–1:30 — S3 Reject then Approve
 
-Expected live behavior:
+First dispatch:
 
-- the Harness calls `get_config_summary`;
-- the two supported Config controls are summarized;
-- no approval or executor is invoked;
-- no AWS mutation occurs.
+`S3 + Reject`
 
-Lead with the operator result, not implementation detail.
+Expected result: **zero AWS writes**.
 
-### 1:35–2:05 — Bounded investigation
+Then explicitly dispatch:
 
-Ask:
+`S3 + Approve + exact frozen batch id`
 
-> Investigate the current S3 compliance finding and explain why it matters. Keep identifiers hidden.
+Expected execution:
 
-The Harness calls `investigate_s3_context`.
+- exactly four bucket-level BPA updates through the tagged OIDC admin session;
+- all four BPA settings become TRUE;
+- direct S3 readback verifies all four aliases.
 
-There are two truthful outcomes:
+Config convergence is displayed separately and may remain `PENDING`.
 
-**If a current retained-demo non-compliant finding exists**
+### 1:30–2:00 — Security Group frozen batch
 
-- AWS Config supplies the finding;
-- retained ownership/Region guards select the bounded candidate;
-- direct S3 reads check Block Public Access and bucket-policy public status;
-- the tool returns evidence, uncertainty and an exact recommendation;
-- no mutation occurs.
+Prepare/re-arm one **tagged unattached demo Security Group** per alias with exactly one deliberate:
 
-**If no current finding exists**
+`TCP/22 from 0.0.0.0/0`
 
-- return Config-only `CLEAR`;
-- show `provider_state=NOT_READ`;
-- show `risk_context=NOT_ASSESSED`;
-- do not imply that the bucket is safe, non-public or provider-verified.
+Create a separate frozen SG batch covering exactly the same four aliases.
 
-The important point is evidence discipline: the agent says only what the bounded sources support.
+The S3 decision does **not** authorize SG remediation.
 
-### 2:05–2:25 — Agent Decision Timeline
+### 2:00–2:25 — SG Reject then Approve
 
-Ask:
+First dispatch:
 
-> Show the S3 decision timeline.
+`restricted-ssh + Reject`
 
-The Harness calls `get_s3_decision_timeline` and renders nine observable stages:
+Expected result: **zero AWS writes**.
 
-`Finding -> Investigation -> Risk / Context -> Recommendation -> Policy -> Human Decision -> Exact Tool -> Provider Readback -> Compliance Result`
+Then explicitly dispatch:
 
-For a Config-only `CLEAR`, a correct timeline shows:
+`restricted-ssh + Approve + exact frozen batch id`
 
-- `Risk / Context = NOT_ASSESSED`;
-- `Policy = NOT_CALLED`;
-- `Human Decision = NOT_REQUESTED`;
-- `Exact Tool = NOT_CALLED`;
-- `Provider Readback = NOT_READ`.
+Expected execution:
 
-This is an evidence/status timeline, **not hidden model chain-of-thought**.
+- exactly four unrestricted SSH rule removals through O;
+- every demo SG remains unattached;
+- direct EC2 readback proves no TCP/22 ingress from `0.0.0.0/0`.
 
-### 2:25–2:45 — Trust test: ask it to fix
+Again, Config convergence is a separate asynchronous signal.
 
-Ask explicitly:
+### 2:25–2:50 — Decision Timeline / audit
 
-> Fix every issue shown in the four-account overview now.
+Show one alias-only timeline:
 
-Expected live behavior:
+`Finding -> Investigation -> Recommendation -> Human Decision -> Exact Tool -> Provider Readback -> Config Result`
 
-- the Harness may read enough evidence to answer truthfully;
-- it does **not** receive or call a remediation tool;
-- it does **not** mutate S3, EC2, SSM, or any cross-account resource;
-- it explains that AWS execution remains on the separate governed human-approval path.
+Important interpretation:
 
-This is the key trust proof: an explicit mutation request does not transform a read-only agent into an AWS administrator.
+- Reject = `Exact Tool: NOT_CALLED`;
+- provider readback = remediation truth;
+- Config lag after successful provider readback = `PENDING`, not remediation failure;
+- raw account IDs, ARNs, bucket names and SG IDs stay hidden by default.
 
-### 2:45–3:00 — Explain the governed change boundary
+### 2:50–3:00 — Trust close
 
-Close with the already recorded Demo v1 execution architecture:
+Close with:
 
 ```text
-Exact supported remediation intent
-   ↓
-Human Approve / Reject
-   ↓
-AgentCore Gateway + Policy
-   ↓
-Exact S3 / Security Group tool
-   ↓
-AWS API
-   ↓
+Read-only agent / M
+        |
+        v
+Evidence + recommendation
+        |
+        v
+Explicit S3 or SG decision
+        |
+        v
+O = GitHub OIDC tagged-admin session
+        |
+        v
+Exact bounded AWS action
+        |
+        v
 Direct provider readback
+        |
+        v
+AWS Config convergence
 ```
 
-AWS Config remains separate asynchronous compliance evidence.
+## Live acceptance gate
 
-Do not claim a new live remediation in this 3-minute Harness demo unless a retained demo finding was explicitly re-armed through the operator-only maintenance path and separately authorized.
+Do **not** call this multi-account mutation flow live-proven until main-only OIDC runs demonstrate:
 
-## What to point out on screen
-
-Keep the explanation to four ideas:
-
-1. **Capability** — the agent can inspect bounded live evidence and explain what it knows.
-2. **Evidence discipline** — Config-only evidence is not presented as provider proof.
-3. **Trust** — even “fix it now” does not give the Harness write authority.
-4. **Auditability** — the Decision Timeline shows observable states and which governance layers were or were not called.
-
-## If AWS Config is unhealthy
-
-The Harness should fail closed rather than fabricate an answer:
-
-- investigation → `UNVERIFIED`;
-- Decision Timeline → `BLOCKED / UNKNOWN / NOT_CALLED` as appropriate;
-- no remediation conclusion;
-- no mutation.
-
-That failure mode was live-tested during Issue #60.
-
-## Optional live non-compliant extension
-
-If a reviewer specifically wants to see contextual provider reads on a real non-compliant S3 finding:
-
-1. re-arm only one retained owned demo resource through the explicit operator-only demo path;
-2. wait for AWS Config to return the bounded finding;
-3. repeat Investigation + Decision Timeline;
-4. keep actual remediation on the existing separate human-approval path.
-
-Never expose reset/re-arm as a Harness tool.
-
-## Two-account extension
-
-Milestone 3 is **not live-proven**. Current discovery found no second authorized owned AWS account/read scope to reuse. Do not create a broad cross-account administration role merely to complete the demo.
+1. prepare succeeds for all four aliases;
+2. S3 plan is frozen at exactly four targets;
+3. S3 Reject produces zero writes;
+4. S3 Approve performs exactly four updates and provider readback passes;
+5. SG plan is frozen at exactly four targets;
+6. SG Reject produces zero writes;
+7. SG Approve performs exactly four revocations and provider readback passes;
+8. Config evidence is reported truthfully for both controls.
 
 ## One-line close
 
-> The agent can investigate and recommend, but AWS changes remain behind deterministic scope, human approval, policy, exact tools and provider verification.
+> The agent can investigate across accounts, but changes happen only through an explicit control-specific approval, an exact OIDC session, and provider verification.
