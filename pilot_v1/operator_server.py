@@ -10,6 +10,7 @@ import argparse
 from http.server import HTTPServer
 import json
 import os
+import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
@@ -21,6 +22,7 @@ from .control_catalog import get_control, public_catalog
 from .demo_prepare import S3_NONCOMPLIANT, count_s3, require_resettable, reset_s3
 from .operator_protocol import ConfirmationGate
 from .org_config_overview import read_status as read_four_account_status, remediation_plan as four_account_plan
+from .codebuild_execution import run as run_four_account_build
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
@@ -53,12 +55,18 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class OperatorService(BulkService):
-    def __init__(self, bulk: BulkStore, sg_origin: str = "http://localhost:4455"):
+    def __init__(
+        self,
+        bulk: BulkStore,
+        sg_origin: str = "http://localhost:4455",
+        execution_state: Path | None = None,
+    ):
         super().__init__(bulk)
         if sg_origin != "http://localhost:4455":
             raise ValueError("SG backend must use the fixed loopback service")
         self.sg_origin = sg_origin
         self.gate = ConfirmationGate()
+        self.execution_state = execution_state or Path("/tmp/aws-secops-four-account-execution.json")
 
     def _sg(self, path: str, payload: dict | None = None) -> dict:
         url = self.sg_origin + path
@@ -155,6 +163,111 @@ class OperatorService(BulkService):
 
     def multi_account_plan(self, control: str) -> dict:
         return four_account_plan(control)
+
+    def _execution_cache(self) -> dict:
+        try:
+            value = json.loads(self.execution_state.read_text())
+        except FileNotFoundError:
+            return {"version": 1, "plans": {}}
+        if not isinstance(value, dict) or value.get("version") != 1 or not isinstance(value.get("plans"), dict):
+            raise RuntimeError("invalid four-account execution cache")
+        return value
+
+    def _save_execution_cache(self, value: dict) -> None:
+        self.execution_state.parent.mkdir(parents=True, exist_ok=True)
+        temp = self.execution_state.with_suffix(self.execution_state.suffix + ".new")
+        temp.write_text(json.dumps(value, sort_keys=True, separators=(",", ":")))
+        os.chmod(temp, 0o600)
+        os.replace(temp, self.execution_state)
+
+    def prepare_multi_account_execution(self, control: str) -> dict:
+        if control not in {S3_CONTROL, SG_CONTROL}:
+            raise ValueError("one exact supported control required")
+        current = self.multi_account_status()
+        rows = current.get("accounts", [])
+        if len(rows) != 4 or any(row.get("controls", {}).get(control) != "NON_COMPLIANT" for row in rows):
+            raise ValueError("four-account execution requires all four aliases NON_COMPLIANT")
+        result = run_four_account_build("plan", control)
+        if result.get("decision") != "PLAN" or result.get("pending_aliases") != ["lab-dev", "lab-poc", "lab-qa", "lab-sec"]:
+            raise ValueError("frozen plan is not exactly four pending aliases")
+        batch_id = result.get("batch_id")
+        if not isinstance(batch_id, str):
+            raise RuntimeError("frozen batch id missing")
+        cache = self._execution_cache()
+        cache["plans"][control] = {
+            "control": control,
+            "batch_id": batch_id,
+            "pending_aliases": result["pending_aliases"],
+            "created_at": int(time.time()),
+        }
+        self._save_execution_cache(cache)
+        return {
+            "version": 1,
+            "scope": "four-account-live-config",
+            "control": control,
+            "batch_id": batch_id,
+            "pending_aliases": result["pending_aliases"],
+            "native_ask_required": True,
+            "next_execution": {
+                "tool": "execute_multi_account_remediation_mcp_aws_compliance_planner",
+                "arguments": {"control": control, "batch_id": batch_id},
+            },
+            "message": "Exact four-account batch frozen. Invoke the native-ASK executor for the current explicit fix request.",
+            "mutation": False,
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+        }
+
+    def multi_account_execution_preview(self, control: str) -> dict:
+        if control not in {S3_CONTROL, SG_CONTROL}:
+            raise ValueError("one exact supported control required")
+        plan = self._execution_cache().get("plans", {}).get(control)
+        if not isinstance(plan, dict):
+            raise ValueError("no prepared four-account execution")
+        age = int(time.time()) - int(plan.get("created_at", 0))
+        if age < 0 or age > 900:
+            raise ValueError("prepared four-account execution expired")
+        return {
+            "version": 1,
+            "scope": "four-account-live-config",
+            "control": control,
+            "batch_id": plan.get("batch_id"),
+            "pending_aliases": plan.get("pending_aliases"),
+            "age_seconds": age,
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+        }
+
+    def execute_multi_account(self, control: str, batch_id: str) -> dict:
+        preview = self.multi_account_execution_preview(control)
+        if preview.get("batch_id") != batch_id:
+            raise ValueError("submitted batch does not match frozen plan")
+        current = self.multi_account_status()
+        rows = current.get("accounts", [])
+        if len(rows) != 4 or any(row.get("controls", {}).get(control) != "NON_COMPLIANT" for row in rows):
+            raise ValueError("live Config scope changed; prepare a new exact batch")
+        result = run_four_account_build("execute", control, batch_id)
+        if result.get("decision") not in {"APPROVE", "ALREADY_COMPLIANT"}:
+            raise RuntimeError("unexpected four-account execution result")
+        if result.get("decision") == "APPROVE" and (result.get("mutation_count") != 4 or result.get("provider_verified") is not True):
+            raise RuntimeError("provider verification did not prove exact four-account remediation")
+        cache = self._execution_cache()
+        cache.get("plans", {}).pop(control, None)
+        self._save_execution_cache(cache)
+        return {
+            "version": 1,
+            "scope": "four-account-live-config",
+            "control": control,
+            "batch_id": result.get("batch_id"),
+            "decision": result.get("decision"),
+            "mutation_count": result.get("mutation_count"),
+            "provider_verified": result.get("provider_verified"),
+            "config_states": result.get("config_states"),
+            "execution_backend": result.get("execution_backend"),
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+            "message": "Provider readback completed. AWS Config convergence is independent and may still be pending.",
+        }
 
     def status(self) -> dict:
         degraded = []
@@ -345,6 +458,17 @@ class OperatorHandler(BulkHandler):
             except ValueError: self._json(400, {"error": "invalid four-account plan request"})
             except Exception: self._json(503, {"error": "four-account plan unavailable"})
             return
+        if parsed.path == "/api/operator/multi-account-execution-preview":
+            if not self._local_host():
+                self._json(403, {"error": "unexpected local Host"}); return
+            try:
+                query = parse_qs(parsed.query, strict_parsing=True)
+                if set(query) != {"control"} or len(query["control"]) != 1:
+                    raise ValueError("one control required")
+                self._json(200, self.service.multi_account_execution_preview(query["control"][0]))
+            except ValueError: self._json(400, {"error": "invalid or stale four-account execution preview"})
+            except Exception: self._json(503, {"error": "four-account execution preview unavailable"})
+            return
         if parsed.path == "/api/operator/plan":
             if not self._local_host():
                 self._json(403, {"error": "unexpected local Host"}); return
@@ -359,7 +483,13 @@ class OperatorHandler(BulkHandler):
         super().do_GET()
 
     def do_POST(self) -> None:
-        if self.path not in {"/api/operator/prepare-preview", "/api/operator/prepare", "/api/operator/prepare-batch"}:
+        if self.path not in {
+            "/api/operator/prepare-preview",
+            "/api/operator/prepare",
+            "/api/operator/prepare-batch",
+            "/api/operator/multi-account-execution-plan",
+            "/api/operator/multi-account-execute",
+        }:
             super().do_POST(); return
         if not self._local_host() or not self._same_loopback_origin():
             self._json(403, {"error": "same loopback origin required"}); return
@@ -376,6 +506,10 @@ class OperatorHandler(BulkHandler):
                 result = self.service.prepare_demo(data["family"], data["confirmation_token"])
             elif self.path == "/api/operator/prepare-batch" and set(data) == {"control"}:
                 result = self.service.prepare_batch(data["control"])
+            elif self.path == "/api/operator/multi-account-execution-plan" and set(data) == {"control"}:
+                result = self.service.prepare_multi_account_execution(data["control"])
+            elif self.path == "/api/operator/multi-account-execute" and set(data) == {"control", "batch_id"}:
+                result = self.service.execute_multi_account(data["control"], data["batch_id"])
             else:
                 raise ValueError("invalid operator request")
             self._json(200, result)
@@ -396,7 +530,11 @@ def main() -> int:
         p.error("invalid local port")
     provider = GovernedS3Provider(args.manifest, args.gateway_state)
     store = BulkStore(args.state, provider)
-    OperatorHandler.service = OperatorService(store, os.environ.get("SECOPS_SG_BACKEND_URL", "http://localhost:4455"))
+    OperatorHandler.service = OperatorService(
+        store,
+        os.environ.get("SECOPS_SG_BACKEND_URL", "http://localhost:4455"),
+        args.state.with_name("four-account-execution-plan.json"),
+    )
     try:
         with HTTPServer(("127.0.0.1", args.port), OperatorHandler) as server:
             print(f"BULK_OPERATOR=http://localhost:{args.port}/ OPERATOR_HOME=ON MODE={provider.context['mode']}", flush=True)
