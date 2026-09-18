@@ -70,6 +70,9 @@ class CodeBuildExecutionTests(unittest.TestCase):
         self.assertIn('export PYTHONPATH="$CODEBUILD_SRC_DIR"', buildspec)
         self.assertIn('SECOPS_RESULT_B64="$(python3 scripts/codebuild_issue82_executor.py)"', buildspec)
         self.assertNotIn('export SECOPS_RESULT_B64="$(python3', buildspec)
+        packager = (root / "scripts" / "prepare-inline-bulk.py").read_text()
+        self.assertIn('"pilot_v1/codebuild_execution.py"', packager)
+        self.assertIn('"pilot_v1/multi_account_campaign.py"', packager)
 
 
 if __name__ == "__main__":

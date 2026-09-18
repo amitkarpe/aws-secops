@@ -11,6 +11,7 @@ SSM_SAFE_COMMAND_BYTES = 80_000
 UPDATE_FILES = [
     "pilot_v1/agentic_evidence.py",
     "pilot_v1/codebuild_execution.py",
+    "pilot_v1/multi_account_campaign.py",
     "pilot_v1/control_catalog.py",
     "pilot_v1/demo_prepare.py",
     "pilot_v1/log_proof.py",
