@@ -51,9 +51,12 @@ def _aws_aggregate() -> dict[str, Any]:
         "--region", REGION, "--output", "json", "--no-cli-pager",
     ]
     try:
+        env = dict(os.environ)
+        env.pop("AWS_PROFILE", None)
+        env.pop("AWS_DEFAULT_PROFILE", None)
+        env.update({"AWS_PAGER": "", "AWS_MAX_ATTEMPTS": "2"})
         proc = subprocess.run(
-            command, capture_output=True, text=True, timeout=45,
-            env={**os.environ, "AWS_PAGER": "", "AWS_MAX_ATTEMPTS": "2"},
+            command, capture_output=True, text=True, timeout=45, env=env,
         )
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError("organization Config aggregate read timed out") from exc
