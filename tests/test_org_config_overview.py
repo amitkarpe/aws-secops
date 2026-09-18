@@ -1,5 +1,9 @@
 import json
+import os
 import unittest
+from unittest.mock import patch
+
+import pilot_v1.org_config_overview as overview
 
 from pilot_v1.org_config_overview import (
     ALIASES,
@@ -84,6 +88,19 @@ class OrgConfigOverviewTests(unittest.TestCase):
         public = json.dumps(result)
         for account_id in ("111111111111", "222222222222", "333333333333", "444444444444"):
             self.assertNotIn(account_id, public)
+
+    def test_live_reader_ignores_legacy_vagent_profile(self):
+        class Proc:
+            returncode = 0
+            stdout = '{"AggregateComplianceByConfigRules":[]}'
+            stderr = ""
+
+        with patch.dict(os.environ, {"AWS_PROFILE": "vagent", "AWS_DEFAULT_PROFILE": "vagent"}, clear=False):
+            with patch.object(overview.subprocess, "run", return_value=Proc()) as run:
+                overview._aws_aggregate()
+        env = run.call_args.kwargs["env"]
+        self.assertNotIn("AWS_PROFILE", env)
+        self.assertNotIn("AWS_DEFAULT_PROFILE", env)
 
     def test_plan_uses_four_accounts_not_legacy_resource_totals(self):
         result = remediation_plan("all", RAW, aggregate)
