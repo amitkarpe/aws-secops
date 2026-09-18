@@ -1,0 +1,12 @@
+version: 0.2
+
+env:
+  exported-variables:
+    - SECOPS_RESULT_B64
+
+phases:
+  build:
+    on-failure: ABORT
+    commands:
+      - export SECOPS_RESULT_B64="$(python3 scripts/codebuild_issue82_executor.py)"
+      - test -n "$SECOPS_RESULT_B64"
