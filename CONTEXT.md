@@ -72,12 +72,13 @@ Frozen batch: `850a97336aded01e0aa1`
 
 ## Current Authority
 
-- Issue #87: management-facing 3-minute demo rehearsal.
+- Issue #95: make ops/sec default to the live four-account Config scope.
+- Issue #93 / PR #94: completed web refresh with final acceptance evidence.
 - Issue #88 / PR #89/#90/#91: organization Config bootstrap and live Config acceptance.
 - Issue #82 / PR #83/#84: provider E2E baseline.
 
 ## Next
 
-Run one no-mutation management rehearsal from the published demo + audit pages and verify the story fits in about 3 minutes.
+Merge and deploy Issue #95, then rerun the four-account G/O acceptance and verify ops + Compliance Agent follow live Config convergence instead of the legacy 100-S3/10-SG scope.
 
 For product/security rules use `SPEC.md`. For history use closed Issues/PRs and Git history.
