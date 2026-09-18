@@ -29,6 +29,10 @@ class Issue88ConfigBootstrapTests(unittest.TestCase):
         ):
             self.assertIn(token, text)
 
+    def test_org_rule_exclusions_keep_management_account_in_scope(self):
+        text = self.text()
+        self.assertIn("account_id != management_account and account_id not in target_ids", text)
+
     def test_bootstrap_does_not_add_auto_remediation_or_scp_mutation(self):
         text = self.text()
         for token in (
