@@ -17,7 +17,7 @@ if (approval.allow.some(x => /[*]/.test(x)) || approval.ask.some(x => /[*]/.test
 
 const compliance = {
   type:'stdio', command:'/opt/aws-secops/.venv-mcp/bin/python', args:['-m','pilot_v1.compliance_mcp'],
-  env:{PYTHONPATH:'/opt/aws-secops',SECOPS_SG_BACKEND_URL:'http://localhost:4455'},
+  env:{PYTHONPATH:'/opt/aws-secops',SECOPS_SG_BACKEND_URL:'http://localhost:4455',SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'},
   timeout:35000,initTimeout:15000,chatMenu:false,serverInstructions:true,
 };
 if (updated.mcpServers.aws_compliance && !isDeepStrictEqual(updated.mcpServers.aws_compliance,compliance))
@@ -41,9 +41,11 @@ approval.allow = approval.allow.filter(name => !retiredPlannerTools.includes(nam
 approval.ask = approval.ask.filter(name => !retiredPlannerTools.includes(name));
 
 const reads = [
+  'get_multi_account_status_mcp_aws_compliance',
   'get_config_summary_mcp_aws_compliance','list_config_findings_mcp_aws_compliance',
   'list_sg_batches_mcp_aws_compliance','get_sg_batch_mcp_aws_compliance',
   'investigate_s3_context_mcp_aws_compliance_planner','get_s3_decision_timeline_mcp_aws_compliance_planner',
+  'get_multi_account_remediation_plan_mcp_aws_compliance_planner',
   'get_remediation_plan_mcp_aws_compliance_planner','prepare_remediation_mcp_aws_compliance_planner',
 ];
 for (const name of reads) {
