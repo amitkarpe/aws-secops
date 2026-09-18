@@ -1,51 +1,43 @@
 # AWS Compliance Agent
 
-A public personal-lab project for **governed agentic AWS SecOps**: an AI operator can read bounded AWS evidence, investigate a supported finding and explain the decision path, while AWS changes remain behind a separate human-approval + policy + exact-tool boundary.
+A public personal-LAB project for **governed agentic AWS SecOps**.
 
 > **Personal lab / POC only. Not a production service.**
 
-## The current story
+## Current primary demo
 
-There are deliberately **two separate planes**.
+Exactly four LAB aliases:
 
-### 1. Read / investigate — live AgentCore Harness
+- `lab-dev`
+- `lab-poc`
+- `lab-qa`
+- `lab-sec`
 
-```text
-AWS Config
-   ↓
-aws_secops_operator Harness — Nova 2 Lite
-   ↓ exactly four read tools
-AgentCore Gateway + Policy (ENFORCE)
-   ↓
-Bounded Config / retained-demo S3 reads
-   ↓
-Evidence + recommendation + Decision Timeline
-```
+Exactly two supported controls:
 
-The live Harness can:
+1. S3 bucket-level Block Public Access
+2. Security Group restricted SSH
 
-- summarize the two supported AWS Config controls;
-- list bounded current non-compliant findings;
-- investigate one deterministic retained-demo S3 finding when Config returns one;
-- show a factual nine-stage Agent Decision Timeline.
-
-It has **no model-accessible AWS write, shell, generic AWS, arbitrary resource-selection or remediation tool**. An explicit `fix/apply/execute` request still does not mutate AWS through the Harness.
-
-### 2. Governed mutation — recorded Demo v1 path
+The current management/operator story is:
 
 ```text
-Exact supported remediation intent
-   ↓
-Human Approve / Reject
-   ↓
-AgentCore Gateway + Policy
-   ↓
-Exact S3 or Security Group tool
-   ↓
-AWS API
-   ↓
-Direct provider readback
-   ↓
+Organization AWS Config
+        ↓
+ops.astromedicomp.org
+        ↓
+live four-account alias-only status
+        ↓
+sec.astromedicomp.org
+AWS Compliance Agent
+        ↓
+read-only four-account status + plan
+        ↓
+explicit governed G/O execution path
+        ↓
+GitHub OIDC exact AWS change
+        ↓
+direct provider readback
+        ↓
 AWS Config converges independently
 ```
 
@@ -53,116 +45,113 @@ The core security principle remains:
 
 > **The AI can investigate and recommend; it does not authorize an AWS change.**
 
-## What is proven
+## What is live-proven
 
 | Capability | Current evidence |
 |---|---|
-| Read-only Harness | **Live** — exactly four bounded read tools, Gateway Policy `ENFORCE` |
-| Config health failure | **Fail closed** — returns `UNVERIFIED/BLOCKED`, not a fabricated result |
-| S3 contextual investigation | **Live** — healthy zero-finding path returns Config-only `CLEAR` with provider state `NOT_READ` |
-| Agent Decision Timeline | **Live** — nine observable evidence/status stages, never hidden chain-of-thought |
-| Explicit fix request through Harness | **No mutation** — remains outside the Harness write boundary |
-| Governed S3 + restricted-SSH remediation | **Recorded Demo v1** — human decision, exact tool, provider verification |
-| Two-account read-only proof | **Blocked** — no second authorized owned account/read scope is currently connected |
+| Four-account Config status | **LIVE** — both controls across exactly four aliases |
+| Four-account Compliance Agent plan | **LIVE / read-only** — no multi-account chat executor |
+| S3 Reject | **PASS** — 0 writes |
+| S3 Approve | **PASS** — 4 exact provider-verified BPA updates |
+| SG Reject | **PASS** — 0 writes |
+| SG Approve | **PASS** — 4 exact provider-verified SSH revocations |
+| Config convergence | **PASS** — both controls `COMPLIANT x4` |
+| Idempotent rerun | **PASS** — `ALREADY_COMPLIANT`, 0 writes |
+| Public-safe output | **PASS** — aliases only; raw AWS identifiers hidden |
 
-A Config-only `CLEAR` is intentionally narrow: it means no current non-compliant finding was returned by AWS Config. It does **not** mean direct S3 provider state was read, the bucket was proven non-public, or risk was assessed.
+The final four-account web/API acceptance was re-run on 2026-09-18 after Issue #95.
+
+## Two execution boundaries
+
+### Live four-account scope
+
+The Compliance Agent can read current organization Config state and produce a four-account remediation plan.
+
+It **cannot** execute a four-account mutation from chat.
+
+Four-account writes remain on the separate governed path:
+
+```text
+G / GitHub durable decision
+        ↓
+O = GitHub OIDC
+        ↓
+exact target sessions
+        ↓
+bounded control-specific AWS action
+        ↓
+provider verification
+```
+
+### Legacy retained single-account demo
+
+The earlier retained runtime still exists for engineering/history:
+
+- 100 S3 demo buckets
+- 10 unattached Security Groups
+- native LibreChat approval + exact-tool flows
+
+It is now explicitly **Legacy retained single-account demo** on the Operator page and is not the default answer for generic current-status or remediation-plan questions.
+
+## Operator pages
+
+- **Operations Console:** https://ops.astromedicomp.org/
+  - primary: live four-account Config matrix
+  - secondary: latest accepted E2E proof
+  - legacy section: retained 100-S3 / 10-SG demo
+- **AWS Compliance Agent:** https://sec.astromedicomp.org/
+  - generic status -> live four-account status
+  - generic plan -> live four-account plan
+  - legacy retained tools only when explicitly requested
 
 ## 3-minute demo
 
-Start with the current [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md).
+Start with [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md).
 
-The short story is:
+Short story:
 
-1. **Finding / status** — read current Config evidence.
-2. **Investigation** — use bounded contextual reads only when a current retained-demo finding exists.
-3. **Decision Timeline** — show evidence, recommendation and governance state.
-4. **Trust test** — ask the Harness to fix it; verify it still has no mutation path.
-5. **Proof boundary** — explain that actual remediation uses the separate recorded human-approval → Gateway/Policy → exact-tool → provider-readback path.
+1. Show four aliases and both controls in the Operator page.
+2. Ask the Compliance Agent for current status.
+3. Ask for the four-account remediation plan.
+4. Re-arm only through the governed operator/G/O path when a live non-compliant demo is required.
+5. Prove Reject = 0 writes.
+6. Prove Approve = exact provider-verified changes.
+7. Show Config convergence to `COMPLIANT x4`.
+8. Rerun and show `ALREADY_COMPLIANT` / 0 writes.
 
-This keeps the demo useful even when the current lab is compliant. A live non-compliant S3 investigation can be re-armed only through the explicit operator-only demo path, never through the Harness.
+## Current evidence
 
-## Recorded Demo v1 scope
+- [Management audit view](docs/operations/MANAGEMENT_AUDIT_VIEW.md)
+- [Architecture](docs/architecture.md)
+- [Governance](docs/governance.md)
+- [Operations Console direction](docs/operator-console.md)
+- [Project status](PROJECT_STATUS.md)
+- [Demo v1](docs/demo-v1.md) — retained legacy/single-account detail
 
-| | Recorded scope |
-|---|---|
-| Resources | **100 S3 buckets + 10 unattached Security Groups** |
-| Controls | **S3 Block Public Access + restricted SSH** |
-| Approval | **Separate native human decision per action family** |
-| Mutation | **Exact tools only; no generic model-accessible AWS write tool** |
-| Verification | **Direct provider readback; AWS Config converges independently** |
+Key milestones:
 
-Demo v1 planners use complete retained-family readiness gates. This is not an arbitrary-subset remediation engine.
-
-## Start here
-
-1. **Short demo:** [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md)
-2. **Management audit view:** [live multi-account acceptance evidence](docs/operations/MANAGEMENT_AUDIT_VIEW.md)
-3. **Architecture:** [current two-plane architecture](docs/architecture.md)
-4. **Governance:** [why the agent cannot freely change AWS](docs/governance.md)
-5. **Long technical demo:** [Demo v1](docs/demo-v1.md)
-6. **Current public status:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
-7. **Learning portal:** https://amitkarpe.github.io/aws-secops/
-
-### Fresh ChatGPT operator session
-
-Start a new chat with only:
-
-> `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
-
-`AGENTS.md` routes ChatGPT to `PROMPT.md`, current context and active GitHub authority. Chat history is not the project source of truth.
-
-## Evidence
-
-Key recorded milestones:
-
-- [PR #23](https://github.com/amitkarpe/aws-secops/pull/23) — governed S3 execution with native approval, Gateway/Policy and provider verification.
-- [PR #25](https://github.com/amitkarpe/aws-secops/pull/25) — AWS Config + exact restricted-SSH remediation direction.
-- [PR #27](https://github.com/amitkarpe/aws-secops/pull/27) — recorded 100-S3 + 10-SG Demo v1 acceptance.
-- [PR #64](https://github.com/amitkarpe/aws-secops/pull/64) — live Harness-native S3 investigation + Decision Timeline.
-- [PR #65](https://github.com/amitkarpe/aws-secops/pull/65) — unhealthy Config evidence fails closed as `UNVERIFIED/BLOCKED`.
-- [PR #66](https://github.com/amitkarpe/aws-secops/pull/66) — Config-only `CLEAR` cannot be presented as provider verification.
-
-Issue [#60](https://github.com/amitkarpe/aws-secops/issues/60) is the durable authority for the current agentic SecOps phase and live acceptance evidence.
+- Issue #82 / PRs #83–#84 — four-account provider E2E
+- Issue #88 / PRs #89–#91 — organization AWS Config evidence
+- Issue #87 / PR #92 — management rehearsal
+- Issue #93 / PR #94 — acceptance evidence on ops/sec
+- Issue #95 / PRs #96–#98 — live four-account ops/sec default scope
 
 ## Important boundaries
 
-- AWS Config, CloudTrail, CloudWatch and direct provider reads remain authoritative AWS evidence sources.
-- The Harness is read-only; it does not become a remediation executor when prompted to fix something.
-- Human approval, Gateway/Policy, exact tools and IAM remain separate AWS-change controls.
-- Provider state, not model confidence, determines remediation completion.
-- `UNKNOWN`, `BLOCKED`, `UNVERIFIED` and partial evidence remain explicit.
-- No multi-account live claim exists until a second explicitly authorized owned read scope is configured and independently verified.
-- No production, arbitrary-resource, generic AWS administration or 1,000-resource claim is made.
+- Personal LAB only; no Synapxe/work/office authority.
+- Exactly two supported controls.
+- Four-account chat tools are read-only.
+- Multi-account mutation remains on the separate governed GitHub OIDC path.
+- Reject means zero writes for that exact batch.
+- Provider readback proves remediation completion.
+- AWS Config is independent asynchronous evidence.
+- No generic model-accessible AWS administration tool is exposed.
+- Public/default output hides account IDs, ARNs, bucket names, Security Group IDs and credentials.
 
-## Repository map
+### Fresh ChatGPT operator session
 
-```text
-docs/implementation/   dated plans and implementation proofs
-docs/operations/       current short demo + historical operations material
-docs/research/         AgentCore, cost and feasibility research
-infra/                  repository-owned AWS infrastructure definitions
-integration/           historical/current agent integration code
-pilot_v1/              bounded Demo v1 remediation logic
-scripts/                deployment, proof and operator helpers
-tests/                  deterministic regression tests
-```
+Start a new chat with:
 
-Historical documents are intentionally retained as engineering evidence. They are not all current architecture authority.
+> `Using GitHub app - Read AGENTS.md, CONTEXT.md, active Issue/PR and continue.`
 
-## Contributors / AI workers
-
-Short-session read order:
-
-1. `AGENTS.md` — bootstrap/router and repository rules
-2. `CONTEXT.md` — current truth and active authority
-3. `PROMPT.md` — full ChatGPT + GitHub + AWS Core operating model
-4. active Issue/PR — work authority
-5. `SPEC.md` / `ROADMAP.md` when relevant
-
-## Public repository boundary
-
-Treat repository content, Issues/PRs, Actions logs and Git history as public. Do not publish credentials, account IDs, private ARNs/endpoints, authentication data, session IDs, raw private findings or private screenshots.
-
-## Status
-
-**Issue #60 Milestones 1–2 are live-deployed and healthy-path accepted on the read-only AgentCore Harness. Milestone 3 is blocked pending a second explicitly authorized owned AWS read scope. Milestone 4 is consolidating the short demo and public documentation around the verified current architecture.**
+GitHub is the durable project source of truth.
