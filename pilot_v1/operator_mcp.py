@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Literal
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
@@ -93,9 +94,8 @@ def multi_account_call(operation: str, control: str, batch_id: str | None = None
         payload = {"control": control}
         timeout = 170
     else:
-        if not isinstance(batch_id, str) or len(batch_id) != 20:
+        if not isinstance(batch_id, str) or not re.fullmatch(r"[a-f0-9]{20}", batch_id):
             raise ValueError("exact frozen batch id required")
-        identity(batch_id)
         path = "/api/operator/multi-account-execute"
         payload = {"control": control, "batch_id": batch_id}
         timeout = 170
