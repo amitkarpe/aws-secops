@@ -11,6 +11,7 @@ import tarfile
 
 SSM_SAFE_COMMAND_BYTES = 80_000
 UPDATE_FILES = [
+    "pilot_v1/agentic_evidence.py",
     "pilot_v1/control_catalog.py",
     "pilot_v1/demo_prepare.py",
     "pilot_v1/log_proof.py",
@@ -111,6 +112,7 @@ commands += stage("/etc/systemd/system/aws-secops-sg.service", unit.encode(), "6
 commands += [
     "install -m 644 /opt/aws-secops-sg/pilot_v1/compliance_mcp.py /opt/aws-secops/pilot_v1/compliance_mcp.py",
     "install -m 644 /opt/aws-secops-sg/pilot_v1/operator_mcp.py /opt/aws-secops/pilot_v1/operator_mcp.py",
+    "install -m 644 /opt/aws-secops-sg/pilot_v1/agentic_evidence.py /opt/aws-secops/pilot_v1/agentic_evidence.py",
     "install -m 644 /opt/aws-secops-sg/integration/sg-approval-hook.cjs /opt/aws-secops/integration/sg-approval-hook.cjs",
     "install -m 644 /opt/aws-secops-sg/integration/install-compliance.cjs /opt/aws-secops/integration/install-compliance.cjs",
     "install -m 644 /opt/aws-secops-sg/integration/compliance-agent.json /opt/aws-secops/integration/compliance-agent.json",

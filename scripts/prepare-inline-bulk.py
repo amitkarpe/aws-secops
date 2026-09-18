@@ -9,11 +9,13 @@ import tarfile
 
 SSM_SAFE_COMMAND_BYTES = 80_000
 UPDATE_FILES = [
+    "pilot_v1/agentic_evidence.py",
     "pilot_v1/control_catalog.py",
     "pilot_v1/demo_prepare.py",
     "pilot_v1/log_proof.py",
     "pilot_v1/operator_mcp.py",
     "pilot_v1/operator_protocol.py",
+    "pilot_v1/org_config_overview.py",
     "pilot_v1/operator_server.py",
     "pilot_v1/static/operator.html",
     "scripts/demo-control.py",
@@ -114,6 +116,8 @@ commands += [
     "install -m 644 /opt/aws-secops-bulk/pilot_v1/mcp_executor.py /opt/aws-secops/pilot_v1/mcp_executor.py",
     "install -m 644 /opt/aws-secops-bulk/pilot_v1/mcp_bridge.py /opt/aws-secops/pilot_v1/mcp_bridge.py",
     "install -m 644 /opt/aws-secops-bulk/pilot_v1/operator_mcp.py /opt/aws-secops/pilot_v1/operator_mcp.py",
+    "install -m 644 /opt/aws-secops-bulk/pilot_v1/agentic_evidence.py /opt/aws-secops/pilot_v1/agentic_evidence.py",
+    "install -m 644 /opt/aws-secops-bulk/pilot_v1/org_config_overview.py /opt/aws-secops/pilot_v1/org_config_overview.py",
     "install -m 644 /opt/aws-secops-bulk/integration/bulk-approval-hook.cjs /opt/aws-secops/integration/bulk-approval-hook.cjs",
     "install -m 644 /opt/aws-secops-bulk/integration/install-bulk-executor.cjs /opt/aws-secops/integration/install-bulk-executor.cjs",
     "systemctl daemon-reload", "echo INLINE_WORKER_STAGED_NOT_STARTED",
