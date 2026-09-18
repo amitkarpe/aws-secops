@@ -34,6 +34,10 @@ from pilot_v1.multi_account_campaign import (
 
 TARGETS_ENV = "SECOPS_ISSUE82_TARGETS_JSON"
 ROLE_SESSION = "aws-secops-issue82"
+CONFIG_RULE_IDENTIFIERS = {
+    S3_CONTROL: "S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED",
+    SG_CONTROL: "INCOMING_SSH_DISABLED",
+}
 TAGS = [
     {"Key": "project", "Value": "aws-secops"},
     {"Key": "purpose", "Value": "issue-82-multi-account-e2e"},
@@ -277,16 +281,37 @@ def _config_state(session: TargetSession, control: str, resource_id: str, provid
     statuses = recorder.get("ConfigurationRecordersStatus", [])
     if not any(row.get("recording") is True and row.get("lastStatus") == "SUCCESS" for row in statuses):
         return "UNAVAILABLE"
+
     rules = _run([
         "configservice", "describe-config-rules",
-        "--config-rule-names", control,
         "--output", "json",
     ], env=session.env, allow_failure=True)
     if rules.returncode:
         return "UNAVAILABLE"
+    try:
+        config_rules = json.loads(rules.stdout or "{}").get("ConfigRules", [])
+    except json.JSONDecodeError:
+        return "UNAVAILABLE"
+
+    rule_name: str | None = None
+    for row in config_rules:
+        if row.get("ConfigRuleName") == control:
+            rule_name = control
+            break
+    if rule_name is None:
+        wanted_identifier = CONFIG_RULE_IDENTIFIERS.get(control)
+        for row in config_rules:
+            name = row.get("ConfigRuleName")
+            identifier = row.get("Source", {}).get("SourceIdentifier")
+            if isinstance(name, str) and identifier == wanted_identifier:
+                rule_name = name
+                break
+    if rule_name is None:
+        return "UNAVAILABLE"
+
     details = _run([
         "configservice", "get-compliance-details-by-config-rule",
-        "--config-rule-name", control,
+        "--config-rule-name", rule_name,
         "--limit", "100",
         "--output", "json",
     ], env=session.env, allow_failure=True)

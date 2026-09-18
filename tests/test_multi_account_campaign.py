@@ -120,6 +120,9 @@ class Issue82CampaignContractTests(unittest.TestCase):
         self.assertIn("oidc-lab-admin", text)
         self.assertIn("put-public-access-block", text)
         self.assertIn("revoke-security-group-ingress", text)
+        self.assertIn("SourceIdentifier", text)
+        self.assertIn("S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED", text)
+        self.assertIn("INCOMING_SSH_DISABLED", text)
         self.assertNotIn("put-bucket-policy", text)
         self.assertNotIn("put-object", text)
 
