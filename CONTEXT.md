@@ -86,12 +86,13 @@ For both controls and all four aliases:
 
 ## Current Authority
 
-- aws-secops Issue #82 / PR #83: multi-account S3 + SG + Config E2E.
-- aws-platform Issue #34 / PR #35: G-driven OIDC execution surface.
+- aws-secops Issue #85 / PR #86: management-facing audit evidence view.
+- aws-secops Issue #82 / PR #83/#84: completed multi-account S3 + SG + Config E2E.
+- aws-platform Issue #34 / PR #35: completed G-driven OIDC execution surface.
 - aws-platform Issue #36: completed autonomous G/O control-plane milestone.
 
 ## Next
 
-Management-facing evidence/audit visualization is the next bounded product milestone.
+Complete Issue #85 / PR #86, validate the public-safe documentation view, and merge when eligible.
 
 For product/security rules use `SPEC.md`. For history use closed Issues/PRs and Git history.
