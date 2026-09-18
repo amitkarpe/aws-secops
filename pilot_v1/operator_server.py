@@ -20,6 +20,7 @@ from .bulk_server import BulkHandler, BulkService
 from .control_catalog import get_control, public_catalog
 from .demo_prepare import S3_NONCOMPLIANT, count_s3, require_resettable, reset_s3
 from .operator_protocol import ConfirmationGate
+from .org_config_overview import read_status as read_four_account_status, remediation_plan as four_account_plan
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
@@ -149,8 +150,30 @@ class OperatorService(BulkService):
             "action": "enable all four bucket-level Block Public Access settings",
         }
 
+    def multi_account_status(self) -> dict:
+        return read_four_account_status()
+
+    def multi_account_plan(self, control: str) -> dict:
+        return four_account_plan(control)
+
     def status(self) -> dict:
         degraded = []
+        try:
+            multi_account = self.multi_account_status()
+        except Exception:
+            multi_account = {
+                "version": 1,
+                "scope": "four-account-live-config",
+                "source": "AWS Config organization aggregator",
+                "accounts": [],
+                "controls": [S3_CONTROL, SG_CONTROL],
+                "account_ids": "hidden-by-default",
+                "resource_identifiers": "not-collected",
+                "mutation": False,
+                "available": False,
+                "message": "Live four-account Config evidence is temporarily unavailable.",
+            }
+            degraded.append("four-account Config overview unavailable")
         try:
             s3 = self.s3_status()
         except Exception:
@@ -177,6 +200,7 @@ class OperatorService(BulkService):
         return {
             "version": 1, "agent_url": "https://sec.astromedicomp.org/",
             "controls": [s3, sg],
+            "multi_account": multi_account,
             "acceptance": LATEST_ACCEPTANCE,
             "catalog": public_catalog(),
             "degraded": bool(degraded), "degraded_sources": degraded,
@@ -309,6 +333,17 @@ class OperatorHandler(BulkHandler):
                 self._json(403, {"error": "unexpected local Host"}); return
             try: self._json(200, self.service.status())
             except Exception: self._json(503, {"error": "operator status unavailable"})
+            return
+        if parsed.path == "/api/operator/multi-account-plan":
+            if not self._local_host():
+                self._json(403, {"error": "unexpected local Host"}); return
+            try:
+                query = parse_qs(parsed.query, strict_parsing=True)
+                if set(query) != {"control"} or len(query["control"]) != 1:
+                    raise ValueError("one control required")
+                self._json(200, self.service.multi_account_plan(query["control"][0]))
+            except ValueError: self._json(400, {"error": "invalid four-account plan request"})
+            except Exception: self._json(503, {"error": "four-account plan unavailable"})
             return
         if parsed.path == "/api/operator/plan":
             if not self._local_host():

@@ -13,6 +13,7 @@ from pydantic import ConfigDict
 from .queries import identity
 
 BACKEND_ENV = "SECOPS_SG_BACKEND_URL"
+OPERATOR_BACKEND_ENV = "SECOPS_OPERATOR_BACKEND_URL"
 READ_OPS = {"get_config_summary", "list_config_findings", "list_sg_batches", "get_sg_batch"}
 ALL_OPS = READ_OPS | {"start_sg_batch_execution"}
 CONTROLS = {"s3-bucket-level-public-access-prohibited", "restricted-ssh"}
@@ -32,6 +33,33 @@ def backend_url() -> str:
             or not parsed.port or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment):
         raise ValueError("compliance backend must be an operator-configured loopback origin")
     return value
+
+def operator_backend_url() -> str:
+    value = os.environ.get(OPERATOR_BACKEND_ENV, "http://localhost:4444").rstrip("/")
+    parsed = urlsplit(value)
+    if (parsed.scheme != "http" or parsed.hostname not in {"localhost", "127.0.0.1"}
+            or parsed.port != 4444 or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment):
+        raise ValueError("operator backend must be fixed loopback port 4444")
+    return value
+
+
+def read_multi_account_status() -> dict:
+    request = Request(operator_backend_url() + "/api/operator/status")
+    try:
+        with build_opener(ProxyHandler({}), NoRedirect()).open(request, timeout=45) as response:
+            raw = response.read(100_001)
+        if len(raw) > 100_000:
+            raise ValueError("four-account response too large")
+        value = json.loads(raw)
+        if not isinstance(value, dict) or value.get("version") != 1:
+            raise ValueError("invalid operator status response")
+        result = value.get("multi_account")
+        if not isinstance(result, dict) or result.get("scope") != "four-account-live-config":
+            raise ValueError("four-account status missing")
+        return result
+    except Exception:
+        raise ValueError("Live four-account Config status unavailable; no action requested.") from None
+
 
 
 def _validate(operation: str, arguments: dict) -> None:
@@ -104,6 +132,12 @@ server = FastMCP(
 
 
 @server.tool()
+def get_multi_account_status() -> dict:
+    """Read live Config status for exactly lab-dev, lab-poc, lab-qa and lab-sec. No mutation."""
+    return read_multi_account_status()
+
+
+@server.tool()
 def get_config_summary() -> dict:
     """Read exact AWS Config summaries for S3 BPA and restricted-ssh. No Config mutation."""
     return dispatch("get_config_summary", {})
@@ -154,5 +188,5 @@ for tool in server._tool_manager.list_tools():
 
 
 if __name__ == "__main__":
-    backend_url()
+    backend_url(); operator_backend_url()
     server.run(transport="stdio")
