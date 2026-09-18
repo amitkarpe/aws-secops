@@ -24,6 +24,27 @@ from .operator_protocol import ConfirmationGate
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
 
+LATEST_ACCEPTANCE = {
+    "date": "2026-09-18",
+    "scope": "four-account GitHub OIDC acceptance proof",
+    "aliases": ["lab-dev", "lab-poc", "lab-qa", "lab-sec"],
+    "controls": {
+        S3_CONTROL: {
+            "reject_writes": 0, "approve_mutations": 4,
+            "provider_verified": True, "config": "COMPLIANT x4",
+            "rerun": "ALREADY_COMPLIANT / 0 writes",
+        },
+        SG_CONTROL: {
+            "reject_writes": 0, "approve_mutations": 4,
+            "provider_verified": True, "config": "COMPLIANT x4",
+            "rerun": "ALREADY_COMPLIANT / 0 writes",
+        },
+    },
+    "note": "Acceptance evidence only; live retained-resource cards below show current runtime state.",
+    "scp_change": False,
+    "config_auto_remediation": False,
+}
+
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
@@ -156,6 +177,7 @@ class OperatorService(BulkService):
         return {
             "version": 1, "agent_url": "https://sec.astromedicomp.org/",
             "controls": [s3, sg],
+            "acceptance": LATEST_ACCEPTANCE,
             "catalog": public_catalog(),
             "degraded": bool(degraded), "degraded_sources": degraded,
             "message": ("Partial status: " + "; ".join(degraded) + ". Provider/batch truth is shown where available."
