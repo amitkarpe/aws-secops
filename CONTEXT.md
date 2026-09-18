@@ -2,94 +2,52 @@
 
 Repository: `amitkarpe/aws-secops`  
 Status: ACTIVE  
-Updated: 2026-09-18
+Updated: 2026-09-19
 
-> Current-only restart state. History belongs in closed Issues/PRs and Git history.
-
-## Current Product Truth
-
-- Primary demo scope is exactly `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`.
-- Supported controls:
-  1. `s3-bucket-level-public-access-prohibited`
-  2. `restricted-ssh`
-- `ops.astromedicomp.org` defaults to live four-account organization Config evidence.
-- `sec.astromedicomp.org` defaults generic status/plan questions to live four-account tools; Issue #100 is adding native-approved execution for the same exact scope.
-- The retained 100-S3 / 10-SG runtime is explicitly legacy/single-account.
-- G/ChatGPT controls the durable workflow; **O = GitHub OIDC** performs bounded four-account writes.
-- Direct S3/EC2 provider readback is remediation truth.
-- AWS Config is independent asynchronous evidence.
-
-## Latest Four-Account Acceptance
-
-### S3
-
-Batch: `79677c056ccfe4a2aeee`
-
-- prepared: `SAFE_NONCOMPLIANT`;
-- Config before: `NON_COMPLIANT x4`;
-- Reject: **0 writes**;
-- Approve: **4 exact BPA updates**;
-- provider readback: **VERIFIED x4**;
-- Config after convergence: **COMPLIANT x4**;
-- rerun: `ALREADY_COMPLIANT`, 0 writes.
-
-### Security Group
-
-Batch: `850a97336aded01e0aa1`
-
-- prepared: `SAFE_NONCOMPLIANT_UNATTACHED`;
-- Config before: `NON_COMPLIANT x4`;
-- Reject: **0 writes**;
-- Approve: **4 exact unrestricted-SSH revocations**;
-- provider readback: **VERIFIED x4**;
-- Config after convergence: **COMPLIANT x4**;
-- rerun: `ALREADY_COMPLIANT`, 0 writes.
-
-## Web / Agent Acceptance
-
-- Operator backend scope: `four-account-live-config`.
-- Operator returns exactly four aliases and both controls.
-- Compliance Agent `get_multi_account_status`: PASS.
-- Compliance Agent `get_multi_account_remediation_plan`: PASS.
-- Four-account status/plan remain read-only. When all four aliases for one control are `NON_COMPLIANT`, Issue #100 may freeze one exact batch and present native LibreChat Approve/Reject.
-- Approved chat execution uses one fixed CodeBuild project sourced from `amitkarpe/aws-secops@main`, then assumes the existing G/O controller role; existing target-role trust remains unchanged.
-- Live LibreChat agent contains the four-account default-scope instructions and both four-account tools.
-- `sec.astromedicomp.org` local TLS route: HTTP 200.
-- `ops.astromedicomp.org` local TLS route: HTTP 401 without Basic Auth, as expected.
-
-## Organization Config
-
-- recorders + delivery active across all four aliases;
-- both organization managed rules deployed;
-- organization aggregator in `ap-southeast-1`;
-- no Config automatic remediation;
-- no SCP change required.
-
-## Operating Model
-
-> **Read evidence -> recommend -> freeze exact batch -> native decision -> fixed CodeBuild/G/O controller -> provider proves -> Config independently evidences.**
-
-- Four-account reads/plans do not grant mutation authority; only the exact Issue #100 native-ASK executor may dispatch a frozen control + batch.
-- Reject means zero writes for that exact batch.
-- Public/default output remains alias-only.
-- Raw account IDs, ARNs, bucket names, SG IDs and credentials remain hidden.
-- Personal LAB only; no Synapxe/work/office scope.
-- X/Codex is fallback only.
+> Current-only restart state. GitHub and runtime readback take precedence over chat history.
 
 ## Current Authority
 
-- Issue #100: native chat approval + CodeBuild execution for the exact four-account S3/SG scope.
+- Issue #106 / PR #107: management-facing Ops Operator Center GUI.
+- Continue the same PR; do not create a replacement implementation PR.
+- Scope is presentation and evidence clarity only. Backend APIs, Basic Auth, S3/SSH approvals, executor logic and AWS permissions remain unchanged.
+- Validate GitHub first, then AWS MCP STS against the personal-LAB account specified in Issue #106, with `ap-southeast-1` explicitly selected. Stop AWS work on identity/authentication failure.
 
-## Completed Authority
+## Product Scope
 
-- Issue #95 / PRs #96–#99: live four-account web/agent default scope.
-- Issue #93 / PR #94: acceptance evidence on web tools.
-- Issue #88 / PRs #89–#91: organization Config bootstrap.
-- Issue #87 / PR #92: management rehearsal.
-- Issue #82 / PRs #83–#84: four-account provider E2E.
+- Exactly `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`.
+- Exactly `s3-bucket-level-public-access-prohibited` and `restricted-ssh`.
+- `ops.astromedicomp.org`: existing four-account organization Config evidence.
+- `sec.astromedicomp.org`: status/plan plus the bounded Issue #100 native-approval executor.
+- Retained 100-S3 / 10-SG behavior is legacy single-account scope only.
+- Public/default output remains alias-only. No company/work/PROD scope.
+
+## PR #107 Implementation
+
+- Summary, exact four-account matrix, explanatory approval flow and historical acceptance cards.
+- Refresh failure clears primary success; unknown states never count as compliant.
+- Browser response age is explicitly not Config evaluation age.
+- The existing backend acceptance record is historical GitHub OIDC proof, not a live audit feed.
+- Legacy controls and advanced history are collapsed; existing confirmation behavior is preserved.
+- Focused JavaScript behavior checks and synthetic desktop/mobile Chromium checks pass locally. See the PR for CI on the final head.
+- Deployment and authenticated live verification are not yet recorded for this GUI revision. Do not infer rollout from a merge or a synthetic screenshot.
+
+## Acceptance Background
+
+Issue #100 records actual MCP S3 and SSH executions through fixed CodeBuild/CodeConnections, four provider-verified changes per control, Config convergence and the already-compliant guard. Its recorded Reject test withheld executor invocation after ASK; it was not a browser Reject-click test.
+
+PR #105 remains the separate, open final acceptance documentation change. It records the final intentional reset to `NON_COMPLIANT x4` for both controls. That is historical expected demo state, not a fresh runtime observation. Reconcile its CONTEXT edits with this active Issue #106 pointer before any later merge.
+
+Detailed prior evidence belongs in Issues #82, #88, #93, #95 and #100 and their PRs, not in this restart index.
+
+## Safety
+
+`Config -> read-only plan -> frozen exact batch -> native decision -> fixed CodeBuild/CodeConnections -> existing G/O controller -> exact target sessions -> provider readback -> independent Config convergence`
+
+S3 and SSH remain separate approvals. No generic AWS administration, new controls, IAM/SCP changes or Config auto-remediation. Direct provider readback is remediation truth. Preserve manifests, journals and current access controls. X/Codex is fallback only.
 
 ## Next
 
-Complete Issue #100 implementation, deploy the fixed CodeBuild executor and native approval hook, then run 2–3 rounds of Reject/Approve/provider/Config acceptance before Amit's browser test.
+Finish PR #107 review/CI, then perform only the authorized GUI rollout through the existing deployment path and record authenticated live verification on Issue #106. Keep the Issue open until that live acceptance is complete.
 
-For product/security rules use `SPEC.md`.
+For the trusted execution contract, read `SPEC.md`.
