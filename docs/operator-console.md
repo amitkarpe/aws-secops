@@ -1,107 +1,58 @@
 # Operations Console direction
 
-The Operator page is the management-facing entry point for the **live four-account SecOps demo**.
+The Operator page is the management-facing entry point for the four-account SecOps demo.
 
-## Active milestone — Issue #106
+## Issue #106 / PR #107
 
-Improve `ops.astromedicomp.org` so a manager can understand current risk, approval state and accepted execution evidence in **under 30 seconds**.
+This is a **presentation / GUI milestone only**. The existing backend, authentication, approvals and AWS mutation boundary are unchanged.
 
-This is a **presentation / GUI milestone only**. Do not widen the accepted AWS mutation boundary.
+Before continuing, validate GitHub access and read `AGENTS.md`, `CONTEXT.md`, `SPEC.md` and the owning Issue/PR. Validate AWS MCP with STS against the personal-LAB account specified in Issue #106, using `ap-southeast-1`. Stop AWS work if identity differs or authentication fails. Initial validation is read-only.
 
-### New ChatGPT session bootstrap
+## Primary view
 
-Before implementation, G must:
-
-1. Validate the GitHub app/plugin can read `amitkarpe/aws-secops`.
-2. Read `AGENTS.md`, `CONTEXT.md`, `SPEC.md`, Issue #106 and its linked PR.
-3. Validate AWS MCP with STS.
-4. Continue AWS work only when Account = **`333438771545`** and Region = `ap-southeast-1`.
-5. If AWS MCP is disconnected or returns another account, stop AWS work and ask Amit to reconnect the correct MCP session.
-6. Keep initial validation read-only.
-
-## Current product truth
-
-Primary scope:
+The page puts management summary cards and the live risk matrix first:
 
 - exactly `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`;
-- S3 bucket-level Block Public Access;
-- restricted SSH;
-- aliases only — raw account/resource identifiers hidden.
+- exactly S3 Block Public Access and restricted SSH;
+- eight account/control checks, not eight resources;
+- **Attention** when any known check is non-compliant, including mixed unknown states;
+- **Pending** when evidence is unavailable or only compliant/unknown checks remain;
+- **Ready** only when all eight Config checks are compliant. This does not mean a remediation batch is eligible or approved.
 
-Accepted four-account execution path:
+Unknown, insufficient-data and not-applicable checks are never counted as compliant. Unexpected aliases, duplicate aliases, the wrong scope/Region, or unavailable/partial responses do not produce a successful live view. Rendering uses fixed aliases and allowlisted states, not raw identifiers or API-supplied HTML.
 
-`Config -> read-only plan -> frozen exact batch -> native Approve/Reject -> fixed CodeBuild project -> GitHub App + AWS CodeConnections -> existing G/O controller -> provider readback -> Config convergence`
+## Refresh and evidence age
 
-Live acceptance already proved:
+`Refresh live evidence` uses the existing read-only `/api/operator/status` endpoint. It does not prepare or execute remediation. Only one refresh is in flight; failure clears the primary success state and enables retry. The timer updates a local age label, not the backend.
 
-- S3 Reject = zero execution dispatch;
-- S3 Approve = four provider-verified changes;
-- SG Reject = zero execution dispatch;
-- SG Approve = four provider-verified changes;
-- Config convergence = `COMPLIANT x4` for both controls;
-- compliant rerun fails closed / no new execution.
+The age shown is **time since the browser received a valid Config response**. It is not AWS Config evaluation age, recorder health, or provider-verification freshness. The existing API does not provide Config evaluation timestamps. The previous successful receipt time remains visible after failure, explicitly alongside unavailable current evidence.
 
-The LAB demo is intentionally reset to `NON_COMPLIANT x4` for both controls for the next live browser demonstration.
+## Execution flow and historical evidence
 
-## Management GUI target
+The explanatory flow is:
 
-The primary Operator Center should emphasize:
+`Detect -> Plan -> Human Approval -> Bounded Fix -> Verify`
 
-- overall demo state: **Ready / Attention / Pending**;
-- four-account × two-control live compliance matrix;
-- current compliant / non-compliant totals;
-- simple flow: **Detect -> Plan -> Human Approval -> Bounded Fix -> Verify**;
-- latest accepted execution evidence;
-- short audit/evidence timeline;
-- Config refresh time / evidence age.
+The existing four-account architecture remains:
 
-Use the existing backend APIs and current HTML/CSS/JS where possible.
+`Config -> read-only plan -> frozen exact batch -> native Approve/Reject -> fixed CodeBuild/CodeConnections -> existing G/O controller -> provider readback -> independent Config convergence`
 
-Do not introduce a framework unless the current page truly cannot support the design.
+The evidence cards display the existing backend `acceptance` record. That record is saved four-account GitHub OIDC acceptance proof, not a new live execution feed or a timestamped audit log. Counts, provider verification and Config convergence are displayed separately for S3 and SSH. Missing or incomplete records never produce an unconditional success sequence.
+
+Issue #100 and PR #105 contain the later chat/CodeBuild acceptance narrative. In Issue #100's recorded test, Reject was simulated by withholding executor invocation after ASK; this is not a claim that a browser Reject click was exercised by this GUI milestone. PR #107 does not change that backend record or manufacture newer audit events.
+
+Historical Config `COMPLIANT x4` can coexist with current non-compliance after an intentional LAB reset. Only the primary matrix describes the fetched current Config view. No reset or remediation is performed by these UI tests.
 
 ## Legacy retained demo
 
-The earlier 100-S3 / 10-SG runtime remains for engineering/history.
+The retained 100-S3 / 10-SG controls and advanced `/bulk` history are inside the collapsed **Legacy retained single-account demo** section. Their existing per-family preview, explicit confirmation and prepare behavior remain unchanged. They do not prepare the primary four-account scope.
 
-It must be visually secondary and clearly labeled:
+## Validation and rollout
 
-> **Legacy retained single-account demo**
+The existing offline checks include a credential-free test executing the actual inline JavaScript with Node's built-in VM. It covers primary states, failed refresh/recovery, alias/state validation, absent/incomplete historical evidence and the read-only refresh route. No new framework or package is required.
 
-Its Prepare buttons affect only retained legacy resources. They do **not** prepare the primary four-account scope.
-
-`/bulk` remains advanced legacy S3 batch history.
-
-## Evidence model
-
-| Evidence | Source of truth |
-|---|---|
-| Current four-account compliance | Organization AWS Config aggregator |
-| Current resource state after change | Direct provider readback |
-| Human decision | Native LibreChat Approve / Reject |
-| Bounded execution | Fixed CodeBuild project + existing G/O controller |
-| AWS API activity | CloudTrail |
-| Runtime logs | CloudWatch / service logs |
-| Legacy retained workflow state | Durable retained batch journal |
-
-Config is asynchronous evidence. Provider readback remains remediation truth.
-
-## Issue #106 KISS scope
-
-Keep one small PR with about 2–3 related tasks:
-
-1. Rework the primary Operator Center layout for management/demo clarity.
-2. Add concise live evidence/status cards using existing backend data.
-3. Make legacy content secondary and improve desktop/mobile readability.
+Synthetic Chromium checks cover desktop, 390px and 320px layouts and legacy cancellation. Synthetic previews are not live AWS verification. Deployment and authenticated live verification remain separate evidence recorded on PR #107 / Issue #106.
 
 ## Guardrails
 
-- no new AWS control;
-- no new mutation API;
-- no generic AWS admin surface;
-- no raw AWS identifiers in the default/public UI;
-- no SCP change;
-- no Config auto-remediation;
-- preserve current Basic Auth/access controls;
-- S3 and SG remain separate approvals;
-- provider readback remains remediation truth;
-- personal LAB only.
+No new AWS control, mutation API, generic administration surface, IAM/SCP change or Config auto-remediation. Preserve Basic Auth and current access controls. S3 and SSH remain separate approvals. Direct provider readback remains remediation truth; Config remains asynchronous independent evidence. Personal LAB only; public/default output remains alias-only.
