@@ -52,7 +52,7 @@ def _request(request: Request, *, timeout: int = 90) -> dict:
 
 
 def read_path(path: str, query: dict[str, object] | None = None) -> dict:
-    if path not in {"/api/operator/status", "/api/operator/plan", "/api/v1/get_batch"}:
+    if path not in {"/api/operator/status", "/api/operator/plan", "/api/operator/multi-account-plan", "/api/v1/get_batch"}:
         raise ValueError("unsupported operator read")
     url = backend() + path
     if query:
@@ -242,6 +242,14 @@ def investigate_s3_context() -> dict:
 def get_s3_decision_timeline() -> dict:
     """Show factual S3 finding-to-verification stages. This is evidence, not model chain-of-thought."""
     return decision_timeline()
+
+
+@server.tool()
+def get_multi_account_remediation_plan(
+    control: Literal["all", "s3-bucket-level-public-access-prohibited", "restricted-ssh"] = "all",
+) -> dict:
+    """Read live four-account Config planning evidence. No AWS mutation or approval."""
+    return read_path("/api/operator/multi-account-plan", {"control": control})
 
 
 @server.tool()
