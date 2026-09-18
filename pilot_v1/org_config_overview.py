@@ -143,12 +143,18 @@ def remediation_plan(
                 "config_state": state,
                 "needs_attention": state == "NON_COMPLIANT",
             })
+        noncompliant_aliases = [row["alias"] for row in rows if row["needs_attention"]]
+        eligible = noncompliant_aliases == list(ALIASES)
         plans.append({
             "control": current,
             "accounts": rows,
-            "noncompliant_aliases": [row["alias"] for row in rows if row["needs_attention"]],
-            "execution_path": "separate governed GitHub OIDC G/O path",
-            "chat_execution_available": False,
+            "noncompliant_aliases": noncompliant_aliases,
+            "execution_path": (
+                "native LibreChat approval -> fixed CodeBuild project -> existing G/O controller role"
+                if eligible else
+                "prepare exact four-account scope only when all four aliases are NON_COMPLIANT"
+            ),
+            "chat_execution_available": eligible,
         })
     return {
         "version": 1,
@@ -158,5 +164,5 @@ def remediation_plan(
         "account_ids": "hidden-by-default",
         "resource_identifiers": "not-collected",
         "mutation": False,
-        "message": "Four-account planning is read-only in this chat runtime. Multi-account writes remain on the separately governed G/O path.",
+        "message": "Four-account status and planning are read-only. When all four aliases for one control are NON_COMPLIANT, an explicit fix request may prepare one frozen batch and invoke a separate native-approval executor.",
     }
