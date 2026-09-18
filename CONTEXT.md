@@ -8,77 +8,84 @@ Updated: 2026-09-18
 
 ## Current Product Truth
 
-- **Four-account S3 + Security Group E2E is live-accepted** across exactly `lab-dev`, `lab-poc`, `lab-qa`, and `lab-sec`.
-- Supported remediation families:
+- Primary demo scope is exactly `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`.
+- Supported controls:
   1. `s3-bucket-level-public-access-prohibited`
   2. `restricted-ssh`
-- G/ChatGPT controls the workflow; **O = GitHub OIDC** performs bounded writes.
-- M/AWS MCP and `aws_secops_operator` AgentCore Harness remain read-only.
+- `ops.astromedicomp.org` defaults to live four-account organization Config evidence.
+- `sec.astromedicomp.org` defaults generic status/plan questions to live four-account read-only tools.
+- The retained 100-S3 / 10-SG runtime is explicitly legacy/single-account.
+- G/ChatGPT controls the durable workflow; **O = GitHub OIDC** performs bounded four-account writes.
 - Direct S3/EC2 provider readback is remediation truth.
-- AWS Config is now a working independent organization evidence plane and converges separately from provider verification.
+- AWS Config is independent asynchronous evidence.
 
-## Live Acceptance
+## Latest Four-Account Acceptance
 
 ### S3
 
-Frozen batch: `79677c056ccfe4a2aeee`
+Batch: `79677c056ccfe4a2aeee`
 
-- deliberate start: Config `NON_COMPLIANT` across all four aliases;
-- Reject: **0 mutations**, Config stayed `NON_COMPLIANT`;
+- prepared: `SAFE_NONCOMPLIANT`;
+- Config before: `NON_COMPLIANT x4`;
+- Reject: **0 writes**;
 - Approve: **4 exact BPA updates**;
-- provider readback: **VERIFIED**;
-- Config convergence: **COMPLIANT x4**;
-- rerun: `ALREADY_COMPLIANT`, 0 mutations, provider verified, Config `COMPLIANT x4`.
+- provider readback: **VERIFIED x4**;
+- Config after convergence: **COMPLIANT x4**;
+- rerun: `ALREADY_COMPLIANT`, 0 writes.
 
 ### Security Group
 
-Frozen batch: `850a97336aded01e0aa1`
+Batch: `850a97336aded01e0aa1`
 
-- deliberate start: Config `NON_COMPLIANT` across all four aliases;
-- Reject: **0 mutations**, Config stayed `NON_COMPLIANT`;
+- prepared: `SAFE_NONCOMPLIANT_UNATTACHED`;
+- Config before: `NON_COMPLIANT x4`;
+- Reject: **0 writes**;
 - Approve: **4 exact unrestricted-SSH revocations**;
-- provider readback: **VERIFIED**;
-- Config convergence: **COMPLIANT x4**;
-- rerun: `ALREADY_COMPLIANT`, 0 mutations, provider verified, Config `COMPLIANT x4`.
+- provider readback: **VERIFIED x4**;
+- Config after convergence: **COMPLIANT x4**;
+- rerun: `ALREADY_COMPLIANT`, 0 writes.
 
-### Organization Config
+## Web / Agent Acceptance
 
-- recorder + delivery active for all four LAB aliases;
-- organization rule: `s3-bucket-level-public-access-prohibited`;
-- organization rule: `restricted-ssh`;
+- Operator backend scope: `four-account-live-config`.
+- Operator returns exactly four aliases and both controls.
+- Compliance Agent `get_multi_account_status`: PASS.
+- Compliance Agent `get_multi_account_remediation_plan`: PASS.
+- Four-account chat plan is read-only and reports `chat_execution_available=false`.
+- Multi-account execution path remains `separate governed GitHub OIDC G/O path`.
+- Live LibreChat agent contains the four-account default-scope instructions and both four-account tools.
+- `sec.astromedicomp.org` local TLS route: HTTP 200.
+- `ops.astromedicomp.org` local TLS route: HTTP 401 without Basic Auth, as expected.
+
+## Organization Config
+
+- recorders + delivery active across all four aliases;
+- both organization managed rules deployed;
 - organization aggregator in `ap-southeast-1`;
-- aggregator source status: `SUCCEEDED`;
-- no SCP change;
-- no Config automatic remediation.
+- no Config automatic remediation;
+- no SCP change required.
 
 ## Operating Model
 
-> **M/Harness discover and reason; Git declares; G controls; O applies; provider readback proves; Config independently evidences.**
+> **Read evidence -> recommend -> explicit decision -> G controls -> O applies -> provider proves -> Config independently evidences.**
 
-- GitHub is durable engineering/audit state.
-- S3 and SG approvals remain independent.
+- Four-account chat reads/plans do not grant mutation authority.
 - Reject means zero writes for that exact batch.
-- No generic model-accessible AWS admin tool exists in aws-secops.
-- Tagged OIDC admin authority is limited to the separate execution path.
-- X/Codex is emergency/local-machine fallback only.
-
-## Safety Boundary
-
+- Public/default output remains alias-only.
+- Raw account IDs, ARNs, bucket names, SG IDs and credentials remain hidden.
 - Personal LAB only; no Synapxe/work/office scope.
-- Demo S3 buckets remain empty and non-public.
-- Demo SGs remain unattached.
-- Default/public output remains alias-only.
-- Raw account IDs, ARNs, bucket names, SG IDs, and credentials remain hidden.
+- X/Codex is fallback only.
 
-## Current Authority
+## Completed Authority
 
-- Issue #95: make ops/sec default to the live four-account Config scope.
-- Issue #93 / PR #94: completed web refresh with final acceptance evidence.
-- Issue #88 / PR #89/#90/#91: organization Config bootstrap and live Config acceptance.
-- Issue #82 / PR #83/#84: provider E2E baseline.
+- Issue #95 / PRs #96–#98: live four-account web/agent default scope.
+- Issue #93 / PR #94: acceptance evidence on web tools.
+- Issue #88 / PRs #89–#91: organization Config bootstrap.
+- Issue #87 / PR #92: management rehearsal.
+- Issue #82 / PRs #83–#84: four-account provider E2E.
 
 ## Next
 
-Merge and deploy Issue #95, then rerun the four-account G/O acceptance and verify ops + Compliance Agent follow live Config convergence instead of the legacy 100-S3/10-SG scope.
+Use this four-account demo as the stable baseline. Keep CodeConnections/CodeBuild as a separate CI/CD experiment; do not replace the proven G/O trust path until its behavior is independently accepted.
 
-For product/security rules use `SPEC.md`. For history use closed Issues/PRs and Git history.
+For product/security rules use `SPEC.md`.

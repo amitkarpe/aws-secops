@@ -1,89 +1,66 @@
 # Operations Console direction
 
-The current Operator homepage and raw `/bulk` batch view were built primarily for Demo v1 preparation, status and engineering troubleshooting.
+The Operator page is now the management-facing entry point for the **live four-account SecOps demo**.
 
-They are useful, but the long-term value is not a second place to perform arbitrary AWS changes.
+## Current role
 
-## Long-term role
+Primary view:
 
-Evolve the Operator UI into an **Operations Console** for platform support and evidence correlation.
+- exactly `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`;
+- live AWS Config organization-aggregator evidence;
+- S3 Block Public Access;
+- restricted SSH;
+- aliases only — raw account/resource identifiers hidden.
 
-A useful future home page could summarize:
+The page also shows the latest accepted E2E proof:
 
-- current compliance/remediation workload;
-- active, completed, failed and unknown jobs;
-- S3 / SG control health;
-- AWS Config, Gateway/Policy and executor health;
-- recent approvals and verification state.
+`NON_COMPLIANT -> Reject/0 writes -> Approve/provider VERIFIED -> Config COMPLIANT -> rerun/0 writes`
 
-## Remediation history
+## Legacy retained demo
 
-Replace raw batch IDs as the primary UX with a human-facing remediation/job identity while preserving the immutable batch details underneath.
+The earlier 100-S3 / 10-SG runtime still exists for engineering/history.
 
-Example:
+It is now explicitly labeled:
 
-```text
-REM-1842  S3 BPA        100 resources   COMPLETED
-REM-1841  Restricted SSH 10 resources   COMPLETED
-REM-1840  S3 BPA         50 resources   REJECTED
-```
+> **Legacy retained single-account demo**
 
-A detail view can then correlate:
+Its Prepare buttons affect only those retained resources. They do **not** prepare the four-account scope.
 
-- finding / control;
-- exact owned scope;
-- recommendation;
-- approver and decision time;
-- Policy result;
-- executor/tool version;
-- provider verification;
-- Config convergence;
-- links to CloudTrail / CloudWatch evidence.
+`/bulk` remains advanced legacy S3 batch history.
 
-## Troubleshooting and health
+## Compliance Agent relationship
 
-The console should make support questions fast to answer:
+`sec.astromedicomp.org` uses the same current four-account scope for generic status and plan questions.
 
-- Is AWS Config recording successfully?
-- Is the delivery channel healthy?
-- Is Gateway/Policy reachable?
-- Which job is RUNNING, FAILED or UNKNOWN?
-- Did provider verification complete?
-- Which version/commit is deployed?
+Four-account chat tools are read-only.
+
+A four-account fix remains on the separately governed G/O path:
+
+`GitHub decision -> GitHub OIDC -> exact AWS change -> provider readback -> Config convergence`
+
+The console must not become a generic account/resource/API selector or a generic AWS admin surface.
 
 ## Evidence model
 
-The console should **aggregate and correlate**, not replace AWS evidence systems.
-
 | Evidence | Source of truth |
 |---|---|
+| Current four-account compliance | Organization AWS Config aggregator |
+| Current resource state after change | Direct provider readback |
+| Four-account execution decision | Durable GitHub workflow |
 | AWS API activity | CloudTrail |
-| Executor/runtime logs | CloudWatch Logs |
-| Compliance evaluation | AWS Config |
-| Current resource state | Direct provider readback |
-| Workflow/approval state | Durable application journal |
-| Policy outcome | AgentCore Gateway/Policy evidence |
+| Runtime logs | CloudWatch / service logs |
+| Legacy retained workflow state | Durable retained batch journal |
 
-A future correlation ID should make one remediation easy to trace across these systems.
+Config is asynchronous evidence. Provider readback remains remediation truth.
 
-## Safe admin actions
+## Useful future additions
 
-Potential long-term console actions should remain narrow, for example:
+Keep future console work narrow:
 
-- refresh provider verification;
-- reconcile an `UNKNOWN` job by readback;
-- refresh Config status;
-- open CloudWatch/CloudTrail evidence;
-- view immutable plan / approval data;
-- archive completed workflow records according to retention policy.
+- visible Config convergence age/timestamp;
+- correlation ID across GitHub, provider readback and Config;
+- recent bounded execution history;
+- CloudTrail / CloudWatch evidence links;
+- clear `PENDING`, `UNKNOWN`, `FAILED` and `COMPLIANT` states.
 
-The console must **not** become a generic selector for arbitrary accounts, resources, APIs or AWS mutations.
-
-## Current Demo v1
-
-For now:
-
-- the main Operator page is the friendly demo/status view;
-- `/bulk` remains an advanced/engineering detail view;
-- normal remediation approval stays in the AWS Compliance Agent chat;
-- the runtime is frozen while public documentation and reviewer feedback are collected.
+Do not add arbitrary-resource mutation controls merely for convenience.

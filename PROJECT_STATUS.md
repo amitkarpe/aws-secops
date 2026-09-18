@@ -1,84 +1,82 @@
 # Project Status
 
-**Current public baseline:** the four-account personal-LAB SecOps demo is live-proven for both supported remediation families. Read-only investigation remains separate from governed GitHub OIDC execution.
+**Current public baseline:** the four-account personal-LAB SecOps web demo is live and re-accepted end to end.
 
 ## Current live scope
 
-Target aliases:
+Aliases:
 
 - `lab-dev`
 - `lab-poc`
 - `lab-qa`
 - `lab-sec`
 
-Supported controls:
+Controls:
 
-1. S3 bucket-level Block Public Access
-2. Security Group restricted SSH
+1. `s3-bucket-level-public-access-prohibited`
+2. `restricted-ssh`
 
-Operating model:
+Primary web tools:
 
-`read-only evidence -> recommendation -> explicit control-specific decision -> OIDC tagged-admin execution -> direct provider readback -> Config evidence`
+- `ops.astromedicomp.org` — live four-account Config matrix
+- `sec.astromedicomp.org` — AWS Compliance Agent with four-account read-only status + plan
 
-## Issue #82 — completed multi-account remediation proof
+The retained 100-S3 / 10-SG runtime remains available only as an explicitly labeled legacy single-account demo.
 
-Live acceptance completed on 2026-09-18.
+## Final live acceptance — 2026-09-18
 
-### S3
+| Control | Prepare | Reject | Approve | Provider | Config | Rerun |
+|---|---|---:|---:|---|---|---|
+| S3 BPA | SAFE_NONCOMPLIANT | 0 writes | 4 updates | VERIFIED | COMPLIANT x4 | ALREADY_COMPLIANT / 0 |
+| Restricted SSH | SAFE_NONCOMPLIANT_UNATTACHED | 0 writes | 4 revocations | VERIFIED | COMPLIANT x4 | ALREADY_COMPLIANT / 0 |
 
-- safe preparation: PASS;
-- frozen four-target batch: PASS;
-- Reject: **0 writes**;
-- Approve: **4 exact BPA updates**;
-- direct S3 provider readback: **VERIFIED**;
-- rerun plan: **ALREADY_COMPLIANT**, 0 writes.
+The live web/API read side was verified at both ends of the run:
 
-### Security Group
+- before remediation: both controls `NON_COMPLIANT` across all four aliases;
+- after provider-verified remediation and Config convergence: both controls `COMPLIANT` across all four aliases.
 
-- safe preparation: PASS;
-- frozen four-target batch: PASS;
-- Reject: **0 writes**;
-- Approve: **4 exact unrestricted-SSH revocations**;
-- direct EC2 provider readback: **VERIFIED**;
-- rerun plan: **ALREADY_COMPLIANT**, 0 writes.
+## Current architecture
 
-### AWS Config
+`Config -> ops/sec read-only evidence -> G controls -> OIDC applies -> provider verifies -> Config converges`
 
-During final acceptance, Config evidence was `UNAVAILABLE` for both controls on all four aliases.
-
-This is reported explicitly and does not override provider truth. Config remains evidence-only and never authorizes a write.
+- **G = ChatGPT / durable GitHub workflow control**
+- **O = GitHub OIDC bounded mutation path**
+- AWS Compliance Agent four-account tools = **read-only**
+- AWS MCP / Harness = **read-only unless separately bounded and explicitly authorized**
+- direct provider readback = remediation truth
+- Config = independent asynchronous evidence
 
 ## Trust boundary
 
-- **G = ChatGPT** controls the durable GitHub workflow.
-- **O = GitHub OIDC** is the bounded mutation path.
-- **M = AWS MCP** remains read-only.
-- `aws_secops_operator` AgentCore Harness remains read-only.
-- S3 and SG approvals remain separate.
+- S3 and SG decisions remain independent.
 - Reject performs zero writes.
-- No generic model-accessible AWS administration tool is exposed.
-- Default/public output hides account IDs, ARNs, bucket names, SG IDs, and credentials.
-- Personal LAB only; no Synapxe/work/office authority.
+- No Config automatic remediation.
+- No SCP change was required for this demo.
+- No generic model-accessible AWS administration tool exists.
+- Default/public output is alias-only.
+- Raw account IDs, ARNs, bucket names, SG IDs and credentials stay hidden.
+- Personal LAB only.
 
-## Earlier accepted milestones
+## Current implementation
 
-- Issue #60: contextual investigation + Decision Timeline.
-- Issue #70: bounded CloudTrail recent-change attribution.
-- Issue #76 / PR #79: public-safe multi-account read-only overview.
-- Issue #80 / PR #81: live AgentCore Harness multi-account overview.
+Completed:
 
-Historical implementation and acceptance evidence remain in closed Issues/PRs and Git history.
+- Issue #82 — multi-account provider E2E
+- Issue #88 — organization Config bootstrap
+- Issue #87 — management rehearsal
+- Issue #93 — acceptance evidence added to web tools
+- Issue #95 — web tools changed from retained single-account default to live four-account default
 
-## Known limits
+Issue #95 implementation PRs:
 
-- This is a bounded LAB demo, not arbitrary-resource or production remediation.
-- AWS Config was unavailable during Issue #82 final acceptance.
-- A Config finding does not prove exploitability, sensitive-data exposure, attacker activity, or business impact.
-- CloudTrail Event History records API activity; it does not prove human identity or intent.
-- The Harness and M do not receive mutation authority.
+- #96 — live four-account ops/sec scope
+- #97 — organization Config reader uses EC2 instance role, not legacy `AWS_PROFILE=vagent`
+- #98 — retained deployment packaging includes planner dependencies
 
-## Current work
+## Current next direction
 
-Issue #82 is complete. The next bounded milestone is **management-facing evidence/audit visualization**.
+The four-account SecOps demo is now the stable baseline.
 
-Contributors and coding agents use `CONTEXT.md` for current restart state and `SPEC.md` for the product/security contract.
+A separate next experiment may compare the existing GitHub Actions + OIDC controller with GitHub App + AWS CodeConnections + CodeBuild. That CI/CD experiment must not weaken the proven SecOps trust boundary.
+
+For restart state use `CONTEXT.md`; for product/security rules use `SPEC.md`.

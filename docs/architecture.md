@@ -1,199 +1,168 @@
 # Architecture
 
-The design separates **reasoning**, **authorization**, **execution** and **verification**. No prompt or model response is treated as an AWS-change security boundary.
+The design separates **evidence**, **reasoning**, **authorization**, **execution** and **verification**.
 
-## Current architecture: two separate planes
+No prompt or model response is an AWS-change security boundary.
 
-The current system deliberately separates the live read/investigation agent from the recorded remediation executor.
-
-### Plane A — live read / investigation
+## Current architecture
 
 ```text
-AWS Config
-   ↓ current compliance evidence
-aws_secops_operator AgentCore Harness — Nova 2 Lite
-   ↓ exactly four allowed read tools
-AgentCore Gateway + Policy — ENFORCE
-   ↓
-Bounded read Lambda
-   ├─ Config recorder/rule/compliance reads
-   └─ retained-demo S3 provider reads when a current finding exists
+AWS Organizations
+      |
+      v
+AWS Config recorders x4
+      |
+      v
+2 organization Config rules
+      |
+      v
+Organization Config aggregator
+      |
+      +-------------------------+
+      |                         |
+      v                         v
+ops.astromedicomp.org     sec.astromedicomp.org
+live four-account UI      AWS Compliance Agent
+                          status + plan only
+      |                         |
+      +------------+------------+
+                   |
+                   v
+            Evidence / plan
+                   |
+                   v
+        explicit governed decision
+                   |
+                   v
+        G = durable GitHub control
+                   |
+                   v
+        O = GitHub OIDC execution
+                   |
+                   v
+      exact S3 / EC2 AWS action
+                   |
+                   v
+       direct provider readback
+                   |
+                   v
+       AWS Config convergence
+```
+
+Primary aliases:
+
+- `lab-dev`
+- `lab-poc`
+- `lab-qa`
+- `lab-sec`
+
+Supported controls:
+
+- `s3-bucket-level-public-access-prohibited`
+- `restricted-ssh`
+
+## Plane A — live four-account evidence
+
+The Operator page and Compliance Agent read organization Config evidence.
+
+The public-safe output includes aliases and compliance states only.
+
+The live Compliance Agent provides:
+
+- `get_multi_account_status`
+- `get_multi_account_remediation_plan`
+
+The four-account plan explicitly reports that chat execution is unavailable.
+
+The model does not receive raw account IDs, arbitrary resource selectors, shell access or generic AWS mutation access.
+
+## Plane B — governed four-account mutation
+
+Four-account writes remain separate from the chat runtime.
+
+```text
+prepare exact LAB test state
         ↓
-Evidence + recommendation + Agent Decision Timeline
+frozen exact control batch
+        ↓
+Reject or Approve
+        ↓
+GitHub OIDC tagged target session
+        ↓
+exact supported AWS API
+        ↓
+provider readback
+        ↓
+Config converges independently
 ```
 
-The live Harness exposes exactly:
+Properties proven live:
 
-1. `get_config_summary`
-2. `list_config_findings`
-3. `investigate_s3_context`
-4. `get_s3_decision_timeline`
+- S3 Reject = 0 writes.
+- S3 Approve = 4 exact BPA updates.
+- SG Reject = 0 writes.
+- SG Approve = 4 exact unrestricted-SSH revocations.
+- provider readback verifies the change.
+- rerun is `ALREADY_COMPLIANT` / 0 writes.
+- Config ultimately reports `COMPLIANT x4`.
 
-The read Lambda has no S3 write, EC2 write, SSM, shell, generic AWS or remediation capability. The two S3 contextual tools accept no model-selected bucket/resource input.
+## Plane C — legacy retained single-account demo
 
-An explicit `fix/apply/execute` request does **not** cause Plane A to mutate AWS.
+The retained 100-S3 / 10-SG runtime remains for earlier engineering/demo evidence.
 
-### Plane B — governed mutation
+It still contains native LibreChat approval, Gateway/Policy and exact-tool flows.
 
-The recorded Demo v1 remediation path remains separate:
+It is **not the default current-status scope** and is clearly labeled legacy in the Operator page.
 
-```text
-Supported exact remediation intent
-   ↓
-Server-owned retained scope / readiness
-   ↓
-Human Approve / Reject
-   ↓
-AgentCore Gateway
-   ↓
-AgentCore Policy
-   ↓
-Exact S3 or Security Group tool
-   ↓
-AWS API
-   ↓
-Direct provider readback
-   ↓
-Durable result
-
-AWS Config converges independently.
-```
-
-This separation is the core trust property:
-
-> **The agent can investigate and recommend; it does not authorize an AWS change.**
-
-## Live read-plane control path
-
-| Layer | Responsibility | Must not do |
-|---|---|---|
-| AWS Config | Supply compliance evidence | Authorize remediation |
-| Harness | Interpret the operator request and choose among four exact read tools | Gain write authority from prompt intent |
-| Gateway | Expose the bounded read target | Become a generic AWS proxy |
-| Policy | Enforce the exact four read actions | Treat model confidence as authorization |
-| Read Lambda | Perform fixed Config/S3 reads | Accept arbitrary resource selection or mutate AWS |
-| Decision Timeline | Show observable evidence/status | Expose or invent hidden chain-of-thought |
-
-### Deterministic S3 investigation scope
-
-A live S3 provider investigation occurs only when current Config evidence contains a matching non-compliant retained-demo candidate.
-
-```text
-current Config NON_COMPLIANT S3 evidence
-        +
-retained demo prefix
-        +
-Singapore Region check
-        +
-exact ownership tags
-        =
-one bounded provider-read candidate
-```
-
-The model does not supply the bucket name.
-
-Direct reads are limited to:
-
-- bucket location;
-- retained ownership tags;
-- Block Public Access configuration;
-- bucket-policy public status.
-
-No object data is read.
-
-## Config-only CLEAR is not provider proof
-
-If Config returns no current retained-demo S3 non-compliant finding, the investigation stops before direct S3 provider reads.
-
-The correct result is:
-
-- Config result: `CLEAR`;
-- `provider_state=NOT_READ`;
-- `risk_context=NOT_ASSESSED`;
-- `provider_evidence=null`.
-
-That does **not** prove the bucket is non-public, safe, secure or provider-verified. It means only that no current bounded non-compliant finding was returned by AWS Config.
-
-The Decision Timeline therefore records `Provider Readback = NOT_READ` rather than manufacturing a provider-success claim.
-
-## Fail-closed Config health
-
-Every bounded Config read checks the recorder health gate.
-
-If the recorder is not recording successfully, the Harness returns structured `UNVERIFIED/BLOCKED` evidence. It does not silently use stale evidence as current truth and does not prepare a remediation conclusion.
-
-Issue #60 live acceptance exercised this failure mode and then the recovered healthy path.
-
-## Governed mutation boundary
-
-Plane B preserves the recorded Demo v1 controls:
-
-| Layer | Responsibility | Must not do |
-|---|---|---|
-| Server-owned planner | Intersect supported control + retained manifest + current readiness | Accept arbitrary model-selected targets |
-| Human approval | Accept or reject the exact family action | Prove execution succeeded |
-| Gateway | Expose the exact executor entry point | Replace Policy or IAM |
-| Policy | Independently ALLOW/DENY the exact invocation | Trust a model statement as proof |
-| Exact tool | Perform one narrow supported AWS change | Become generic AWS CLI/API access |
-| Provider readback | Verify actual AWS state after mutation | Assume Config already converged |
-
-Demo v1 supports two independent action families:
-
-```text
-S3 BPA            -> S3 decision -> exact S3 path
-Restricted SSH    -> SG decision -> exact SG path
-```
-
-A UI may present decisions together, but that does not create blanket approval.
-
-## Operator maintenance is separate again
-
-Re-arming retained demo resources for a live non-compliant demonstration is an **operator-only maintenance path**. It is not a Harness tool and is not remediation approval.
-
-Do not expose reset/re-arm to the model merely to make a demo convenient.
+This preserves earlier evidence without confusing it with the current four-account architecture.
 
 ## Evidence hierarchy
 
-Different sources answer different questions:
-
 | Question | Authoritative evidence |
 |---|---|
+| What does the organization compliance layer report? | AWS Config aggregator |
+| Did the exact resource change? | Direct S3 / EC2 provider readback |
+| What decision was requested? | Durable GitHub workflow |
 | Did an AWS API call occur? | CloudTrail |
-| What did an executor/read function emit? | CloudWatch Logs |
-| What does the compliance rule report? | AWS Config |
-| What is the resource state now? | Direct provider readback |
-| What did the workflow approve/track? | Durable workflow/batch state |
-| What did Policy permit? | Gateway/Policy evidence |
+| What did runtime code emit? | CloudWatch / service logs |
+| What is the retained legacy batch state? | Durable retained journal |
 
-The operator UI and Decision Timeline correlate evidence. They do not replace AWS sources of truth.
+Provider verification proves remediation completion.
 
-## Reliability and uncertainty
+Config is independent asynchronous evidence and can temporarily lag a verified change.
 
-The design preserves explicit uncertainty:
+## Authorization boundary
 
-- bounded Config reads stop at the repository-defined page/result budget;
-- partial evidence remains partial;
-- unhealthy Config fails closed;
-- `UNKNOWN`, `UNVERIFIED`, `BLOCKED` and `FAILED` are not success;
-- provider verification is required before claiming remediation completion;
-- a Config-only CLEAR is never promoted into provider verification.
+| Layer | Responsibility | Must not do |
+|---|---|---|
+| AWS Config | Detect/evidence | Authorize writes |
+| Operator / Compliance Agent | Read, explain, plan | Gain write authority from prompt intent |
+| GitHub control plane | Record exact decision | Become arbitrary AWS console |
+| GitHub OIDC | Obtain bounded short-lived AWS session | Widen target/control scope |
+| Exact AWS action | Apply one supported change | Become generic AWS API access |
+| Provider readback | Verify actual state | Assume Config has already converged |
 
-Historical Demo v1 recovery behavior and exact batch-state rules remain documented in [Demo v1](demo-v1.md) and the [reliability hardening proof](implementation/RELIABILITY_HARDENING_PROOF.md).
+## Operator maintenance
 
-## Multi-account boundary
+Re-arming the safe demo resources is an explicit maintenance/testing action.
 
-Issue #60 Milestone 3 requires exactly one second explicitly authorized owned AWS read scope before any two-account claim is made.
+It is not a Compliance Agent mutation capability and it is not remediation approval.
 
-Current discovery found no reusable second-account access path. No broad cross-account role or administration trust was created to force the milestone to pass.
+## Safety boundary
 
-If a second scope is later configured, the first proof remains **read-only**. Cross-account mutation is a separate later security decision.
+- Personal LAB only.
+- Exactly four approved aliases.
+- Exactly two supported controls.
+- No SCP change required for the current proof.
+- No Config automatic remediation.
+- No generic model-accessible AWS admin tool.
+- Public/default output hides raw AWS identifiers.
+- `UNKNOWN`, `PENDING`, `FAILED` and partial evidence are not success.
 
 ## Current evidence
 
-For the fastest review:
-
 - [3-minute demo](operations/AGENTIC_DEMO_3_MIN.md)
+- [Management audit view](operations/MANAGEMENT_AUDIT_VIEW.md)
 - [Governance](governance.md)
-- [Demo v1](demo-v1.md)
+- [Operations Console](operator-console.md)
 - [Project status](project-status.md)
-- Issue [#60](https://github.com/amitkarpe/aws-secops/issues/60)
