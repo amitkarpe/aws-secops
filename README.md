@@ -96,11 +96,12 @@ Demo v1 planners use complete retained-family readiness gates. This is not an ar
 ## Start here
 
 1. **Short demo:** [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md)
-2. **Architecture:** [current two-plane architecture](docs/architecture.md)
-3. **Governance:** [why the agent cannot freely change AWS](docs/governance.md)
-4. **Long technical demo:** [Demo v1](docs/demo-v1.md)
-5. **Current public status:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
-6. **Learning portal:** https://amitkarpe.github.io/aws-secops/
+2. **Management audit view:** [live multi-account acceptance evidence](docs/operations/MANAGEMENT_AUDIT_VIEW.md)
+3. **Architecture:** [current two-plane architecture](docs/architecture.md)
+4. **Governance:** [why the agent cannot freely change AWS](docs/governance.md)
+5. **Long technical demo:** [Demo v1](docs/demo-v1.md)
+6. **Current public status:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
+7. **Learning portal:** https://amitkarpe.github.io/aws-secops/
 
 ### Fresh ChatGPT operator session
 
