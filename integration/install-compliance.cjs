@@ -20,7 +20,14 @@ const compliance = {
   env:{PYTHONPATH:'/opt/aws-secops',SECOPS_SG_BACKEND_URL:'http://localhost:4455',SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'},
   timeout:35000,initTimeout:15000,chatMenu:false,serverInstructions:true,
 };
-if (updated.mcpServers.aws_compliance && !isDeepStrictEqual(updated.mcpServers.aws_compliance,compliance))
+const legacyCompliance = {
+  type:'stdio', command:'/opt/aws-secops/.venv-mcp/bin/python', args:['-m','pilot_v1.compliance_mcp'],
+  env:{PYTHONPATH:'/opt/aws-secops',SECOPS_SG_BACKEND_URL:'http://localhost:4455'},
+  timeout:35000,initTimeout:15000,chatMenu:false,serverInstructions:true,
+};
+if (updated.mcpServers.aws_compliance
+    && !isDeepStrictEqual(updated.mcpServers.aws_compliance,compliance)
+    && !isDeepStrictEqual(updated.mcpServers.aws_compliance,legacyCompliance))
   throw Error('existing aws_compliance MCP differs; review before replacing');
 updated.mcpServers.aws_compliance = compliance;
 
