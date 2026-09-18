@@ -2,23 +2,68 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AWS SecOps Operator</title>
+<title>AWS SecOps Operator Center</title>
 <style>
 :root{color-scheme:light;--bg:#f5f7fb;--card:#fff;--line:#d9e0ea;--text:#172033;--muted:#657087;--blue:#1769e0;--green:#16834b;--amber:#a46600;--red:#bb2435}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:1040px;margin:auto;padding:34px 22px 70px}header{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:22px}h1{margin:0;font-size:30px}h2{margin:0 0 5px;font-size:20px}.muted{color:var(--muted)}.cards{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 8px 28px #27344b10}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:16px 0}.metric{border:1px solid var(--line);border-radius:10px;padding:10px}.metric b{font-size:24px;display:block}.good{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}.pill{display:inline-block;padding:4px 9px;border-radius:999px;background:#edf2f8;font-size:12px;font-weight:700}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}button,a.button{border:1px solid #b8c4d4;border-radius:9px;background:#fff;padding:10px 13px;color:var(--text);font:inherit;font-weight:700;text-decoration:none;cursor:pointer}button.primary,a.primary{background:var(--blue);border-color:var(--blue);color:#fff}button:disabled{opacity:.5;cursor:wait}.result{margin-top:12px;padding:10px;border-radius:8px;background:#f7f9fc;min-height:42px;white-space:pre-wrap}.status-note{margin-top:8px;padding:8px 10px;border-radius:8px;background:#fff4e5}.status-note:empty{display:none}.flow{margin:20px 0;padding:15px 18px;background:#eef4ff;border:1px solid #cbdcff;border-radius:12px}.flow strong{color:#154c9f}.live{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 8px 28px #27344b10;margin:18px 0}.live table{width:100%;border-collapse:collapse;margin-top:12px}.live th,.live td{text-align:left;padding:11px 9px;border-bottom:1px solid var(--line)}.live th{font-size:13px;color:var(--muted)}.state{font-weight:800}.state.COMPLIANT{color:var(--green)}.state.NON_COMPLIANT{color:var(--red)}.state.INSUFFICIENT_DATA,.state.UNAVAILABLE{color:var(--amber)}details{margin-top:22px}.advanced{margin-top:10px}.error{color:var(--red)}code{background:#eef1f5;padding:2px 5px;border-radius:5px}@media(max-width:760px){.cards{grid-template-columns:1fr}header{align-items:start;flex-direction:column}}
+.overview{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:14px;margin:18px 0}.summary-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:17px;box-shadow:0 8px 28px #27344b10}.summary-card .eyebrow,.section-head .eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.summary-value{font-size:28px;font-weight:850;line-height:1.15;margin:6px 0}.status-badge{display:inline-flex;align-items:center;padding:6px 11px;border-radius:999px;font-weight:850}.status-badge.ready{background:#e9f7ef;color:var(--green)}.status-badge.attention{background:#fff0f1;color:var(--red)}.status-badge.pending{background:#fff4e5;color:var(--amber)}.summary-split{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.summary-split div{padding:8px;border-radius:9px;background:#f7f9fc}.summary-split b{display:block;font-size:20px}.section-head{display:flex;justify-content:space-between;gap:14px;align-items:start}.journey{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:15px}.journey-step{position:relative;border:1px solid var(--line);border-radius:11px;padding:12px;background:#fafbfd;min-height:92px}.journey-step b{display:block;margin-bottom:5px}.journey-step span{font-size:13px;color:var(--muted)}.journey-step:not(:last-child):after{content:"→";position:absolute;right:-13px;top:31px;font-weight:900;color:#8c98aa;z-index:2}.proof-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.proof-item{border:1px solid var(--line);border-radius:11px;padding:12px;background:#fafbfd}.proof-item b{display:block;font-size:19px;margin-top:3px}.audit{border-left:3px solid #b8c8df;padding-left:13px;margin-top:10px}.audit b{display:block}.table-wrap{overflow-x:auto}.live table{min-width:650px}.state{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef1f5;font-size:12px}.state.COMPLIANT{background:#e9f7ef}.state.NON_COMPLIANT{background:#fff0f1}.state.INSUFFICIENT_DATA,.state.UNAVAILABLE,.state.NOT_APPLICABLE{background:#fff4e5}.scope-note{font-size:13px;margin-top:6px}.refresh-line{margin-top:9px;font-size:13px}.legacy-label{color:var(--muted);font-weight:700}@media(max-width:900px){.overview{grid-template-columns:1fr 1fr}.overview .summary-card:first-child{grid-column:1/-1}.journey{grid-template-columns:1fr}.journey-step{min-height:auto}.journey-step:not(:last-child):after{content:"↓";right:auto;left:18px;top:auto;bottom:-18px}.proof-grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.overview,.proof-grid{grid-template-columns:1fr}.overview .summary-card:first-child{grid-column:auto}.summary-split{grid-template-columns:repeat(3,1fr)}.section-head{display:block}}
 </style>
 </head>
 <body><main>
-<header><div><div class="muted">AWS SecOps · Four-account Operations demo</div><h1>Compliance Operator</h1><div class="muted">Live Config → Plan → Governed OIDC execution → Verify</div></div><div class="actions"><button id="refresh">Refresh status</button><a class="button primary" href="https://sec.astromedicomp.org/">Open AWS Compliance Agent</a></div></header>
-<div class="flow"><strong>Primary scope: four LAB accounts.</strong> Live status below comes from the organization AWS Config aggregator. Multi-account writes remain on the separately governed GitHub OIDC G/O path.</div>
-<div class="flow" id="acceptance"><strong>Latest accepted E2E proof</strong><div class="muted">Loading acceptance evidence…</div></div>
+<header><div><div class="muted">AWS SecOps · Management demo · Four LAB accounts</div><h1>Ops Operator Center</h1><div class="muted">See risk, approval boundary, execution evidence, and verification in under 30 seconds.</div></div><div class="actions"><button id="refresh">Refresh live evidence</button><a class="button primary" href="https://sec.astromedicomp.org/">Open AWS Compliance Agent</a></div></header>
+
+<section class="overview" aria-label="Management summary">
+  <article class="summary-card">
+    <div class="eyebrow">Demo status</div>
+    <div class="summary-value"><span id="demo-status" class="status-badge pending">Pending</span></div>
+    <div id="demo-status-note" class="muted">Loading four-account Config evidence…</div>
+    <div id="control-summary" class="scope-note muted">Exactly 4 aliases × 2 controls</div>
+  </article>
+  <article class="summary-card">
+    <div class="eyebrow">Current compliance</div>
+    <div class="summary-split">
+      <div><span class="muted">Compliant</span><b id="compliant-total" class="good">—</b></div>
+      <div><span class="muted">Attention</span><b id="noncompliant-total" class="bad">—</b></div>
+      <div><span class="muted">Pending</span><b id="pending-total" class="warn">—</b></div>
+    </div>
+    <div class="scope-note muted">8 live control checks across lab-dev · lab-poc · lab-qa · lab-sec</div>
+  </article>
+  <article class="summary-card">
+    <div class="eyebrow">Refresh state</div>
+    <div id="refresh-age" class="summary-value">Refreshing…</div>
+    <div id="refresh-source" class="muted">AWS Config organization aggregator</div>
+    <div id="refresh-time" class="refresh-line muted">Waiting for current evidence</div>
+  </article>
+</section>
+
+<section class="live" aria-label="Governed execution flow">
+  <div class="section-head"><div><div class="eyebrow">Execution flow</div><h2>Detect → Plan → Human Approval → Bounded Fix → Verify</h2></div><span class="pill">GOVERNED</span></div>
+  <div class="journey">
+    <div class="journey-step"><b>1 · Detect</b><span>AWS Config shows live state for four aliases.</span></div>
+    <div class="journey-step"><b>2 · Plan</b><span>Read-only plan freezes one exact control batch.</span></div>
+    <div class="journey-step"><b>3 · Human Approval</b><span>Separate native Approve / Reject decision.</span></div>
+    <div class="journey-step"><b>4 · Bounded Fix</b><span>Fixed CodeBuild + existing G/O controller path.</span></div>
+    <div class="journey-step"><b>5 · Verify</b><span>Provider readback proves; Config converges independently.</span></div>
+  </div>
+</section>
+
+<section class="live" id="acceptance" aria-label="Latest accepted evidence">
+  <div class="section-head"><div><div class="eyebrow">Latest accepted E2E proof</div><h2>Execution evidence</h2></div><span id="acceptance-date" class="pill">Loading…</span></div>
+  <div class="proof-grid">
+    <div class="proof-item"><span class="muted">Reject</span><b id="proof-reject">—</b><span class="muted">No execution dispatch</span></div>
+    <div class="proof-item"><span class="muted">Approve</span><b id="proof-approve">—</b><span class="muted">Provider-verified changes</span></div>
+    <div class="proof-item"><span class="muted">Provider verification</span><b id="proof-provider">—</b><span class="muted">Direct S3 / EC2 readback</span></div>
+    <div class="proof-item"><span class="muted">Config convergence</span><b id="proof-config">—</b><span class="muted">Independent evidence</span></div>
+  </div>
+  <div class="audit"><div class="eyebrow">Audit / evidence timeline</div><b id="audit-summary">Loading accepted proof…</b><span id="audit-note" class="muted"></span></div>
+</section>
 <section class="live">
-  <span class="pill">LIVE</span><h2>Four-account Config status</h2>
+  <div class="section-head"><div><div class="eyebrow">Live risk matrix</div><h2>Four-account Config status</h2></div><span class="pill">LIVE</span></div>
   <div class="muted">lab-dev · lab-poc · lab-qa · lab-sec — account IDs and resource identifiers hidden</div>
-  <table><thead><tr><th>Account</th><th>S3 Block Public Access</th><th>Restricted SSH</th></tr></thead><tbody id="multi-account-rows"><tr><td colspan="3" class="muted">Loading live Config evidence…</td></tr></tbody></table>
+  <div class="table-wrap"><table><thead><tr><th>Account</th><th>S3 Block Public Access</th><th>Restricted SSH</th></tr></thead><tbody id="multi-account-rows"><tr><td colspan="3" class="muted">Loading live Config evidence…</td></tr></tbody></table></div>
   <div id="multi-account-note" class="muted"></div>
 </section>
-<details id="legacy"><summary><b>Legacy retained single-account demo (100 S3 / 10 SG)</b></summary>
+<details id="legacy"><summary><span class="legacy-label">Legacy retained single-account demo (100 S3 / 10 SG) — secondary</span></summary>
 <div class="flow"><strong>Legacy only.</strong> “Prepare demo” below re-arms the retained single-account resources. It does not prepare the four-account scope.</div>
 <section class="cards">
 <article class="card" data-family="s3"><span class="pill">S3</span><h2>S3 Block Public Access</h2><div class="muted">Exact retained empty demo buckets</div><div class="metrics"><div class="metric"><span class="muted">Compliant</span><b class="good" data-k="compliant">—</b></div><div class="metric"><span class="muted">Non-compliant</span><b class="bad" data-k="noncompliant">—</b></div><div class="metric"><span class="muted">Unknown</span><b class="warn" data-k="unknown">—</b></div></div><div>Resources: <b data-k="resource_count">—</b></div><div>Batch: <span data-k="batch_status">—</span></div><div class="muted"><span data-k="verification_label">Last verification:</span> <span data-k="last_verification_time">—</span></div><div class="muted" data-k="evidence_source"></div><div class="muted">AWS Config: <span data-k="config_status">—</span></div><div class="actions"><button class="primary prepare">Prepare S3 demo</button><button class="view">View results</button><a class="button" href="/bulk">Advanced S3</a></div><div class="result" aria-live="polite"></div><div class="status-note error" data-k="status_note"></div></article>
@@ -27,7 +72,7 @@
 <details><summary><b>Advanced S3 history</b></summary><div class="advanced muted">Detailed retained S3 batch history remains at <a href="/bulk">/bulk</a>. This is legacy/single-account evidence, not the four-account live view.</div></details>
 <p id="global" class="muted"></p>
 </main><script>
-let state=null;const cards={},viewed={};for(const e of document.querySelectorAll('[data-family]'))cards[e.dataset.family]=e;
+let state=null,lastRefreshAt=null;const cards={},viewed={};for(const e of document.querySelectorAll('[data-family]'))cards[e.dataset.family]=e;
 function fmtTime(v){if(!v)return 'not recorded';try{return new Date(v).toLocaleString()}catch{return String(v)}}
 function batchText(b){if(!b||!b.batch_id)return 'none';const c=b.counts||{},verified=Number(b.verified||0),total=Number(b.total||0);if(b.execution_active)return `RUNNING — ${verified}/${total} provider verified`;if(c.UNKNOWN)return 'UNKNOWN - reconcile before retry';if(c.FAILED||c.DENIED)return `INCOMPLETE - ${verified}/${total} verified; ${c.FAILED||0} failed; ${c.DENIED||0} denied`;if(b.decision==='PENDING')return 'PENDING approval';if(total>0&&verified===total)return `VERIFIED ${verified}/${total}`;return b.decision||'saved'}
 function verificationLabel(c){return c.family==='s3'?'Last saved provider verification:':'Latest EC2 status read:'}
@@ -36,11 +81,57 @@ function statusNote(c){const notes=[];if(c.status_available===false)notes.push(c
 function resultText(c){const lead=c.batch&&c.batch.execution_active?'Remediation started':'Provider/batch';return `${lead}: ${batchText(c.batch)}\nAWS Config: ${configText(c.config)}\nAction: ${c.action}`}
 function acceptanceText(a){if(!a)return 'Acceptance evidence unavailable';const aliases=(a.aliases||[]).join(', '),s3=(a.controls||{})['s3-bucket-level-public-access-prohibited']||{},sg=(a.controls||{})['restricted-ssh']||{};return `${a.date} · ${aliases}\nS3: Reject ${s3.reject_writes??'—'} writes · Approve ${s3.approve_mutations??'—'} verified changes · Config ${s3.config||'—'} · Re-run ${s3.rerun||'—'}\nSG: Reject ${sg.reject_writes??'—'} writes · Approve ${sg.approve_mutations??'—'} verified changes · Config ${sg.config||'—'} · Re-run ${sg.rerun||'—'}\n${a.note||''}`}
 function stateCell(value){const v=value||'UNAVAILABLE';return `<span class="state ${v}">${v}</span>`}
+function matrixSummary(){
+  const m=state&&state.multi_account,controls=['s3-bucket-level-public-access-prohibited','restricted-ssh'];
+  const out={available:false,compliant:0,noncompliant:0,pending:0,total:8,s3:0,sg:0};
+  if(!m||!Array.isArray(m.accounts)||m.accounts.length!==4)return out;
+  out.available=true;
+  for(const account of m.accounts){
+    for(const control of controls){
+      const v=account.controls&&account.controls[control];
+      if(v==='COMPLIANT'){out.compliant++;if(control===controls[0])out.s3++;else out.sg++}
+      else if(v==='NON_COMPLIANT')out.noncompliant++;
+      else out.pending++;
+    }
+  }
+  return out
+}
+function renderRefreshAge(){
+  const age=document.getElementById('refresh-age'),when=document.getElementById('refresh-time');
+  if(!age||!when||!lastRefreshAt){if(age)age.textContent='Refreshing…';return}
+  const seconds=Math.max(0,Math.floor((Date.now()-lastRefreshAt)/1000));
+  age.textContent=seconds<60?seconds+'s old':Math.floor(seconds/60)+'m '+(seconds%60)+'s old';
+  when.textContent='Last successful browser refresh: '+new Date(lastRefreshAt).toLocaleString()
+}
+function renderOverview(){
+  const s=matrixSummary(),badge=document.getElementById('demo-status'),note=document.getElementById('demo-status-note');
+  let label='Pending',kind='pending';
+  if(s.available&&s.pending===0){if(s.noncompliant>0){label='Attention';kind='attention'}else{label='Ready';kind='ready'}}
+  badge.textContent=label;badge.className='status-badge '+kind;
+  note.textContent=!s.available?'Live four-account Config evidence is unavailable.':s.pending>0?'Some control states are pending or unknown.':s.noncompliant>0?s.noncompliant+' of 8 control checks need attention.':'All 8 control checks are compliant.';
+  document.getElementById('compliant-total').textContent=s.available?s.compliant+'/8':'—';
+  document.getElementById('noncompliant-total').textContent=s.available?s.noncompliant+'/8':'—';
+  document.getElementById('pending-total').textContent=s.available?s.pending+'/8':'—';
+  document.getElementById('control-summary').textContent=s.available?'S3 '+s.s3+'/4 compliant · SSH '+s.sg+'/4 compliant':'Exactly 4 aliases × 2 controls';
+  const m=state&&state.multi_account;document.getElementById('refresh-source').textContent=(m&&m.source?m.source:'AWS Config organization aggregator')+(m&&m.region?' · '+m.region:'');
+  renderRefreshAge()
+}
+function renderAcceptance(){
+  const a=state&&state.acceptance;if(!a)return;
+  const s3=(a.controls||{})['s3-bucket-level-public-access-prohibited']||{},sg=(a.controls||{})['restricted-ssh']||{};
+  document.getElementById('acceptance-date').textContent=a.date||'Accepted proof';
+  document.getElementById('proof-reject').textContent=(s3.reject_writes===0&&sg.reject_writes===0)?'0 + 0':'See evidence';
+  document.getElementById('proof-approve').textContent=(s3.approve_mutations==null||sg.approve_mutations==null)?'—':s3.approve_mutations+' + '+sg.approve_mutations;
+  document.getElementById('proof-provider').textContent=(s3.provider_verified&&sg.provider_verified)?'VERIFIED ×4 each':'Check evidence';
+  document.getElementById('proof-config').textContent=(s3.config||'—')+' · '+(sg.config||'—');
+  document.getElementById('audit-summary').textContent='Reject proven → exact Approve changes → provider verified → Config converged';
+  document.getElementById('audit-note').textContent=' · S3 and restricted SSH remain separate approvals. '+(a.note||'')
+}
 function renderMulti(){const body=document.getElementById('multi-account-rows'),note=document.getElementById('multi-account-note'),m=state.multi_account;if(!m||!Array.isArray(m.accounts)||m.accounts.length!==4){body.innerHTML='<tr><td colspan="3" class="warn">Live four-account Config evidence unavailable</td></tr>';note.textContent=m?.message||'';return}body.innerHTML=m.accounts.map(a=>`<tr><td><b>${a.alias}</b></td><td>${stateCell(a.controls?.['s3-bucket-level-public-access-prohibited'])}</td><td>${stateCell(a.controls?.['restricted-ssh'])}</td></tr>`).join('');note.textContent=m.message||''}
-function render(){renderMulti();const acceptance=document.getElementById('acceptance');if(acceptance){acceptance.querySelector('.muted').textContent=acceptanceText(state.acceptance)}for(const control of state.controls||[]){const card=cards[control.family];if(!card)continue;for(const k of ['compliant','noncompliant','unknown','resource_count'])card.querySelector(`[data-k="${k}"]`).textContent=control[k]??'—';card.querySelector('[data-k="batch_status"]').textContent=batchText(control.batch);card.querySelector('[data-k="verification_label"]').textContent=verificationLabel(control);card.querySelector('[data-k="last_verification_time"]').textContent=fmtTime(control.last_verification_time);card.querySelector('[data-k="config_status"]').textContent=configText(control.config);card.querySelector('[data-k="evidence_source"]').textContent=control.evidence_source||'Evidence source unavailable';card.querySelector('[data-k="status_note"]').textContent=statusNote(control);card.querySelector('.view').onclick=()=>{viewed[control.family]=true;card.querySelector('.result').textContent=resultText(control)};if(viewed[control.family])card.querySelector('.result').textContent=resultText(control)}const global=document.getElementById('global');global.className=state.degraded?'error':'muted';global.textContent=state.message||''}
+function render(){renderMulti();renderOverview();renderAcceptance();for(const control of state.controls||[]){const card=cards[control.family];if(!card)continue;for(const k of ['compliant','noncompliant','unknown','resource_count'])card.querySelector(`[data-k="${k}"]`).textContent=control[k]??'—';card.querySelector('[data-k="batch_status"]').textContent=batchText(control.batch);card.querySelector('[data-k="verification_label"]').textContent=verificationLabel(control);card.querySelector('[data-k="last_verification_time"]').textContent=fmtTime(control.last_verification_time);card.querySelector('[data-k="config_status"]').textContent=configText(control.config);card.querySelector('[data-k="evidence_source"]').textContent=control.evidence_source||'Evidence source unavailable';card.querySelector('[data-k="status_note"]').textContent=statusNote(control);card.querySelector('.view').onclick=()=>{viewed[control.family]=true;card.querySelector('.result').textContent=resultText(control)};if(viewed[control.family])card.querySelector('.result').textContent=resultText(control)}const global=document.getElementById('global');global.className=state.degraded?'error':'muted';global.textContent=state.message||''}
 async function api(path,data){const opt=data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)};const r=await fetch(path,opt),v=await r.json();if(!r.ok)throw Error(v.error||'Request failed');return v}
-async function refresh(){state=await api('/api/operator/status');render()}
+async function refresh(){state=await api('/api/operator/status');lastRefreshAt=Date.now();render()}
 document.getElementById('refresh').onclick=refresh;
 for(const [family,card] of Object.entries(cards)){card.querySelector('.prepare').onclick=async()=>{const button=card.querySelector('.prepare'),out=card.querySelector('.result');button.disabled=true;viewed[family]=false;out.textContent='Checking exact reset scope…';try{const p=await api('/api/operator/prepare-preview',{family});const ok=confirm(`${p.warning}\n\nResources: ${p.resource_count}\nAction: ${p.action}\n\nContinue?`);if(!ok){out.textContent='Cancelled — no demo resources changed.';return}out.textContent='Preparing and verifying exact owned demo resources…';const r=await api('/api/operator/prepare',{family,confirmation_token:p.confirmation_token});out.textContent=r.message||r.status;if(r.status!=='DEMO_READY')out.classList.add('error');else out.classList.remove('error');await refresh()}catch(e){out.textContent='Not ready: '+e.message;out.classList.add('error')}finally{button.disabled=false}}}
-refresh().catch(e=>document.getElementById('global').textContent='Status unavailable: '+e.message)
+setInterval(renderRefreshAge,15000);refresh().catch(e=>document.getElementById('global').textContent='Status unavailable: '+e.message)
 </script></body></html>
