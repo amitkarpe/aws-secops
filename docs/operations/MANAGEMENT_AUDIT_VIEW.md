@@ -1,14 +1,14 @@
 # Management audit view
 
-Authority: Issue #85  
-Evidence source: completed Issue #82 live acceptance on 2026-09-18.
+Authority: Issues #82, #88, #87  
+Evidence source: completed four-account live acceptance on 2026-09-18.
 
 ## Executive outcome
 
-| Control | Reject | Approve | Provider readback | Re-run |
-| --- | --- | --- | --- | --- |
-| S3 Block Public Access | 0 writes | 4 exact BPA updates | **VERIFIED** | **ALREADY_COMPLIANT**, 0 writes |
-| Security Group restricted SSH | 0 writes | 4 exact SSH revocations | **VERIFIED** | **ALREADY_COMPLIANT**, 0 writes |
+| Control | Reject | Approve | Provider readback | AWS Config | Re-run |
+| --- | --- | --- | --- | --- | --- |
+| S3 Block Public Access | 0 writes | 4 exact BPA updates | **VERIFIED** | **COMPLIANT x4** | **ALREADY_COMPLIANT**, 0 writes |
+| Security Group restricted SSH | 0 writes | 4 exact SSH revocations | **VERIFIED** | **COMPLIANT x4** | **ALREADY_COMPLIANT**, 0 writes |
 
 Target aliases: `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`.
 
@@ -18,7 +18,7 @@ Target aliases: `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`.
 2. **Human decisions stayed separate by control.** S3 approval did not authorize Security Group remediation.
 3. **Reject caused no AWS mutation.** Each rejected frozen batch produced zero writes.
 4. **Approved changes used a bounded execution path.** O = GitHub OIDC performed the exact control-specific actions.
-5. **Provider readback proved completion.** AWS Config remained an independent asynchronous evidence source.
+5. **Provider readback proved completion; AWS Config independently converged to COMPLIANT.**
 
 ## Governed audit path
 
@@ -35,7 +35,7 @@ Exact GitHub OIDC action
   ↓
 Provider readback
   ↓
-AWS Config result
+AWS Config convergence
 ```
 
 Interpretation:
@@ -43,7 +43,7 @@ Interpretation:
 - `REJECTED` -> exact tool is **NOT_CALLED**.
 - `APPROVED` -> only the exact frozen control batch may execute.
 - Provider readback is the remediation truth.
-- AWS Config may lag or be unavailable without invalidating a successful provider readback.
+- AWS Config is independent asynchronous evidence and may briefly show `PENDING` after provider verification.
 
 ## Acceptance evidence
 
@@ -51,30 +51,42 @@ Interpretation:
 
 - one empty tagged demo bucket per alias;
 - no objects, public policy, public ACL, or website hosting;
-- Reject -> **0 writes**;
+- initial Config result -> **NON_COMPLIANT x4**;
+- Reject -> **0 writes**, Config stayed **NON_COMPLIANT x4**;
 - Approve -> **4 exact bucket-level BPA updates**;
 - provider readback -> all four aliases **VERIFIED**;
-- re-run -> **ALREADY_COMPLIANT**, 0 writes.
+- Config convergence -> **COMPLIANT x4**;
+- re-run -> **ALREADY_COMPLIANT**, 0 writes, provider verified, Config **COMPLIANT x4**.
 
 ### Security Group restricted SSH
 
 - one tagged unattached demo Security Group per alias;
 - deliberate test condition: TCP/22 from `0.0.0.0/0`;
-- Reject -> **0 writes**;
+- initial Config result -> **NON_COMPLIANT x4**;
+- Reject -> **0 writes**, Config stayed **NON_COMPLIANT x4**;
 - Approve -> **4 exact unrestricted-SSH revocations**;
 - provider readback -> all four aliases **VERIFIED**;
-- re-run -> **ALREADY_COMPLIANT**, 0 writes.
+- Config convergence -> **COMPLIANT x4**;
+- re-run -> **ALREADY_COMPLIANT**, 0 writes, provider verified, Config **COMPLIANT x4**.
 
-## AWS Config evidence
+## AWS Config evidence plane
 
-During final Issue #82 acceptance, AWS Config was:
+Issue #88 added the missing organization evidence layer:
 
-- `UNAVAILABLE` for both supported controls;
-- `UNAVAILABLE` across all four aliases;
-- reported separately from provider verification;
-- never used to authorize a write.
+- Config recorder running in all four LAB accounts;
+- central Config delivery working;
+- organization managed rule: `s3-bucket-level-public-access-prohibited`;
+- organization managed rule: `restricted-ssh`;
+- organization Config aggregator in `ap-southeast-1`;
+- aggregator source status: **SUCCEEDED**;
+- no SCP change;
+- no Config automatic remediation.
 
-This is intentional: **Config is evidence, not execution authority**.
+The final acceptance proved the full evidence transition:
+
+`NON_COMPLIANT -> provider VERIFIED -> PENDING -> COMPLIANT`
+
+Config remains **evidence, not execution authority**.
 
 ## Public-safe boundary
 
