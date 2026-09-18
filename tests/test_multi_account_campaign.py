@@ -1,5 +1,6 @@
 import json
 import unittest
+from pathlib import Path
 
 from pilot_v1.multi_account_campaign import (
     ALIASES,
@@ -105,6 +106,22 @@ class Issue82CampaignContractTests(unittest.TestCase):
                 provider_verified=True,
                 config_states=states,
             )
+
+    def test_runtime_script_is_syntax_valid_and_keeps_plan_read_only(self):
+        path = Path(__file__).resolve().parents[1] / "scripts" / "issue82_campaign.py"
+        text = path.read_text(encoding="utf-8")
+        compile(text, str(path), "exec")
+        plan_section = text.split("def _plan_for_control", 1)[1].split("def plan(", 1)[0]
+        self.assertNotIn("_ensure_bucket(", plan_section)
+        self.assertNotIn("_ensure_sg(", plan_section)
+        self.assertIn("_find_bucket(", plan_section)
+        self.assertIn("_find_sg(", plan_section)
+        self.assertIn("AccessMode", text)
+        self.assertIn("oidc-lab-admin", text)
+        self.assertIn("put-public-access-block", text)
+        self.assertIn("revoke-security-group-ingress", text)
+        self.assertNotIn("put-bucket-policy", text)
+        self.assertNotIn("put-object", text)
 
     def test_decision_timeline_keeps_config_separate(self):
         timeline = public_timeline(
