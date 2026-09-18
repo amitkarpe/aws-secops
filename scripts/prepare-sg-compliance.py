@@ -19,12 +19,14 @@ UPDATE_FILES = [
     "pilot_v1/operator_protocol.py",
     "pilot_v1/sg_operator_server.py",
     "integration/install-compliance.cjs",
+    "integration/multi-account-approval-hook.cjs",
     "integration/compliance-agent.json",
     "scripts/demo-control.py",
     "scripts/probe-sg-policy.py",
 ]
 FULL_EXTRA_FILES = [
     "integration/sg-approval-hook.cjs",
+    "integration/multi-account-approval-hook.cjs",
     "integration/install-compliance.cjs",
     "integration/compliance-agent.json",
     "scripts/sg-demo.py",
@@ -114,6 +116,7 @@ commands += [
     "install -m 644 /opt/aws-secops-sg/pilot_v1/operator_mcp.py /opt/aws-secops/pilot_v1/operator_mcp.py",
     "install -m 644 /opt/aws-secops-sg/pilot_v1/agentic_evidence.py /opt/aws-secops/pilot_v1/agentic_evidence.py",
     "install -m 644 /opt/aws-secops-sg/integration/sg-approval-hook.cjs /opt/aws-secops/integration/sg-approval-hook.cjs",
+    "install -m 644 /opt/aws-secops-sg/integration/multi-account-approval-hook.cjs /opt/aws-secops/integration/multi-account-approval-hook.cjs",
     "install -m 644 /opt/aws-secops-sg/integration/install-compliance.cjs /opt/aws-secops/integration/install-compliance.cjs",
     "install -m 644 /opt/aws-secops-sg/integration/compliance-agent.json /opt/aws-secops/integration/compliance-agent.json",
     "systemctl daemon-reload", "echo SG_COMPLIANCE_STAGED_NOT_STARTED",

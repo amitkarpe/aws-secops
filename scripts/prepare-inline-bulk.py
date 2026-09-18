@@ -10,6 +10,7 @@ import tarfile
 SSM_SAFE_COMMAND_BYTES = 80_000
 UPDATE_FILES = [
     "pilot_v1/agentic_evidence.py",
+    "pilot_v1/codebuild_execution.py",
     "pilot_v1/control_catalog.py",
     "pilot_v1/demo_prepare.py",
     "pilot_v1/log_proof.py",
@@ -117,6 +118,7 @@ commands += [
     "install -m 644 /opt/aws-secops-bulk/pilot_v1/mcp_bridge.py /opt/aws-secops/pilot_v1/mcp_bridge.py",
     "install -m 644 /opt/aws-secops-bulk/pilot_v1/operator_mcp.py /opt/aws-secops/pilot_v1/operator_mcp.py",
     "install -m 644 /opt/aws-secops-bulk/pilot_v1/agentic_evidence.py /opt/aws-secops/pilot_v1/agentic_evidence.py",
+    "install -m 644 /opt/aws-secops-bulk/pilot_v1/codebuild_execution.py /opt/aws-secops/pilot_v1/codebuild_execution.py",
     "install -m 644 /opt/aws-secops-bulk/pilot_v1/org_config_overview.py /opt/aws-secops/pilot_v1/org_config_overview.py",
     "install -m 644 /opt/aws-secops-bulk/integration/bulk-approval-hook.cjs /opt/aws-secops/integration/bulk-approval-hook.cjs",
     "install -m 644 /opt/aws-secops-bulk/integration/install-bulk-executor.cjs /opt/aws-secops/integration/install-bulk-executor.cjs",

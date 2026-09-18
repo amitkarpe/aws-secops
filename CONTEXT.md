@@ -13,7 +13,7 @@ Updated: 2026-09-18
   1. `s3-bucket-level-public-access-prohibited`
   2. `restricted-ssh`
 - `ops.astromedicomp.org` defaults to live four-account organization Config evidence.
-- `sec.astromedicomp.org` defaults generic status/plan questions to live four-account read-only tools.
+- `sec.astromedicomp.org` defaults generic status/plan questions to live four-account tools; Issue #100 is adding native-approved execution for the same exact scope.
 - The retained 100-S3 / 10-SG runtime is explicitly legacy/single-account.
 - G/ChatGPT controls the durable workflow; **O = GitHub OIDC** performs bounded four-account writes.
 - Direct S3/EC2 provider readback is remediation truth.
@@ -51,8 +51,8 @@ Batch: `850a97336aded01e0aa1`
 - Operator returns exactly four aliases and both controls.
 - Compliance Agent `get_multi_account_status`: PASS.
 - Compliance Agent `get_multi_account_remediation_plan`: PASS.
-- Four-account chat plan is read-only and reports `chat_execution_available=false`.
-- Multi-account execution path remains `separate governed GitHub OIDC G/O path`.
+- Four-account status/plan remain read-only. When all four aliases for one control are `NON_COMPLIANT`, Issue #100 may freeze one exact batch and present native LibreChat Approve/Reject.
+- Approved chat execution uses one fixed CodeBuild project sourced from `amitkarpe/aws-secops@main`, then assumes the existing G/O controller role; existing target-role trust remains unchanged.
 - Live LibreChat agent contains the four-account default-scope instructions and both four-account tools.
 - `sec.astromedicomp.org` local TLS route: HTTP 200.
 - `ops.astromedicomp.org` local TLS route: HTTP 401 without Basic Auth, as expected.
@@ -67,18 +67,22 @@ Batch: `850a97336aded01e0aa1`
 
 ## Operating Model
 
-> **Read evidence -> recommend -> explicit decision -> G controls -> O applies -> provider proves -> Config independently evidences.**
+> **Read evidence -> recommend -> freeze exact batch -> native decision -> fixed CodeBuild/G/O controller -> provider proves -> Config independently evidences.**
 
-- Four-account chat reads/plans do not grant mutation authority.
+- Four-account reads/plans do not grant mutation authority; only the exact Issue #100 native-ASK executor may dispatch a frozen control + batch.
 - Reject means zero writes for that exact batch.
 - Public/default output remains alias-only.
 - Raw account IDs, ARNs, bucket names, SG IDs and credentials remain hidden.
 - Personal LAB only; no Synapxe/work/office scope.
 - X/Codex is fallback only.
 
+## Current Authority
+
+- Issue #100: native chat approval + CodeBuild execution for the exact four-account S3/SG scope.
+
 ## Completed Authority
 
-- Issue #95 / PRs #96–#98: live four-account web/agent default scope.
+- Issue #95 / PRs #96–#99: live four-account web/agent default scope.
 - Issue #93 / PR #94: acceptance evidence on web tools.
 - Issue #88 / PRs #89–#91: organization Config bootstrap.
 - Issue #87 / PR #92: management rehearsal.
@@ -86,6 +90,6 @@ Batch: `850a97336aded01e0aa1`
 
 ## Next
 
-Use this four-account demo as the stable baseline. Keep CodeConnections/CodeBuild as a separate CI/CD experiment; do not replace the proven G/O trust path until its behavior is independently accepted.
+Complete Issue #100 implementation, deploy the fixed CodeBuild executor and native approval hook, then run 2–3 rounds of Reject/Approve/provider/Config acceptance before Amit's browser test.
 
 For product/security rules use `SPEC.md`.

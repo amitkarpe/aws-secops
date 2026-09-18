@@ -102,6 +102,34 @@ class OrgConfigOverviewTests(unittest.TestCase):
         self.assertNotIn("AWS_PROFILE", env)
         self.assertNotIn("AWS_DEFAULT_PROFILE", env)
 
+    def test_all_four_noncompliant_enables_native_chat_execution(self):
+        def all_noncompliant():
+            rows = []
+            ids = {
+                "lab-dev": "111111111111",
+                "lab-poc": "222222222222",
+                "lab-qa": "333333333333",
+                "lab-sec": "444444444444",
+            }
+            for alias, account_id in ids.items():
+                rows.append({
+                    "AccountId": account_id,
+                    "ConfigRuleName": "OrgConfigRule-s3-bucket-level-public-access-prohibited-" + alias,
+                    "Compliance": {"ComplianceType": "NON_COMPLIANT"},
+                })
+                rows.append({
+                    "AccountId": account_id,
+                    "ConfigRuleName": "OrgConfigRule-restricted-ssh-" + alias,
+                    "Compliance": {"ComplianceType": "NON_COMPLIANT"},
+                })
+            return {"AggregateComplianceByConfigRules": rows}
+
+        result = remediation_plan("all", RAW, all_noncompliant)
+        for plan in result["plans"]:
+            self.assertEqual(plan["noncompliant_aliases"], list(ALIASES))
+            self.assertTrue(plan["chat_execution_available"])
+            self.assertIn("native LibreChat approval", plan["execution_path"])
+
     def test_plan_uses_four_accounts_not_legacy_resource_totals(self):
         result = remediation_plan("all", RAW, aggregate)
         self.assertEqual(result["scope"], "four-account-live-config")

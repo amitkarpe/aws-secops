@@ -1,6 +1,6 @@
 # Specification
 
-Status: **Demo v1 live acceptance is recorded. Multi-account read-only expansion is active under Issue #68.**
+Status: **Four-account live Config evidence is accepted. Issue #100 is the active milestone for native-chat approval of the two exact four-account remediation families.**
 
 This file defines the current trusted contract. Historical phase-specific authority and proofs remain under `docs/implementation/` and `docs/research/`.
 
@@ -62,6 +62,47 @@ Issue #68 uses staged acceptance rather than keeping the product permanently lim
 
 The first two-account proof is the debugging/acceptance gate, not the final product ceiling.
 
+### Issue #100 governed four-account chat execution
+
+Issue #100 is the explicit reviewed mutation milestone anticipated by the staged sequence above.
+
+It permits one additional bounded execution path for exactly the four registered personal-LAB aliases and exactly the two existing controls:
+
+```text
+explicit fix intent
+   ↓
+server-owned frozen four-account plan
+   ↓
+native LibreChat Approve / Reject
+   ↓
+fixed CodeBuild project
+   ↓
+GitHub App / AWS CodeConnections source: amitkarpe/aws-secops@main
+   ↓
+existing G/O controller role
+   ↓
+exact target sessions + existing Issue #82 provider guards
+   ↓
+exact S3 or EC2 action
+   ↓
+direct provider readback
+   ↓
+independent AWS Config convergence
+```
+
+Contract:
+
+- planning remains read-only and may freeze only one exact control at a time;
+- execution accepts only the server-returned control + frozen batch id;
+- S3 and SG remain separate approvals;
+- Reject means no CodeBuild execution dispatch;
+- the chat/model never selects account IDs, resource IDs, role, Region, repository, branch, buildspec, AWS API, action, CIDR, port or arbitrary environment overrides;
+- CodeBuild may assume only the existing G/O controller role;
+- the existing target-role trust and Issue #82 safety/provider guards remain unchanged;
+- direct provider readback is required before success is reported;
+- Config remains independent asynchronous evidence;
+- this does not authorize company/work/production scope, new controls, SCP mutation, Config auto-remediation or generic AWS administration.
+
 ## Current supported scope
 
 Demo v1 supports exactly two remediation families in the personal Singapore lab.
@@ -106,9 +147,16 @@ Recorded tests/smokes support this behavior, but the read-only/execution distinc
 
 Only an explicit current request to fix/apply/execute may prepare remediation.
 
-- the server decides currently eligible families and exact resource scope;
-- for `fix all`, S3 and SG remain separate action families;
-- the model must not invent or edit resource IDs, account, Region, role, API, action, target or approval identity.
+For the primary four-account scope:
+
+- use the Issue #100 frozen-plan path for one exact supported control;
+- all four aliases for that control must currently be `NON_COMPLIANT`;
+- the server returns one exact batch id;
+- native LibreChat approval gates the exact `control + batch_id`;
+- S3 and SG are separate action families and separate approvals;
+- the model must not invent or edit resource IDs, account, Region, role, repository, branch, buildspec, API, action, target or approval identity.
+
+The retained 100-S3 / 10-SG executor remains legacy/single-account and is used only when the user explicitly asks for that legacy demo.
 
 ## Human approval
 
@@ -121,29 +169,33 @@ Only an explicit current request to fix/apply/execute may prepare remediation.
 
 ## Execution governance
 
-Approved execution follows the bounded control path:
+Approved primary four-account execution follows the Issue #100 bounded path:
 
 ```text
 Human approval
    ↓
-Exact batch executor
+Exact frozen control + batch id
    ↓
-AgentCore Gateway
+Fixed CodeBuild project from aws-secops@main via CodeConnections
    ↓
-Policy ALLOW / DENY
+Existing G/O controller role
    ↓
-Exact remediation tool
+Exact target sessions
+   ↓
+Existing Issue #82 guarded remediation logic
    ↓
 AWS API
    ↓
 Provider readback
 ```
 
+The retained legacy single-account demo continues to use its earlier AgentCore Gateway/Policy exact-tool path.
+
 ### MUST
 
 - keep the model separate from the authorization boundary;
 - expose only exact bounded remediation tools;
-- independently enforce Gateway/Policy before the AWS change;
+- preserve the applicable independent machine boundary before the AWS change: fixed CodeBuild/controller/Issue #82 guards for the four-account path, and Gateway/Policy for the retained legacy path;
 - persist durable execution state before/around network mutation as required by the current worker contract;
 - verify AWS provider state after execution;
 - report partial, failed and unknown outcomes honestly;
@@ -154,7 +206,7 @@ Provider readback
 
 - no generic AWS CLI/API mutation tool for the model;
 - no caller/model-selected arbitrary AWS resource IDs at execution time;
-- no cross-account write path in Demo v1;
+- no generic or caller-selected cross-account write path; the only four-account mutation extension is the exact Issue #100 CodeBuild/controller path for the two supported controls;
 - no company, production or Organizations-management workload mutation;
 - no WAF/third-control claim in Demo v1;
 - no automatic retry of an uncertain mutation;
@@ -222,4 +274,6 @@ The repository and GitHub Pages site are public learning material.
 
 For personal LAB/DEV **read-only** account expansion, Issue #68 and this contract permit a reusable broad read role and staged 2 -> 3-4 account proof without repeated per-service least-privilege redesign.
 
-Any future expansion of **mutation** scope, resource families, identity model, company/work accounts or production use requires a new explicit milestone with its own safety/verification acceptance. Reviewer feedback should drive that next milestone rather than silently expanding Demo v1.
+Issue #100 is the explicit mutation milestone for native-chat execution of the **existing two controls across the existing four registered LAB aliases only**, using the fixed CodeBuild + existing G/O controller design above.
+
+Any future expansion beyond that exact mutation scope — new controls, arbitrary resources, additional accounts, identity-model changes, company/work accounts or production use — requires another explicit milestone with its own safety/verification acceptance.

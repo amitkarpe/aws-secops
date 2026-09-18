@@ -34,7 +34,7 @@ updated.mcpServers.aws_compliance = compliance;
 const planner = {
   type:'stdio', command:'/opt/aws-secops/.venv-mcp/bin/python', args:['-m','pilot_v1.operator_mcp'],
   env:{PYTHONPATH:'/opt/aws-secops',SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'},
-  timeout:95000,initTimeout:15000,chatMenu:false,serverInstructions:true,
+  timeout:190000,initTimeout:15000,chatMenu:false,serverInstructions:true,
 };
 if (updated.mcpServers.aws_compliance_planner && !isDeepStrictEqual(updated.mcpServers.aws_compliance_planner,planner))
   throw Error('existing aws_compliance_planner MCP differs; review before replacing');
@@ -53,6 +53,7 @@ const reads = [
   'list_sg_batches_mcp_aws_compliance','get_sg_batch_mcp_aws_compliance',
   'investigate_s3_context_mcp_aws_compliance_planner','get_s3_decision_timeline_mcp_aws_compliance_planner',
   'get_multi_account_remediation_plan_mcp_aws_compliance_planner',
+  'prepare_multi_account_remediation_mcp_aws_compliance_planner',
   'get_remediation_plan_mcp_aws_compliance_planner','prepare_remediation_mcp_aws_compliance_planner',
 ];
 for (const name of reads) {
@@ -68,7 +69,19 @@ for(const name of executorNames){
   if(existing&&!isDeepStrictEqual(existing,hook))throw Error('existing SG approval hook differs');
   if(!existing)approval.hooks.push(hook);
 }
+const multiAccountExecutorNames=[
+  'execute_multi_account_remediation_mcp_aws_compliance_planner',
+  'mcp:aws_compliance_planner:execute_multi_account_remediation',
+];
+for(const name of multiAccountExecutorNames){
+  if(approval.allow.includes(name))throw Error('four-account execution must not be statically allowed');
+  if(!approval.ask.includes(name))approval.ask.push(name);
+  const hook={matcher:name,module:'/opt/aws-secops/integration/multi-account-approval-hook.cjs'};
+  approval.hooks??=[];const existing=approval.hooks.find(h=>h.matcher===name);
+  if(existing&&!isDeepStrictEqual(existing,hook))throw Error('existing four-account approval hook differs');
+  if(!existing)approval.hooks.push(hook);
+}
 const rendered=yaml.dump(updated,{lineWidth:-1,noRefs:true});
 if(!isDeepStrictEqual(yaml.load(rendered),updated))throw Error('YAML round trip differs');
 if(rendered!==raw){const backup=file+'.before-aws-compliance';if(!fs.existsSync(backup))fs.writeFileSync(backup,raw,{mode:0o600,flag:'wx'});fs.writeFileSync(file+'.compliance-new',rendered,{mode:fs.statSync(file).mode&0o777,flag:'wx'});fs.renameSync(file+'.compliance-new',file);}
-console.log('AWS_COMPLIANCE_MCP=READY CONFIG_SG_READS=ALLOW INVESTIGATION=ALLOW TIMELINE=ALLOW PLANNER=ONE_PREPARE_TOOL SG_EXECUTOR=ASK S3_CONFIG=PRESERVED');
+console.log('AWS_COMPLIANCE_MCP=READY FOUR_ACCOUNT_STATUS=ALLOW FOUR_ACCOUNT_PREPARE=ALLOW FOUR_ACCOUNT_EXECUTOR=ASK LEGACY_EXECUTORS=PRESERVED');
