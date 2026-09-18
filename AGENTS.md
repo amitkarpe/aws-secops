@@ -29,7 +29,9 @@ The session must:
 2. Follow the read order above only as needed for the current objective; do not reload everything on every handoff.
 3. Use `CONTEXT.md` to identify the current authority. Read the referenced active Issue/PR and their latest relevant comments. If repository state has moved, reconcile current GitHub truth before acting.
 4. Verify GitHub repository/default branch/current HEAD before changes. Before AWS-specific decisions or operations, verify the current AWS identity and Region with AWS MCP where supported.
-5. Continue from durable state without asking Amit to repeat context already available in the repository or owning Issue/PR.
+5. If multiple AWS MCP account connections are available, enumerate/select the intended connection explicitly and run STS `GetCallerIdentity` on that exact connection before any AWS work. Do not infer the active account from chat history, profile names, browser labels, or a previous tool call.
+6. Prefer a directly connected AWS MCP account link when it already represents the required account/principal. Use cross-account AssumeRole only when the active Issue/SPEC requires it or no suitable direct connection exists.
+7. Continue from durable state without asking Amit to repeat context already available in the repository or owning Issue/PR.
 
 If multiple open work items exist, do **not** guess. `CONTEXT.md` names the current authority; otherwise report the ambiguity before mutation.
 
@@ -41,9 +43,18 @@ ChatGPT is the primary controller, reviewer, and operator.
 
 GitHub is durable engineering state. AWS is runtime state. Chat history is not authoritative.
 
-Codex is optional. Use X for cohesive implementation/runtime packages that materially benefit from local/profile/runtime access or deeper engineering; do not hand X isolated one-command checks that G can perform directly.
+Codex is fallback, not the default worker. Prefer G to execute directly when GitHub + AWS MCP provide the required capability.
 
-For implementation-ready work where repository changes are expected, follow `CHATGPT.md`: G creates the owning Issue, branch, and starter PR; X continues that PR; G reviews and merges.
+Use G directly for:
+- GitHub Issues/branches/PRs/file changes/review/merge where connector permissions allow;
+- AWS discovery, STS identity checks, deployment, bounded mutation and independent verification through AWS MCP when authorized;
+- multi-round live troubleshooting and E2E acceptance when the required runtime is reachable through connectors.
+
+Use X only when the task materially depends on local-only files/profiles, a cohesive workspace-heavy refactor, unsupported connector capability, or deeper implementation ergonomics that G cannot safely perform.
+
+Do not hand X isolated one-command checks, normal GitHub edits, AWS MCP reads, or bounded AWS operations that G can perform directly.
+
+For implementation-ready work where repository changes are expected, G owns the Issue/branch/PR and may implement directly. If X is used, X continues that same PR and G reviews/merges.
 
 ## Rules
 
@@ -55,6 +66,9 @@ For implementation-ready work where repository changes are expected, follow `CHA
 - Update `CONTEXT.md` when repository identity, current truth, active Issue/PR, blocker, or next action materially changes.
 - `SPEC.md` is the repository execution/security contract. Proceed inside ACTIVE approved scope and stop on a genuine safety, scope, authorization, repository-identity, access, or validation failure.
 - Prefer read-only discovery before mutation.
+- Treat every AWS MCP connected account as an independent control-plane context: select the exact connection, STS-verify it, then keep reads/writes bound to that connection for the operation.
+- A successful AWS MCP read proves connectivity, not mutation authority. Mutation still requires the active Issue/SPEC plus Amit's current authorization.
+- When G can complete a task safely through GitHub + AWS MCP, continue working through validation/fix/retest loops instead of pausing only because Codex was not used.
 - Use repository-owned IaC for durable AWS desired state whenever practical.
 - Prefer short-lived, repo-specific GitHub OIDC credentials over stored AWS access keys.
 - Keep PR validation credential-free where possible. Live deployment should be main-only/manual for this lab unless an approved Issue changes that contract.
