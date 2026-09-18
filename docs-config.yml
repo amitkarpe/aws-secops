@@ -43,6 +43,7 @@ nav:
   - Home: index.md
   - Learn:
       - 3-minute demo: operations/AGENTIC_DEMO_3_MIN.md
+      - Management audit view: operations/MANAGEMENT_AUDIT_VIEW.md
       - Start here: learning-path.md
       - Current architecture: architecture.md
       - Governance / security model: governance.md

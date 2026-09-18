@@ -3,6 +3,8 @@
 Authority: Issue #82  
 Runtime status: **LIVE-ACCEPTED on 2026-09-18**
 
+Management view: [Management audit view](MANAGEMENT_AUDIT_VIEW.md)
+
 ## Message
 
 The demo story is now:
@@ -102,6 +104,8 @@ Important interpretation:
 - provider readback = remediation truth;
 - Config lag after successful provider readback = `PENDING`, not remediation failure;
 - raw account IDs, ARNs, bucket names and SG IDs stay hidden by default.
+
+For the management-ready evidence summary, open the [Management audit view](MANAGEMENT_AUDIT_VIEW.md).
 
 ### 2:50–3:00 — Trust close
 
