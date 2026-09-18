@@ -1,7 +1,7 @@
 # Agentic SecOps — 3-minute multi-account demo
 
 Authority: Issue #82  
-Runtime status: **implementation in PR #83; live OIDC acceptance still required**
+Runtime status: **LIVE-ACCEPTED on 2026-09-18**
 
 ## Message
 
@@ -129,18 +129,19 @@ Direct provider readback
 AWS Config convergence
 ```
 
-## Live acceptance gate
+## Live acceptance
 
-Do **not** call this multi-account mutation flow live-proven until main-only OIDC runs demonstrate:
+Completed through the G/O path:
 
-1. prepare succeeds for all four aliases;
-2. S3 plan is frozen at exactly four targets;
-3. S3 Reject produces zero writes;
-4. S3 Approve performs exactly four updates and provider readback passes;
-5. SG plan is frozen at exactly four targets;
-6. SG Reject produces zero writes;
-7. SG Approve performs exactly four revocations and provider readback passes;
-8. Config evidence is reported truthfully for both controls.
+1. prepare: PASS for all four aliases;
+2. S3 frozen batch: PASS;
+3. S3 Reject: 0 writes;
+4. S3 Approve: 4 updates + provider readback VERIFIED;
+5. SG frozen batch: PASS;
+6. SG Reject: 0 writes;
+7. SG Approve: 4 revocations + provider readback VERIFIED;
+8. rerun plans: ALREADY_COMPLIANT for both controls;
+9. Config: UNAVAILABLE on all four aliases for both controls, reported separately and never treated as provider failure.
 
 ## One-line close
 
