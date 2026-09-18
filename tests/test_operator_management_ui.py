@@ -95,6 +95,65 @@ const tick = () => new Promise(resolve=>setImmediate(resolve));
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_theme_preference_and_storage_failure(self):
+        script = r'''
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const html = fs.readFileSync(process.argv[1], 'utf8');
+const source = html.match(/<script id="operator-theme">([\s\S]*?)<\/script>/)[1];
+const key = 'aws-secops-operator-theme';
+function boot(saved=null, systemDark=false, blocked=false) {
+  const root={dataset:{}}, attrs={}, state={textContent:''};
+  let ready, click, mediaChange, loaded=false;
+  const button={hidden:true,setAttribute:(k,v)=>{attrs[k]=v},
+    addEventListener:(event,fn)=>{assert.equal(event,'click');click=fn}};
+  const media={matches:systemDark,addEventListener:(event,fn)=>{mediaChange=fn}};
+  const storage={value:saved,getItem:k=>{assert.equal(k,key);if(blocked)throw Error('denied');return storage.value},
+    setItem:(k,v)=>{assert.equal(k,key);if(blocked)throw Error('denied');storage.value=v}};
+  vm.runInNewContext(source,{document:{documentElement:root,
+    getElementById:id=>loaded?(id==='theme-toggle'?button:state):null,
+    addEventListener:(event,fn)=>{assert.equal(event,'DOMContentLoaded');ready=fn}},
+    window:{matchMedia:()=>media},localStorage:storage});
+  // Theme is applied before DOM readiness, not after a status response.
+  const initial=root.dataset.theme;
+  loaded=true;ready();
+  return {root,attrs,state,button,storage,initial,click:()=>click(),
+    system:dark=>{media.matches=dark;mediaChange()}};
+}
+const light=boot();
+assert.equal(light.initial,'light');
+assert.equal(light.button.hidden,false);
+assert.equal(light.attrs['aria-pressed'],'false');
+assert.equal(light.state.textContent,'Off');
+light.click();
+assert.equal(light.root.dataset.theme,'dark');
+assert.equal(light.attrs['aria-pressed'],'true');
+assert.equal(light.state.textContent,'On');
+assert.equal(light.button.title,'Switch to light mode');
+assert.equal(light.storage.value,'dark');
+assert.equal(boot(light.storage.value,false).initial,'dark');
+light.system(false);assert.equal(light.root.dataset.theme,'dark');
+light.click();assert.equal(light.storage.value,'light');
+assert.equal(boot('light',true).initial,'light');
+const system=boot(null,true);
+assert.equal(system.initial,'dark');system.system(false);
+assert.equal(system.root.dataset.theme,'light');
+assert.equal(boot('invalid',true).initial,'dark');
+const denied=boot(null,true,true);
+assert.equal(denied.initial,'dark');denied.click();
+assert.equal(denied.root.dataset.theme,'light');
+assert.equal(denied.attrs['aria-pressed'],'false');
+assert.ok(html.includes(':root[data-theme="dark"]'));
+// No fetch or other API capability is provided to the isolated theme script.
+console.log('Operator theme behavior PASS');
+'''
+        result = subprocess.run(
+            ['node', '-e', script, str(ROOT / 'pilot_v1/static/operator.html')],
+            text=True, capture_output=True, timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,50 +4,40 @@ Repository: `amitkarpe/aws-secops`
 Status: ACTIVE  
 Updated: 2026-09-19
 
-> Current-only restart state. GitHub and runtime readback take precedence over chat history.
+> Current-only restart index. Read the latest owning Issue/PR comment for mutable rollout and power state; historical snapshots are not live proof.
 
 ## Current Authority
 
-- Issue #106 / PR #107: management-facing Ops Operator Center GUI.
-- Continue the same PR; do not create a replacement implementation PR.
-- Scope is presentation and evidence clarity only. Backend APIs, Basic Auth, S3/SSH approvals, executor logic and AWS permissions remain unchanged.
-- Validate GitHub first, then AWS MCP STS against the personal-LAB account specified in Issue #106, with `ap-southeast-1` explicitly selected. Stop AWS work on identity/authentication failure.
+- Issue #110 / PR #111: add light/dark theme without redesigning the accepted Operator layout; record the LAB stop-after-validation reminder and on-demand start rule.
+- Continue that PR until merged; check its latest outcome before attempting any implementation or deployment again.
+- Validate GitHub first, then STS on the exact personal-LAB connection from Issue #106 with `ap-southeast-1` selected. Never use a work/office connection for this task.
+- No backend/API, authentication, approval, IAM, remediation, resize or migration changes.
 
-## Product Scope
+## Current UI
 
-- Exactly `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`.
-- Exactly `s3-bucket-level-public-access-prohibited` and `restricted-ssh`.
-- `ops.astromedicomp.org`: existing four-account organization Config evidence.
-- `sec.astromedicomp.org`: status/plan plus the bounded Issue #100 native-approval executor.
-- Retained 100-S3 / 10-SG behavior is legacy single-account scope only.
-- Public/default output remains alias-only. No company/work/PROD scope.
+- PR #107 merged and its exact static HTML was deployed; independent readback is recorded on that PR.
+- Amit supplied an authenticated Operator screenshot and accepted the existing layout. Issue #106 can close on that visual acceptance; the theme is a follow-up, not a new layout.
+- PR #109 merged the direct GitHub/AWS MCP operating guidance. Codex is fallback only.
+- PR #111 adds a keyboard-accessible Dark mode On/Off toggle, local preference storage, initial system preference, and matching light/dark surfaces. Theme changes have no API side effects.
+- Focused Node-VM regression/theme checks and synthetic Chromium desktop/390px/320px checks passed on the candidate. CI, merge and live rollout must be verified from the latest PR evidence; this checkpoint alone does not claim deployment.
 
-## PR #107 Implementation
+## Session Power
 
-- Summary, exact four-account matrix, explanatory approval flow and historical acceptance cards.
-- Refresh failure clears primary success; unknown states never count as compliant.
-- Browser response age is explicitly not Config evaluation age.
-- The existing backend acceptance record is historical GitHub OIDC proof, not a live audit feed.
-- Legacy controls and advanced history are collapsed; existing confirmation behavior is preserved.
-- Focused JavaScript behavior checks and synthetic desktop/mobile Chromium checks pass locally. See the PR for CI on the final head.
-- Deployment and authenticated live verification are not yet recorded for this GUI revision. Do not infer rollout from a merge or a synthetic screenshot.
+Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md).
 
-## Acceptance Background
+- After validation, ask Amit before graceful STOP; never terminate. No stop is authorized by the reminder request alone.
+- On resumed runtime work, start only the same STS-verified, rediscovered retained host if stopped; verify SSM, services and endpoint/auth health.
+- Do not interrupt active work or start the host for repository-only work. Preserve data, disks, journals and configuration.
+- Record validation-complete, prompt-delivered and stop-confirmed checkpoints on the owning Issue/PR. Do not infer power state from this file.
 
-Issue #100 records actual MCP S3 and SSH executions through fixed CodeBuild/CodeConnections, four provider-verified changes per control, Config convergence and the already-compliant guard. Its recorded Reject test withheld executor invocation after ASK; it was not a browser Reject-click test.
+## Product and Evidence Boundaries
 
-PR #105 remains the separate, open final acceptance documentation change. It records the final intentional reset to `NON_COMPLIANT x4` for both controls. That is historical expected demo state, not a fresh runtime observation. Reconcile its CONTEXT edits with this active Issue #106 pointer before any later merge.
+Exactly `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`; exactly S3 Block Public Access and restricted SSH. Retained 100-S3 / 10-SG scope stays collapsed/legacy. Current Config evidence and saved historical acceptance remain separate. Browser fetch age is not Config evaluation age.
 
-Detailed prior evidence belongs in Issues #82, #88, #93, #95 and #100 and their PRs, not in this restart index.
+`Config -> read-only plan -> frozen exact batch -> separate native decision -> fixed CodeBuild/CodeConnections -> existing G/O controller -> exact target sessions -> provider readback -> independent Config convergence`
 
-## Safety
-
-`Config -> read-only plan -> frozen exact batch -> native decision -> fixed CodeBuild/CodeConnections -> existing G/O controller -> exact target sessions -> provider readback -> independent Config convergence`
-
-S3 and SSH remain separate approvals. No generic AWS administration, new controls, IAM/SCP changes or Config auto-remediation. Direct provider readback is remediation truth. Preserve manifests, journals and current access controls. X/Codex is fallback only.
+No generic administration, new controls, SCP changes or Config auto-remediation. Alias-only public output. Issue #100's recorded Reject test withheld executor invocation after ASK; it was not a browser Reject-click test. PR #105 remains a separate open acceptance-doc change whose old CONTEXT edits must not overwrite this active pointer.
 
 ## Next
 
-Finish PR #107 review/CI, then perform only the authorized GUI rollout through the existing deployment path and record authenticated live verification on Issue #106. Keep the Issue open until that live acceptance is complete.
-
-For the trusted execution contract, read `SPEC.md`.
+Complete PR #111 validation and static-HTML-only rollout, record readback, then ask Amit to confirm STOP after testing is finished. Read the latest Issue/PR checkpoint first to avoid duplicate rollout or reminders.
