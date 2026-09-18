@@ -24,17 +24,25 @@ The current management/operator story is:
 Organization AWS Config
         ↓
 ops.astromedicomp.org
-        ↓
-live four-account alias-only status
+live four-account evidence
         ↓
 sec.astromedicomp.org
 AWS Compliance Agent
         ↓
-read-only four-account status + plan
+read-only plan
         ↓
-explicit governed G/O execution path
+freeze exact control + four-account batch
         ↓
-GitHub OIDC exact AWS change
+native LibreChat Approve / Reject
+        ↓
+fixed AWS CodeBuild project
+GitHub App + AWS CodeConnections
+        ↓
+existing G/O controller role
+        ↓
+exact target sessions
+        ↓
+bounded AWS change
         ↓
 direct provider readback
         ↓
@@ -43,109 +51,92 @@ AWS Config converges independently
 
 The core security principle remains:
 
-> **The AI can investigate and recommend; it does not authorize an AWS change.**
+> **The AI can investigate and recommend; the human approval binds one exact remediation batch.**
 
 ## What is live-proven
 
 | Capability | Current evidence |
 |---|---|
 | Four-account Config status | **LIVE** — both controls across exactly four aliases |
-| Four-account Compliance Agent plan | **LIVE / read-only** — no multi-account chat executor |
-| S3 Reject | **PASS** — 0 writes |
+| Four-account Compliance Agent plan | **LIVE / read-only** |
+| Native approval | **LIVE** — separate S3 and SG ASK cards |
+| S3 Reject | **PASS** — 0 CodeBuild execution dispatch |
 | S3 Approve | **PASS** — 4 exact provider-verified BPA updates |
-| SG Reject | **PASS** — 0 writes |
+| SG Reject | **PASS** — 0 CodeBuild execution dispatch |
 | SG Approve | **PASS** — 4 exact provider-verified SSH revocations |
+| Source path | **PASS** — GitHub App + AWS CodeConnections |
+| Execution path | **PASS** — fixed CodeBuild project -> existing G/O controller |
 | Config convergence | **PASS** — both controls `COMPLIANT x4` |
-| Idempotent rerun | **PASS** — `ALREADY_COMPLIANT`, 0 writes |
+| Idempotent guard | **PASS** — compliant state cannot prepare a new batch |
 | Public-safe output | **PASS** — aliases only; raw AWS identifiers hidden |
 
-The final four-account web/API acceptance was re-run on 2026-09-18 after Issue #95.
+Issue #100 was live-accepted on 2026-09-18.
 
-## Two execution boundaries
+## Native chat flow
 
-### Live four-account scope
+For the default four-account scope:
 
-The Compliance Agent can read current organization Config state and produce a four-account remediation plan.
+1. Ask for current status.
+2. Ask for the remediation plan.
+3. Ask to fix one supported control.
+4. The agent freezes one exact four-account batch.
+5. LibreChat shows **Approve / Reject**.
+6. Reject causes zero execution dispatch.
+7. Approve sends only that frozen batch to the fixed CodeBuild executor.
+8. Direct S3/EC2 readback proves the result.
+9. AWS Config converges independently.
 
-It **cannot** execute a four-account mutation from chat.
-
-Four-account writes remain on the separate governed path:
-
-```text
-G / GitHub durable decision
-        ↓
-O = GitHub OIDC
-        ↓
-exact target sessions
-        ↓
-bounded control-specific AWS action
-        ↓
-provider verification
-```
-
-### Legacy retained single-account demo
-
-The earlier retained runtime still exists for engineering/history:
-
-- 100 S3 demo buckets
-- 10 unattached Security Groups
-- native LibreChat approval + exact-tool flows
-
-It is now explicitly **Legacy retained single-account demo** on the Operator page and is not the default answer for generic current-status or remediation-plan questions.
+S3 and SG always require separate approvals.
 
 ## Operator pages
 
 - **Operations Console:** https://ops.astromedicomp.org/
-  - primary: live four-account Config matrix
-  - secondary: latest accepted E2E proof
-  - legacy section: retained 100-S3 / 10-SG demo
+  - primary: live four-account Config matrix;
+  - secondary: accepted E2E evidence;
+  - legacy: retained 100-S3 / 10-SG demo.
 - **AWS Compliance Agent:** https://sec.astromedicomp.org/
-  - generic status -> live four-account status
-  - generic plan -> live four-account plan
-  - legacy retained tools only when explicitly requested
+  - current status -> live four-account status;
+  - plan -> live four-account plan;
+  - explicit fix -> native approval + fixed CodeBuild executor.
 
-## 3-minute demo
+## Demo starting state
 
-Start with [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md).
+After final acceptance the four LAB demo resources were re-armed:
 
-Short story:
+- S3: `NON_COMPLIANT x4`;
+- restricted SSH: `NON_COMPLIANT x4`.
 
-1. Show four aliases and both controls in the Operator page.
-2. Ask the Compliance Agent for current status.
-3. Ask for the four-account remediation plan.
-4. Re-arm only through the governed operator/G/O path when a live non-compliant demo is required.
-5. Prove Reject = 0 writes.
-6. Prove Approve = exact provider-verified changes.
-7. Show Config convergence to `COMPLIANT x4`.
-8. Rerun and show `ALREADY_COMPLIANT` / 0 writes.
+This is intentional so the next browser demo can exercise the real approval path.
 
-## Current evidence
+## Evidence
 
 - [Management audit view](docs/operations/MANAGEMENT_AUDIT_VIEW.md)
+- [3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md)
 - [Architecture](docs/architecture.md)
 - [Governance](docs/governance.md)
 - [Operations Console direction](docs/operator-console.md)
 - [Project status](PROJECT_STATUS.md)
-- [Demo v1](docs/demo-v1.md) — retained legacy/single-account detail
 
 Key milestones:
 
-- Issue #82 / PRs #83–#84 — four-account provider E2E
-- Issue #88 / PRs #89–#91 — organization AWS Config evidence
-- Issue #87 / PR #92 — management rehearsal
-- Issue #93 / PR #94 — acceptance evidence on ops/sec
-- Issue #95 / PRs #96–#98 — live four-account ops/sec default scope
+- Issue #82 / PRs #83–#84 — four-account provider E2E.
+- Issue #88 / PRs #89–#91 — organization AWS Config evidence.
+- Issue #87 / PR #92 — management rehearsal.
+- Issue #93 / PR #94 — acceptance evidence on ops/sec.
+- Issue #95 / PRs #96–#99 — live four-account ops/sec default scope.
+- Issue #100 / PRs #101–#104 — native chat approval + CodeBuild/CodeConnections execution.
 
 ## Important boundaries
 
 - Personal LAB only; no Synapxe/work/office authority.
 - Exactly two supported controls.
-- Four-account chat tools are read-only.
-- Multi-account mutation remains on the separate governed GitHub OIDC path.
-- Reject means zero writes for that exact batch.
+- No generic model-accessible AWS administration tool.
+- Chat never selects arbitrary account IDs, resource IDs, role, Region, repository, branch, buildspec, AWS API, CIDR or port.
+- Reject means no execution dispatch.
 - Provider readback proves remediation completion.
 - AWS Config is independent asynchronous evidence.
-- No generic model-accessible AWS administration tool is exposed.
+- No Config automatic remediation.
+- No SCP change.
 - Public/default output hides account IDs, ARNs, bucket names, Security Group IDs and credentials.
 
 ### Fresh ChatGPT operator session
