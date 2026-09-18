@@ -12,76 +12,99 @@ Updated: 2026-09-18
 - Supported controls:
   1. `s3-bucket-level-public-access-prohibited`
   2. `restricted-ssh`
-- `ops.astromedicomp.org` defaults to live four-account organization Config evidence.
-- `sec.astromedicomp.org` defaults generic status/plan questions to live four-account tools; Issue #100 is adding native-approved execution for the same exact scope.
+- `ops.astromedicomp.org` shows live four-account organization Config evidence.
+- `sec.astromedicomp.org` supports live four-account status, planning, and **native Approve/Reject execution** for those exact two controls.
 - The retained 100-S3 / 10-SG runtime is explicitly legacy/single-account.
-- G/ChatGPT controls the durable workflow; **O = GitHub OIDC** performs bounded four-account writes.
 - Direct S3/EC2 provider readback is remediation truth.
 - AWS Config is independent asynchronous evidence.
 
-## Latest Four-Account Acceptance
+## Accepted Four-Account Chat Execution
+
+Issue #100 is LIVE-ACCEPTED.
+
+Exact flow:
+
+```text
+live Config evidence
+  -> read-only plan
+  -> freeze exact four-account batch
+  -> LibreChat native Approve / Reject
+  -> fixed CodeBuild project
+  -> GitHub App + AWS CodeConnections source from aws-secops@main
+  -> existing G/O controller role
+  -> exact four target sessions
+  -> existing Issue #82 guarded AWS action
+  -> direct provider readback
+  -> independent Config convergence
+```
 
 ### S3
 
 Batch: `79677c056ccfe4a2aeee`
 
-- prepared: `SAFE_NONCOMPLIANT`;
-- Config before: `NON_COMPLIANT x4`;
-- Reject: **0 writes**;
-- Approve: **4 exact BPA updates**;
+- native hook: ASK;
+- Reject simulation: **0 CodeBuild execution dispatch**;
+- Approve through actual MCP executor: **4 exact BPA updates**;
+- execution backend: **AWS CodeBuild via GitHub CodeConnections**;
 - provider readback: **VERIFIED x4**;
-- Config after convergence: **COMPLIANT x4**;
-- rerun: `ALREADY_COMPLIANT`, 0 writes.
+- Config convergence: **COMPLIANT x4**.
 
 ### Security Group
 
 Batch: `850a97336aded01e0aa1`
 
-- prepared: `SAFE_NONCOMPLIANT_UNATTACHED`;
-- Config before: `NON_COMPLIANT x4`;
-- Reject: **0 writes**;
-- Approve: **4 exact unrestricted-SSH revocations**;
+- native hook: ASK;
+- Reject simulation: **0 CodeBuild execution dispatch**;
+- Approve through actual MCP executor: **4 exact unrestricted-SSH revocations**;
+- execution backend: **AWS CodeBuild via GitHub CodeConnections**;
 - provider readback: **VERIFIED x4**;
-- Config after convergence: **COMPLIANT x4**;
-- rerun: `ALREADY_COMPLIANT`, 0 writes.
+- Config convergence: **COMPLIANT x4**.
 
-## Web / Agent Acceptance
+### Idempotent guard
 
-- Operator backend scope: `four-account-live-config`.
-- Operator returns exactly four aliases and both controls.
-- Compliance Agent `get_multi_account_status`: PASS.
-- Compliance Agent `get_multi_account_remediation_plan`: PASS.
-- Four-account status/plan remain read-only. When all four aliases for one control are `NON_COMPLIANT`, Issue #100 may freeze one exact batch and present native LibreChat Approve/Reject.
-- Approved chat execution uses one fixed CodeBuild project sourced from `amitkarpe/aws-secops@main`, then assumes the existing G/O controller role; existing target-role trust remains unchanged.
-- Live LibreChat agent contains the four-account default-scope instructions and both four-account tools.
-- `sec.astromedicomp.org` local TLS route: HTTP 200.
-- `ops.astromedicomp.org` local TLS route: HTTP 401 without Basic Auth, as expected.
+After both controls were compliant:
 
-## Organization Config
+- four-account plan returned no non-compliant aliases;
+- `chat_execution_available=false` for both controls;
+- both prepare calls failed closed as ineligible;
+- CodeBuild build count did not increase.
 
-- recorders + delivery active across all four aliases;
-- both organization managed rules deployed;
-- organization aggregator in `ap-southeast-1`;
-- no Config automatic remediation;
-- no SCP change required.
+## Final Demo State
+
+The four demo accounts were re-armed after acceptance.
+
+Current expected starting state for Amit's browser demo:
+
+- S3: `NON_COMPLIANT x4`;
+- restricted SSH: `NON_COMPLIANT x4`;
+- Operator + Compliance Agent both use that live Config evidence.
+
+## Runtime
+
+- `aws-secops-bulk.service`: active.
+- `aws-secops-librechat.service`: active.
+- Exactly one live AWS Compliance Agent record.
+- Agent has the four-account prepare + executor tools.
+- Executor is native `ASK`, never static allow.
+- S3 and SG approvals remain separate.
+- No Config automatic remediation.
+- No SCP change.
+- No generic model-accessible AWS admin tool.
 
 ## Operating Model
 
 > **Read evidence -> recommend -> freeze exact batch -> native decision -> fixed CodeBuild/G/O controller -> provider proves -> Config independently evidences.**
 
-- Four-account reads/plans do not grant mutation authority; only the exact Issue #100 native-ASK executor may dispatch a frozen control + batch.
-- Reject means zero writes for that exact batch.
+- Reject means no execution dispatch.
+- Approve applies only the exact frozen control + batch.
 - Public/default output remains alias-only.
 - Raw account IDs, ARNs, bucket names, SG IDs and credentials remain hidden.
 - Personal LAB only; no Synapxe/work/office scope.
 - X/Codex is fallback only.
 
-## Current Authority
-
-- Issue #100: native chat approval + CodeBuild execution for the exact four-account S3/SG scope.
-
 ## Completed Authority
 
+- Issue #100 / PRs #101–#104: native chat approval + CodeBuild execution for exact four-account S3/SG scope.
 - Issue #95 / PRs #96–#99: live four-account web/agent default scope.
 - Issue #93 / PR #94: acceptance evidence on web tools.
 - Issue #88 / PRs #89–#91: organization Config bootstrap.
@@ -90,6 +113,6 @@ Batch: `850a97336aded01e0aa1`
 
 ## Next
 
-Complete Issue #100 implementation, deploy the fixed CodeBuild executor and native approval hook, then run 2–3 rounds of Reject/Approve/provider/Config acceptance before Amit's browser test.
+Improve the management-facing Operator Center GUI without changing the accepted execution boundary.
 
 For product/security rules use `SPEC.md`.
