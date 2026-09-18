@@ -7,80 +7,87 @@ Repository: `amitkarpe/aws-secops`
 ## Current Product Truth
 
 - Demo v1 live acceptance remains established for the personal Singapore lab.
-- Supported remediation families remain S3 Block Public Access and restricted SSH on retained owned demo resources.
-- Approved mutation remains human approval -> Gateway/Policy -> exact bounded tool -> provider readback.
-- The model has no generic AWS mutation tool.
-- `aws_secops_operator` remains the read-only AgentCore Harness investigation/reasoning layer; explicit `fix/apply/execute` requests do not mutate through it.
-- Issue #80 / PR #81 is **ACTIVE** as the stakeholder-facing continuation of
-  the Issue #76 3-4 account read-only proof.
-- Personal LAB/DEV multi-account discovery intentionally permits broad read-only audit/discovery access; broad mutation is not implied.
+- Supported remediation families remain **S3 Block Public Access** and **Security Group restricted SSH**.
+- Approved mutation remains explicit human decision -> exact bounded execution -> direct provider readback.
+- `aws_secops_operator` AgentCore Harness remains read-only; M/AWS MCP remains read-only.
+- Four-account read-only Harness overview is live for `lab-dev`, `lab-poc`, `lab-qa`, and `lab-sec`.
+- Platform Issue #32 proved the existing O = GitHub OIDC path can obtain controller-only tagged admin sessions across registered personal LAB accounts while MCP/Harness sessions remain read-only.
 
 ## Current Operating Model
 
-> **AWS MCP discovers and verifies; Git/IaC declares; GitHub OIDC applies; AWS MCP independently verifies where supported.**
+> **M discovers/verifies; Git/IaC declares; O applies; provider readback proves.**
 
-ChatGPT Web is the default controller. GitHub is durable engineering state. AWS is runtime state. Use X/Codex when a cohesive implementation or runtime package materially benefits from local/profile/runtime access or deeper engineering.
+- **M** = ChatGPT AWS MCP.
+- **O** = GitHub OIDC.
+- G/ChatGPT Web is the normal controller.
+- GitHub is durable engineering state.
+- X/Codex is used only when a cohesive local/runtime/bootstrap step cannot be completed through G's connectors.
 
 ## Active Authority
 
-**Issue #76 — 3-4 account SecOps organization security overview demo**
+**Issue #82 / PR #83 — multi-account S3 + SG + AWS Config E2E**
 
-https://github.com/amitkarpe/aws-secops/issues/76
+Target aliases are exactly:
 
-Status: **ACTIVE**.
+- `lab-dev`
+- `lab-poc`
+- `lab-qa`
+- `lab-sec`
 
-Current role evidence:
-- the management hub can assume `ChatGPTCrossAccountReadRole` in every
-  explicitly registered personal LAB target;
-- each assumed target identity is re-read with STS;
-- the role remains bounded to broad read/audit policies; cross-account
-  remediation is not authorized;
-- the six approved LAB aliases are active and Account Management trusted access
-  is enabled; office/work accounts remain excluded.
+The E2E milestone uses the two already-implemented controls:
 
-Current contract:
-- use one ChatGPT/AWS-MCP-visible hub account plus a reusable broad read-only spoke role;
-- first prove the 2-account path end-to-end;
-- allow broad read/list/get/describe-style discovery needed for inventory, IAM/policy, compliance, and audit visibility;
-- keep representative mutation APIs denied through the read role;
-- after the 2-account gate passes, scale the same contract to 3-4 explicitly registered owned LAB/DEV accounts;
-- keep cross-account remediation as a separate later role and milestone.
+1. `s3-bucket-level-public-access-prohibited`
+2. `restricted-ssh`
 
-Preferred topology:
+For each alias the campaign owns one empty tagged demo S3 bucket and one tagged unattached demo Security Group.
 
-```text
-ChatGPT / AWS MCP
-       |
-       v
-active SecOps hub account
-       |
-       +-- AssumeRole -> registered LAB/DEV account A (broad read-only)
-       +-- AssumeRole -> management-lab (broad read-only)
-       +-- AssumeRole -> later registered account C/D (broad read-only)
-```
+### Safe demo preparation
+
+- S3: empty bucket only; no public policy, public ACL, website, or user data; bucket-level BPA may be deliberately re-armed non-compliant for the demo.
+- SG: unattached demo group only; one deliberate TCP/22 ingress from `0.0.0.0/0`.
+- Preparation is operator/OIDC-only and never exposed as a Harness tool.
+
+### Frozen batches and approvals
+
+- S3 and SG remain **separate frozen four-target batches**.
+- S3 and SG require **independent decisions**.
+- Reject means zero writes for that exact batch.
+- Approve runs only through the existing OIDC `AccessMode=oidc-lab-admin` session path.
+- No generic model-accessible AWS admin tool is added.
+
+### Evidence truth
+
+- Direct S3/EC2 provider readback is remediation truth.
+- AWS Config is asynchronous evidence for the same two controls.
+- Config `NON_COMPLIANT` after verified provider remediation is reported as `PENDING`, not failure.
+- Missing/unhealthy Config is reported as `UNAVAILABLE`/unverified; Config alone never authorizes mutation.
+- Default/public output is alias-only; account IDs, ARNs, bucket names, SG IDs, and session credentials remain hidden.
+
+## Supporting Platform Work
+
+aws-platform Issue #34 / PR #35 adds a main-only OIDC campaign runner that reuses the existing controller and existing target role. It resolves exactly the four approved LAB aliases privately, checks out aws-secops main, and supports:
+
+`prepare -> plan -> execute(reject|approve)`
+
+No new AWS role/trust model is introduced.
 
 ## Safety Boundary
 
-- No generic model-accessible AWS mutation tool.
-- Cross-account remediation is out of scope for the Issue #68 read role.
-- Destructive or irreversible actions still require explicit approval.
-- Connector Safety Gate remains mandatory.
-- Do not hard-code unnecessary private account identifiers into this public repository; discover and verify live identity where practical.
-- Historical acceptance evidence is not standing runtime proof; re-verify current AWS state when a task depends on it.
+- No office/work/Synapxe scope.
+- No generic model-accessible AWS mutation.
+- M/Harness remain read-only.
+- Only the exact demo resources are mutable.
+- S3 demo resources stay empty and non-public.
+- SG demo resources stay unattached.
+- Destructive/unrelated actions remain outside Issue #82.
+- Historical evidence is not standing proof; live OIDC execution and provider readback are required.
 
 ## Next Actions
 
-1. Issue #80 / PR #81 live acceptance is complete: the fixed four-role Harness
-   configuration, overview, one account/control drill-down, explicit Config
-   `UNAVAILABLE`, and `fix`/`apply`/`execute` refusal all passed. The
-   Platform-owned exact backend trust remains live in all eight registered
-   targets and its hub/user read proof remains PASS.
-2. Keep multi-account output public-safe: aliases, bounded inventory/IAM/
-   Config evidence, explicit `UNAVAILABLE`, and no raw account or resource
-   identifiers.
-3. G reviews PR #81 and supporting Platform PR #29; X does not merge.
-   Cross-account remediation remains a separate future milestone.
+1. Finish PR #83 implementation/tests/docs and supporting platform PR #35.
+2. Merge code only after exact-head CI review.
+3. Run the main-only OIDC sequence: prepare -> S3 plan/reject/approve -> SG plan/reject/approve.
+4. Verify provider readback for all eight remediations and report Config convergence separately.
+5. Update public status only after live acceptance passes.
 
-Detailed completed Issue #60/#70 acceptance, Harness history, and prior deployment evidence remain in closed Issues/PRs, docs, and Git history rather than this restart file.
-
-For public status use `PROJECT_STATUS.md`. For the product/security contract use `SPEC.md`. For future scope use `ROADMAP.md`.
+For product/security rules use `SPEC.md`. For longer history use closed Issues/PRs and Git history.
