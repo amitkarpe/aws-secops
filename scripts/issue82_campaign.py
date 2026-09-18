@@ -185,8 +185,8 @@ def _find_sg(session: TargetSession) -> str:
 
 
 def _ensure_sg(session: TargetSession) -> str:
+    name = _sg_name(session.target)
     groups = _describe_demo_sgs(session)
-    groups = value.get("SecurityGroups", [])
     if len(groups) > 1:
         raise AwsError("multiple Issue #82 demo Security Groups found")
     if groups:
@@ -198,10 +198,6 @@ def _ensure_sg(session: TargetSession) -> str:
             "--group-name", name,
             "--description", "aws-secops Issue 82 unattached demo",
             "--vpc-id", vpc_id,
-            "--tag-specifications",
-            "ResourceType=security-group,Tags=[" + ",".join("{" + item + "}" for item in _tag_args([
-                {"Key": "Name", "Value": "aws-secops-issue82-demo"}
-            ])) + "]",
         ], env=session.env)
         sg_id = created.get("GroupId")
     if not isinstance(sg_id, str):
@@ -212,7 +208,6 @@ def _ensure_sg(session: TargetSession) -> str:
     ], env=session.env)
     session.sg_id = sg_id
     return sg_id
-
 
 def _assert_bucket_safe_for_rearm(session: TargetSession, bucket: str) -> None:
     objects = _json(["s3api", "list-objects-v2", "--bucket", bucket, "--max-keys", "1"], env=session.env)
