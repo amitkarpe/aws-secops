@@ -39,6 +39,26 @@ class BulkTests(unittest.TestCase):
         self.store.data['manifest']['target']['BlockPublicAcls'] = False
         with self.assertRaises(ValueError): self.store.step(new['batch_id'])
 
+    def test_terminal_revision_ten_rolls_over_without_losing_archive(self):
+        for revision in range(1, 11):
+            view = self.store.preview(renew=revision > 1)
+            self.store.decide(view['batch_id'], view['approval_hash'], 'REJECT')
+        self.assertEqual(self.store.data['manifest']['version'], 10)
+        old_id = self.store.data['id']
+        old_bytes = self.store.path.read_bytes()
+        self.assertTrue(self.store.rollover_terminal_history())
+        self.assertIsNone(self.store.data)
+        archive = self.store.path.with_name(self.store.path.name+'.rollover.'+old_id)
+        self.assertEqual(archive.read_bytes(), old_bytes)
+        fresh = self.store.preview()
+        self.assertEqual(self.store.data['manifest']['version'], 1)
+        self.assertEqual(fresh['decision'], 'PENDING')
+
+    def test_rollover_refuses_active_preview(self):
+        self.store.preview()
+        with self.assertRaisesRegex(ValueError, 'active'):
+            self.store.rollover_terminal_history()
+
     def test_mixed_and_replay(self):
         key = self.approve()
         resources = self.provider.resources

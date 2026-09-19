@@ -350,7 +350,13 @@ class OperatorService(BulkService):
             self.gate.consume(token, "s3", fingerprint)
             try:
                 reset = reset_s3(self.bulk.provider)
-                batch = self.bulk.preview(renew=True)
+                provider = count_s3(self.bulk.provider)
+                if (provider["noncompliant"] != provider["total"]
+                        or provider["compliant"] or provider["unknown"]):
+                    return {"version": 1, "status": "FAILED", "family": "s3", **provider,
+                            "message": "S3 re-arm did not fully verify the known non-compliant starting state."}
+                rolled_over = self.bulk.rollover_terminal_history()
+                batch = self.bulk.preview(renew=not rolled_over)
                 before = [x.get("before") for x in self.bulk.data["manifest"]["resources"]]
                 verified_noncompliant = sum(x == S3_NONCOMPLIANT for x in before)
             except Exception:
