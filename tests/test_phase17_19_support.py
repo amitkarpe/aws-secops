@@ -141,6 +141,50 @@ class DemoResetTests(unittest.TestCase):
         self.assertEqual(count_sg(sg), {"total": 2, "compliant": 1, "noncompliant": 0, "unknown": 1})
 
 
+class FakeBulkForPendingReady:
+    def __init__(self):
+        from pilot_v1.bulk import TARGET
+        self.lock = __import__("threading").RLock()
+        self.provider = FakeS3()
+        self.provider.values = {r: dict(S3_NONCOMPLIANT) for r in self.provider.resources}
+        self.provider.context = {"manifest_hash": "m" * 64}
+        self.data = {
+            "manifest": {"resources": [
+                {"resource": r, "before": dict(S3_NONCOMPLIANT)} for r in self.provider.resources
+            ]}
+        }
+
+    def summary(self):
+        return {
+            "batch_id": "a" * 64, "decision": "PENDING",
+            "counts": {"PENDING": len(self.provider.resources)},
+            "execution_active": False,
+        }
+
+
+class PendingReadyS3Tests(unittest.TestCase):
+    def test_pending_verified_s3_batch_is_reused_without_write(self):
+        bulk = FakeBulkForPendingReady()
+        service = OperatorService(bulk)
+        preview = service.prepare_preview("s3")
+        self.assertTrue(preview["already_ready"])
+        self.assertIn("zero AWS changes", preview["warning"])
+        result = service.prepare_demo("s3", preview["confirmation_token"])
+        self.assertEqual(result["status"], "DEMO_READY")
+        self.assertEqual(result["changed"], 0)
+        self.assertTrue(result["reused"])
+        self.assertEqual(result["batch_id"], "a" * 64)
+        self.assertEqual(bulk.provider.calls, [])
+
+    def test_pending_batch_with_provider_drift_is_still_rejected(self):
+        from pilot_v1.bulk import TARGET
+        bulk = FakeBulkForPendingReady()
+        bulk.provider.values["one"] = dict(TARGET)
+        service = OperatorService(bulk)
+        with self.assertRaises(ValueError):
+            service.prepare_preview("s3")
+
+
 class FakeLogs:
     def __init__(self, pages):
         self.pages = list(pages)
