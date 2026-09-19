@@ -73,11 +73,11 @@ def main() -> int:
     control = os.environ.get("SECOPS_CONTROL", "")
     batch_id = os.environ.get("SECOPS_BATCH_ID")
 
-    if mode not in {"plan", "execute"} or control not in CONTROLS:
+    if mode not in {"prepare", "plan", "execute"} or control not in CONTROLS:
         fail("unsupported request")
-    if mode == "plan":
+    if mode in {"prepare", "plan"}:
         if batch_id:
-            fail("plan must not include batch id")
+            fail(mode + " must not include batch id")
     elif not isinstance(batch_id, str) or not BATCH_RE.fullmatch(batch_id):
         fail("execute requires exact batch id")
 
@@ -105,6 +105,11 @@ def main() -> int:
         fail("campaign result violated public-safe boundary")
     if mode == "plan" and result.get("mutation_count") != 0:
         fail("plan unexpectedly mutated")
+    if mode == "prepare":
+        if result.get("decision") != "PREPARE" or result.get("provider_verified") is not True:
+            fail("unexpected prepare result")
+        if not isinstance(result.get("mutation_count"), int) or not 0 <= result["mutation_count"] <= 4:
+            fail("unexpected prepare mutation count")
     if mode == "execute" and result.get("decision") not in {"APPROVE", "ALREADY_COMPLIANT"}:
         fail("unexpected execution decision")
     encoded = base64.b64encode(json.dumps(result, sort_keys=True, separators=(",", ":")).encode()).decode()

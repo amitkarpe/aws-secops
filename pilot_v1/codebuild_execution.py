@@ -56,13 +56,13 @@ def _json(args: list[str]) -> dict[str, Any]:
 
 
 def _validate(mode: str, control: str, batch_id: str | None) -> None:
-    if mode not in {"plan", "execute"}:
+    if mode not in {"prepare", "plan", "execute"}:
         raise ValueError("unsupported execution mode")
     if control not in CONTROLS:
         raise ValueError("unsupported control")
-    if mode == "plan":
+    if mode in {"prepare", "plan"}:
         if batch_id is not None:
-            raise ValueError("plan does not accept a batch id")
+            raise ValueError(mode + " does not accept a batch id")
     else:
         if not isinstance(batch_id, str) or not BATCH_RE.fullmatch(batch_id):
             raise ValueError("exact frozen batch id required")
