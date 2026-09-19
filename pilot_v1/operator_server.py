@@ -90,6 +90,24 @@ class OperatorService(BulkService):
             "counts": summary.get("counts", {}), "manifest_hash": self.bulk.provider.context.get("manifest_hash"),
         })
 
+    def _s3_pending_demo_ready(self, summary: dict, provider: dict | None = None) -> bool:
+        if not self.bulk.data or summary.get("decision") != "PENDING":
+            return False
+        total = len(self.bulk.provider.resources)
+        counts = summary.get("counts", {})
+        if counts.get("PENDING") != total or any(counts.get(x, 0) for x in ("APPROVED", "RUNNING", "UNKNOWN")):
+            return False
+        evidence = self.bulk.data.get("manifest", {}).get("resources", [])
+        if len(evidence) != total or not all(x.get("before") == S3_NONCOMPLIANT for x in evidence):
+            return False
+        provider = provider or count_s3(self.bulk.provider)
+        return (
+            provider.get("total") == total
+            and provider.get("noncompliant") == total
+            and provider.get("compliant") == 0
+            and provider.get("unknown") == 0
+        )
+
     def _config_control(self, control: str) -> dict:
         summary = self._sg("/api/v1/get_config_summary")
         for item in summary.get("controls", []):
@@ -328,14 +346,22 @@ class OperatorService(BulkService):
             raise ValueError("unsupported family")
         with self.bulk.lock:
             summary = self.bulk.summary()
-            require_resettable(summary)
+            provider = count_s3(self.bulk.provider)
+            already_ready = self._s3_pending_demo_ready(summary, provider)
+            if not already_ready:
+                require_resettable(summary)
             fingerprint = self._s3_fingerprint()
             token = self.gate.issue("s3", fingerprint)
             return {
                 "version": 1, "family": "s3", "confirmation_token": token,
                 "resource_count": len(self.bulk.provider.resources),
-                "action": "set BlockPublicAcls=false only; preserve other BPA flags, empty buckets, ACL-disabled ownership and no bucket policy",
-                "warning": "This intentionally makes these demo buckets non-compliant. Unrelated resources are not changed.",
+                "action": ("reuse the existing verified pending demo batch; no AWS change"
+                           if already_ready else
+                           "set BlockPublicAcls=false only; preserve other BPA flags, empty buckets, ACL-disabled ownership and no bucket policy"),
+                "warning": ("The S3 demo is already re-armed. Confirmation reuses the existing pending batch with zero AWS changes."
+                            if already_ready else
+                            "This intentionally makes these demo buckets non-compliant. Unrelated resources are not changed."),
+                "already_ready": already_ready,
             }
 
     def prepare_demo(self, family: str, token: str) -> dict:
@@ -345,9 +371,20 @@ class OperatorService(BulkService):
             raise ValueError("unsupported family")
         with self.bulk.lock:
             summary = self.bulk.summary()
-            require_resettable(summary)
+            provider = count_s3(self.bulk.provider)
+            already_ready = self._s3_pending_demo_ready(summary, provider)
+            if not already_ready:
+                require_resettable(summary)
             fingerprint = self._s3_fingerprint()
             self.gate.consume(token, "s3", fingerprint)
+            if already_ready:
+                return {
+                    "version": 1, "status": "DEMO_READY", "family": "s3",
+                    "resource_count": provider["total"], "compliant": 0,
+                    "noncompliant": provider["noncompliant"], "unknown": 0,
+                    "changed": 0, "batch_id": summary["batch_id"], "reused": True,
+                    "message": f"DEMO READY — {provider['total']} S3 buckets already verified non-compliant. Existing pending batch reused with 0 changes.",
+                }
             try:
                 reset = reset_s3(self.bulk.provider)
                 provider = count_s3(self.bulk.provider)
