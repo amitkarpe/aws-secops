@@ -9,10 +9,13 @@ from pilot_v1.multi_account_campaign import S3_CONTROL, SG_CONTROL
 
 class CodeBuildExecutionTests(unittest.TestCase):
     def test_validation_is_exact(self):
+        codebuild_execution._validate("prepare", S3_CONTROL, None)
         codebuild_execution._validate("plan", S3_CONTROL, None)
         codebuild_execution._validate("execute", SG_CONTROL, "a" * 20)
         with self.assertRaises(ValueError):
             codebuild_execution._validate("execute", SG_CONTROL, "bad")
+        with self.assertRaises(ValueError):
+            codebuild_execution._validate("prepare", S3_CONTROL, "a" * 20)
         with self.assertRaises(ValueError):
             codebuild_execution._validate("plan", S3_CONTROL, "a" * 20)
         with self.assertRaises(ValueError):
@@ -54,6 +57,42 @@ class CodeBuildExecutionTests(unittest.TestCase):
         self.assertIn(codebuild_execution.PROJECT, start)
         self.assertNotIn("buildspecOverride", json.dumps(start))
         self.assertNotIn("sourceVersionOverride", json.dumps(start))
+
+    def test_prepare_uses_fixed_project_and_accepts_only_public_safe_result(self):
+        result = {
+            "control": SG_CONTROL,
+            "batch_id": "b" * 20,
+            "decision": "PREPARE",
+            "mutation_count": 4,
+            "provider_verified": True,
+            "aliases": ["lab-dev", "lab-poc", "lab-qa", "lab-sec"],
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+        }
+        encoded = base64.b64encode(json.dumps(result).encode()).decode()
+
+        calls = []
+        def fake_json(args):
+            calls.append(args)
+            if "start-build" in args:
+                return {"build": {"id": codebuild_execution.PROJECT + ":prepare"}}
+            return {
+                "builds": [{
+                    "buildStatus": "SUCCEEDED",
+                    "exportedEnvironmentVariables": [
+                        {"name": "SECOPS_RESULT_B64", "value": encoded},
+                    ],
+                }]
+            }
+
+        with patch.object(codebuild_execution, "_json", side_effect=fake_json):
+            value = codebuild_execution.run("prepare", SG_CONTROL, timeout=1)
+
+        self.assertEqual(value["decision"], "PREPARE")
+        start = json.dumps(calls[0])
+        self.assertIn('"SECOPS_MODE"', start)
+        self.assertIn('"prepare"', start)
+        self.assertNotIn("SECOPS_BATCH_ID", start)
 
     def test_source_contains_no_generic_model_selected_overrides(self):
         import pathlib
