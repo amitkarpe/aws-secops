@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AWS SecOps Admin Control Center</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2317345b'/%3E%3Cpath d='M32 11c8 6 15 7 20 7v15c0 11-7 17-20 21C19 50 12 44 12 33V18c5 0 12-1 20-7Z' fill='none' stroke='%239fc8ff' stroke-width='4'/%3E%3Cpath d='m23 32 6 6 12-14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3C/svg%3E">
 <script id="operator-theme">
 // Theme preference is local presentation only; it never calls an API.
 (() => {
@@ -46,27 +47,27 @@ a:not(.button){color:var(--link)}#theme-toggle{white-space:nowrap}#theme-toggle[
 </style>
 </head>
 <body><main>
-<header><div><div class="eyebrow">AWS SecOps &middot; Personal LAB &middot; Four accounts</div><h1>SecOps Admin Control Center</h1><div class="muted">Current risk. Human-approved fixes. Verified results.</div></div><div class="actions"><button id="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false" hidden>Dark mode <span id="theme-state" aria-hidden="true">Off</span></button><button id="refresh">Refresh live evidence</button><a class="button primary" href="https://sec.astromedicomp.org/">Open AWS Compliance Agent</a></div></header>
+<header><div><div class="eyebrow">AWS SecOps &middot; Personal LAB &middot; Four accounts</div><h1>SecOps Admin Control Center</h1><div class="muted">Current risk. Human-approved fixes. Verified results.</div></div><div class="actions"><button id="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false" hidden>Dark mode <span id="theme-state" aria-hidden="true">Off</span></button><button id="refresh">Refresh live evidence</button><a class="button" href="https://config.astromedicomp.org/">Open Config Dashboard</a><a class="button primary" href="https://sec.astromedicomp.org/">Open AWS Compliance Agent</a></div></header>
 <noscript><p class="error">JavaScript is required to load current evidence. No live status is shown without it.</p></noscript>
 <section class="overview" aria-label="Management summary">
   <article class="summary-card"><div class="eyebrow">Demo status</div><div class="summary-value"><span id="demo-status" class="status-badge pending" role="status">Pending</span></div><div id="demo-status-note" class="muted">Loading four-account Config evidence...</div><div id="control-summary" class="scope-note">Exactly 4 aliases × 2 controls</div></article>
   <article class="summary-card"><div class="eyebrow">Current compliance</div><div class="summary-split"><div><span class="muted">Compliant</span><b id="compliant-total" class="good">&mdash;</b></div><div><span class="muted">Non-compliant</span><b id="noncompliant-total" class="bad">&mdash;</b></div><div><span class="muted">Pending / unknown</span><b id="pending-total" class="warn">&mdash;</b></div></div><div class="scope-note">8 live control checks &middot; S3 Block Public Access + restricted SSH</div></article>
-  <article class="summary-card"><div class="eyebrow">Refresh state</div><div id="refresh-age" class="summary-value">Loading...</div><div class="muted">AWS Config organization aggregator &middot; ap-southeast-1</div><div id="refresh-time" class="refresh-line">No successful Config response yet</div><div class="scope-note">Browser fetch age, not AWS evaluation age. Config evaluation timestamps are not supplied by this API.</div></article>
+  <article class="summary-card"><div class="eyebrow">Refresh state</div><div id="refresh-age" class="summary-value">Loading...</div><div class="muted">AWS Config organization aggregator</div><div id="refresh-time" class="refresh-line">No successful Config response yet</div><div class="scope-note">Browser fetch age, not AWS evaluation age. Config evaluation timestamps are not supplied by this API.</div></article>
 </section>
 <section class="live" id="demo-admin" aria-label="Demo preparation controls">
-  <div class="section-head"><div><div class="eyebrow">Demo preparation</div><h2>Get controls ready for a live demo</h2></div><span class="pill">ADMIN</span></div>
-  <div class="muted">These actions intentionally reset only the retained demo resources to a non-compliant state. Each control performs a read-only preview first and requires a separate browser confirmation before any change.</div>
+  <div class="section-head"><div><div class="eyebrow">Demo re-arm</div><h2>Restore the known starting state before a live demo</h2></div><span class="pill">ADMIN</span></div>
+  <div class="muted">Re-arm changes only the retained demo resources back to the expected non-compliant starting state. The page checks the exact scope first, shows what will change, asks for confirmation, then verifies provider state before saying the demo is ready.</div>
   <div class="cards demo-controls" style="margin-top:14px">
     <article class="journey-step demo-control" data-admin-family="s3">
       <b>S3 Block Public Access</b>
-      <span>Prepare the exact retained empty demo buckets for the S3 remediation story.</span>
-      <div class="actions"><button class="primary admin-prepare" data-family="s3" type="button">Prepare S3 demo</button></div>
+      <span>Restore the retained empty demo buckets to the expected S3 starting state.</span>
+      <div class="actions"><button class="primary admin-prepare" data-family="s3" type="button">Re-arm S3 demo</button></div>
       <div class="result" aria-live="polite">No preparation requested.</div>
     </article>
     <article class="journey-step demo-control" data-admin-family="sg">
       <b>Restricted SSH</b>
-      <span>Prepare the exact retained unattached demo Security Groups for the SSH remediation story.</span>
-      <div class="actions"><button class="primary admin-prepare" data-family="sg" type="button">Prepare SSH demo</button></div>
+      <span>Restore the retained unattached demo Security Groups to the expected SSH starting state.</span>
+      <div class="actions"><button class="primary admin-prepare" data-family="sg" type="button">Re-arm SSH demo</button></div>
       <div class="result" aria-live="polite">No preparation requested.</div>
     </article>
   </div>
@@ -102,8 +103,8 @@ a:not(.button){color:var(--link)}#theme-toggle{white-space:nowrap}#theme-toggle[
 <details id="legacy"><summary><span class="legacy-label">Legacy retained single-account demo (100 S3 / 10 SG) &mdash; secondary</span></summary>
 <div class="flow"><strong>Legacy only.</strong> &ldquo;Prepare demo&rdquo; below re-arms the retained single-account resources. It does not prepare the four-account scope.</div>
 <section class="cards">
-<article class="card" data-family="s3"><span class="pill">S3</span><h2>S3 Block Public Access</h2><div class="muted">Exact retained empty demo buckets</div><div class="metrics"><div class="metric"><span class="muted">Compliant</span><b class="good" data-k="compliant">&mdash;</b></div><div class="metric"><span class="muted">Non-compliant</span><b class="bad" data-k="noncompliant">&mdash;</b></div><div class="metric"><span class="muted">Unknown</span><b class="warn" data-k="unknown">&mdash;</b></div></div><div>Resources: <b data-k="resource_count">&mdash;</b></div><div>Batch: <span data-k="batch_status">&mdash;</span></div><div class="muted"><span data-k="verification_label">Last verification:</span> <span data-k="last_verification_time">&mdash;</span></div><div class="muted" data-k="evidence_source"></div><div class="muted">AWS Config: <span data-k="config_status">&mdash;</span></div><div class="actions"><button class="primary prepare">Prepare S3 demo</button><button class="view">View results</button><a class="button" href="/bulk">Advanced S3</a></div><div class="result" aria-live="polite"></div><div class="status-note error" data-k="status_note"></div></article>
-<article class="card" data-family="sg"><span class="pill">EC2</span><h2>Security Group restricted SSH</h2><div class="muted">Exact retained unattached demo Security Groups</div><div class="metrics"><div class="metric"><span class="muted">Compliant</span><b class="good" data-k="compliant">&mdash;</b></div><div class="metric"><span class="muted">Non-compliant</span><b class="bad" data-k="noncompliant">&mdash;</b></div><div class="metric"><span class="muted">Unknown</span><b class="warn" data-k="unknown">&mdash;</b></div></div><div>Resources: <b data-k="resource_count">&mdash;</b></div><div>Batch: <span data-k="batch_status">&mdash;</span></div><div class="muted"><span data-k="verification_label">Last verification:</span> <span data-k="last_verification_time">&mdash;</span></div><div class="muted" data-k="evidence_source"></div><div class="muted">AWS Config: <span data-k="config_status">&mdash;</span></div><div class="actions"><button class="primary prepare">Prepare SG demo</button><button class="view">View results</button><a class="button" href="https://sec.astromedicomp.org/">Open agent</a></div><div class="result" aria-live="polite"></div><div class="status-note error" data-k="status_note"></div></article>
+<article class="card" data-family="s3"><span class="pill">S3</span><h2>S3 Block Public Access</h2><div class="muted">Exact retained empty demo buckets</div><div class="metrics"><div class="metric"><span class="muted">Compliant</span><b class="good" data-k="compliant">&mdash;</b></div><div class="metric"><span class="muted">Non-compliant</span><b class="bad" data-k="noncompliant">&mdash;</b></div><div class="metric"><span class="muted">Unknown</span><b class="warn" data-k="unknown">&mdash;</b></div></div><div>Resources: <b data-k="resource_count">&mdash;</b></div><div>Batch: <span data-k="batch_status">&mdash;</span></div><div class="muted"><span data-k="verification_label">Last verification:</span> <span data-k="last_verification_time">&mdash;</span></div><div class="muted" data-k="evidence_source"></div><div class="muted">AWS Config: <span data-k="config_status">&mdash;</span></div><div class="actions"><button class="primary prepare">Re-arm S3 demo</button><button class="view">View results</button><a class="button" href="/bulk">Advanced S3</a></div><div class="result" aria-live="polite"></div><div class="status-note error" data-k="status_note"></div></article>
+<article class="card" data-family="sg"><span class="pill">EC2</span><h2>Security Group restricted SSH</h2><div class="muted">Exact retained unattached demo Security Groups</div><div class="metrics"><div class="metric"><span class="muted">Compliant</span><b class="good" data-k="compliant">&mdash;</b></div><div class="metric"><span class="muted">Non-compliant</span><b class="bad" data-k="noncompliant">&mdash;</b></div><div class="metric"><span class="muted">Unknown</span><b class="warn" data-k="unknown">&mdash;</b></div></div><div>Resources: <b data-k="resource_count">&mdash;</b></div><div>Batch: <span data-k="batch_status">&mdash;</span></div><div class="muted"><span data-k="verification_label">Last verification:</span> <span data-k="last_verification_time">&mdash;</span></div><div class="muted" data-k="evidence_source"></div><div class="muted">AWS Config: <span data-k="config_status">&mdash;</span></div><div class="actions"><button class="primary prepare">Re-arm SSH demo</button><button class="view">View results</button><a class="button" href="https://sec.astromedicomp.org/">Open agent</a></div><div class="result" aria-live="polite"></div><div class="status-note error" data-k="status_note"></div></article>
 </section>
 <details><summary><b>Advanced S3 history</b></summary><div class="advanced muted">Detailed retained S3 batch history remains at <a href="/bulk">/bulk</a>. This is legacy/single-account evidence, not the four-account live view.</div></details>
 </details>
@@ -221,15 +222,21 @@ async function refresh(){
 }
 document.getElementById('refresh').onclick=refresh;
 async function prepareDemo(family,button,out){
-  button.disabled=true;viewed[family]=false;out.textContent='Checking exact reset scope...';out.classList.remove('error');
+  button.disabled=true;viewed[family]=false;out.textContent='Checking current demo state and exact re-arm scope...';out.classList.remove('error');
   try{
     const p=await api('/api/operator/prepare-preview',{family});
-    const ok=confirm(`${p.warning}\n\nResources: ${p.resource_count}\nAction: ${p.action}\n\nContinue?`);
+    const label=family==='s3'?'S3 Block Public Access':'Restricted SSH';
+    const ok=confirm(`Re-arm ${label} for the next demo?\n\n${p.warning}\n\nResources: ${p.resource_count}\nStarting state: NON_COMPLIANT\nAction: ${p.action}\n\nContinue only if you want to restore the known demo starting state.`);
     if(!ok){out.textContent='Cancelled — no demo resources changed.';return}
-    out.textContent='Preparing and verifying exact owned demo resources...';
+    out.textContent='Re-arming exact demo resources and verifying provider state...';
     const r=await api('/api/operator/prepare',{family,confirmation_token:p.confirmation_token});
-    out.textContent=r.message||r.status;
-    if(r.status!=='DEMO_READY')out.classList.add('error');
+    if(r.status==='DEMO_READY'){
+      const label=family==='s3'?'S3 Block Public Access':'Restricted SSH';
+      out.textContent=`Demo re-armed and verified. ${label} is ready for the next remediation demo.`;
+    }else{
+      out.textContent=r.message||r.status;
+      out.classList.add('error');
+    }
     await refresh()
   }catch(e){out.textContent='Not ready: '+e.message;out.classList.add('error')}
   finally{button.disabled=false}
