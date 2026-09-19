@@ -153,7 +153,7 @@ def public_result(
     alias_list = list(aliases)
     if alias_list != list(ALIASES):
         raise ValueError("Issue #82 public result must contain exactly the approved aliases")
-    if decision not in {"PLAN", "REJECT", "APPROVE", "ALREADY_COMPLIANT"}:
+    if decision not in {"PLAN", "PREPARE", "REJECT", "APPROVE", "ALREADY_COMPLIANT"}:
         raise ValueError("invalid Issue #82 decision")
     if mutation_count < 0 or mutation_count > 4:
         raise ValueError("invalid Issue #82 mutation count")
