@@ -136,6 +136,33 @@ class BulkStore:
                 changed = True
         return changed
 
+    def rollover_terminal_history(self) -> bool:
+        """Archive a full terminal preview cycle before starting a fresh cycle."""
+        with self.lock:
+            if not self.data:
+                return False
+            self.validate()
+            if any(i['state'] in {'PENDING', 'APPROVED', 'RUNNING', 'UNKNOWN'} for i in self.data['items']):
+                raise ValueError('active, pending or uncertain batch cannot roll over')
+            revision = self.data['manifest']['version']
+            if revision < 10:
+                return False
+            archive = self.path.with_name(self.path.name+'.rollover.'+self.data['id'])
+            current = self.path.read_bytes()
+            if archive.exists():
+                if archive.read_bytes() != current:
+                    raise RuntimeError('rollover archive differs; active journal preserved')
+                self.path.unlink()
+            else:
+                os.replace(self.path, archive)
+            directory = os.open(self.path.parent, os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+            self.data = None
+            return True
+
     def preview(self, renew=False):
         with self.lock:
             # Keep a single bounded batch; do not erase an approved/terminal audit.
