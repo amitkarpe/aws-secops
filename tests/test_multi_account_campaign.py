@@ -96,6 +96,16 @@ class Issue82CampaignContractTests(unittest.TestCase):
         self.assertEqual(result["resource_identifiers"], "hidden-by-default")
         self.assertFalse(result["harness_mutation"])
         self.assertEqual(result["oidc_session"], "AccessMode=oidc-lab-admin")
+        prepared = public_result(
+            control=SG_CONTROL,
+            batch="b" * 20,
+            aliases=ALIASES,
+            decision="PREPARE",
+            mutation_count=4,
+            provider_verified=True,
+            config_states=states,
+        )
+        self.assertEqual(prepared["decision"], "PREPARE")
         with self.assertRaises(ValueError):
             public_result(
                 control=S3_CONTROL,
@@ -120,6 +130,9 @@ class Issue82CampaignContractTests(unittest.TestCase):
         self.assertIn("oidc-lab-admin", text)
         self.assertIn("put-public-access-block", text)
         self.assertIn("revoke-security-group-ingress", text)
+        self.assertIn("def prepare(sessions: list[TargetSession], control: str)", text)
+        self.assertIn("changed_aliases", text)
+        self.assertIn("four-account prepare did not leave exactly four non-compliant demo targets", text)
         self.assertIn("SourceIdentifier", text)
         self.assertIn("S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED", text)
         self.assertIn("INCOMING_SSH_DISABLED", text)
