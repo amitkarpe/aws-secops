@@ -155,5 +155,23 @@ console.log('Operator theme behavior PASS');
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
+    def test_admin_control_center_uses_existing_confirmation_gated_prepare_flow(self):
+        html = (ROOT / 'pilot_v1/static/operator.html').read_text()
+        self.assertIn('<title>AWS SecOps Admin Control Center</title>', html)
+        self.assertIn('<h1>SecOps Admin Control Center</h1>', html)
+        self.assertIn('aria-label="Demo preparation controls"', html)
+        self.assertIn('data-family="s3"', html)
+        self.assertIn('data-family="sg"', html)
+        self.assertIn('Prepare S3 demo', html)
+        self.assertIn('Prepare SSH demo', html)
+        self.assertIn("async function prepareDemo(family,button,out)", html)
+        self.assertIn("api('/api/operator/prepare-preview',{family})", html)
+        self.assertIn("const ok=confirm(", html)
+        self.assertIn("api('/api/operator/prepare',{family,confirmation_token:p.confirmation_token})", html)
+        self.assertIn("if(!ok){out.textContent='Cancelled — no demo resources changed.';return}", html)
+        self.assertNotIn('rollback-all', html)
+        self.assertNotIn('revoke-all', html)
+
+
 if __name__ == '__main__':
     unittest.main()

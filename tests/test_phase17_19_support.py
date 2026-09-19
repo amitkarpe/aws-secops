@@ -244,7 +244,7 @@ class OperatorPageTests(unittest.TestCase):
         self.assertIn("Legacy retained single-account demo", html)
         self.assertIn("Four-account Config status", html)
         self.assertIn("Latest accepted E2E proof", html)
-        self.assertIn("Ops Operator Center", html)
+        self.assertIn("SecOps Admin Control Center", html)
         self.assertIn("Demo status", html)
         self.assertIn("Current compliance", html)
         self.assertIn("Refresh state", html)

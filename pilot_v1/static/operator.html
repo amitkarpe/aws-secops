@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AWS SecOps Operator Center</title>
+<title>AWS SecOps Admin Control Center</title>
 <script id="operator-theme">
 // Theme preference is local presentation only; it never calls an API.
 (() => {
@@ -46,12 +46,31 @@ a:not(.button){color:var(--link)}#theme-toggle{white-space:nowrap}#theme-toggle[
 </style>
 </head>
 <body><main>
-<header><div><div class="eyebrow">AWS SecOps &middot; Personal LAB &middot; Four accounts</div><h1>Ops Operator Center</h1><div class="muted">Current risk. Human-approved fixes. Verified results.</div></div><div class="actions"><button id="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false" hidden>Dark mode <span id="theme-state" aria-hidden="true">Off</span></button><button id="refresh">Refresh live evidence</button><a class="button primary" href="https://sec.astromedicomp.org/">Open AWS Compliance Agent</a></div></header>
+<header><div><div class="eyebrow">AWS SecOps &middot; Personal LAB &middot; Four accounts</div><h1>SecOps Admin Control Center</h1><div class="muted">Current risk. Human-approved fixes. Verified results.</div></div><div class="actions"><button id="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false" hidden>Dark mode <span id="theme-state" aria-hidden="true">Off</span></button><button id="refresh">Refresh live evidence</button><a class="button primary" href="https://sec.astromedicomp.org/">Open AWS Compliance Agent</a></div></header>
 <noscript><p class="error">JavaScript is required to load current evidence. No live status is shown without it.</p></noscript>
 <section class="overview" aria-label="Management summary">
   <article class="summary-card"><div class="eyebrow">Demo status</div><div class="summary-value"><span id="demo-status" class="status-badge pending" role="status">Pending</span></div><div id="demo-status-note" class="muted">Loading four-account Config evidence...</div><div id="control-summary" class="scope-note">Exactly 4 aliases × 2 controls</div></article>
   <article class="summary-card"><div class="eyebrow">Current compliance</div><div class="summary-split"><div><span class="muted">Compliant</span><b id="compliant-total" class="good">&mdash;</b></div><div><span class="muted">Non-compliant</span><b id="noncompliant-total" class="bad">&mdash;</b></div><div><span class="muted">Pending / unknown</span><b id="pending-total" class="warn">&mdash;</b></div></div><div class="scope-note">8 live control checks &middot; S3 Block Public Access + restricted SSH</div></article>
   <article class="summary-card"><div class="eyebrow">Refresh state</div><div id="refresh-age" class="summary-value">Loading...</div><div class="muted">AWS Config organization aggregator &middot; ap-southeast-1</div><div id="refresh-time" class="refresh-line">No successful Config response yet</div><div class="scope-note">Browser fetch age, not AWS evaluation age. Config evaluation timestamps are not supplied by this API.</div></article>
+</section>
+<section class="live" id="demo-admin" aria-label="Demo preparation controls">
+  <div class="section-head"><div><div class="eyebrow">Demo preparation</div><h2>Get controls ready for a live demo</h2></div><span class="pill">ADMIN</span></div>
+  <div class="muted">These actions intentionally reset only the retained demo resources to a non-compliant state. Each control performs a read-only preview first and requires a separate browser confirmation before any change.</div>
+  <div class="cards demo-controls" style="margin-top:14px">
+    <article class="journey-step demo-control" data-admin-family="s3">
+      <b>S3 Block Public Access</b>
+      <span>Prepare the exact retained empty demo buckets for the S3 remediation story.</span>
+      <div class="actions"><button class="primary admin-prepare" data-family="s3" type="button">Prepare S3 demo</button></div>
+      <div class="result" aria-live="polite">No preparation requested.</div>
+    </article>
+    <article class="journey-step demo-control" data-admin-family="sg">
+      <b>Restricted SSH</b>
+      <span>Prepare the exact retained unattached demo Security Groups for the SSH remediation story.</span>
+      <div class="actions"><button class="primary admin-prepare" data-family="sg" type="button">Prepare SSH demo</button></div>
+      <div class="result" aria-live="polite">No preparation requested.</div>
+    </article>
+  </div>
+  <div class="scope-note">Preparation is not remediation. Use AWS Compliance Agent for the separately approved fix path.</div>
 </section>
 <section class="live" aria-label="Current four-account risk">
   <div class="section-head"><div><div class="eyebrow">Live risk matrix</div><h2>Four-account Config status</h2></div><span id="matrix-source" class="pill">PENDING</span></div>
@@ -201,7 +220,28 @@ async function refresh(){
   finally{clearTimeout(timer);refreshing=false;button.disabled=false;render()}
 }
 document.getElementById('refresh').onclick=refresh;
-for(const [family,card] of Object.entries(cards)){card.querySelector('.prepare').onclick=async()=>{const button=card.querySelector('.prepare'),out=card.querySelector('.result');button.disabled=true;viewed[family]=false;out.textContent='Checking exact reset scope...';try{const p=await api('/api/operator/prepare-preview',{family});const ok=confirm(`${p.warning}\n\nResources: ${p.resource_count}\nAction: ${p.action}\n\nContinue?`);if(!ok){out.textContent='Cancelled \u2014 no demo resources changed.';return}out.textContent='Preparing and verifying exact owned demo resources...';const r=await api('/api/operator/prepare',{family,confirmation_token:p.confirmation_token});out.textContent=r.message||r.status;if(r.status!=='DEMO_READY')out.classList.add('error');else out.classList.remove('error');await refresh()}catch(e){out.textContent='Not ready: '+e.message;out.classList.add('error')}finally{button.disabled=false}}}
+async function prepareDemo(family,button,out){
+  button.disabled=true;viewed[family]=false;out.textContent='Checking exact reset scope...';out.classList.remove('error');
+  try{
+    const p=await api('/api/operator/prepare-preview',{family});
+    const ok=confirm(`${p.warning}\n\nResources: ${p.resource_count}\nAction: ${p.action}\n\nContinue?`);
+    if(!ok){out.textContent='Cancelled — no demo resources changed.';return}
+    out.textContent='Preparing and verifying exact owned demo resources...';
+    const r=await api('/api/operator/prepare',{family,confirmation_token:p.confirmation_token});
+    out.textContent=r.message||r.status;
+    if(r.status!=='DEMO_READY')out.classList.add('error');
+    await refresh()
+  }catch(e){out.textContent='Not ready: '+e.message;out.classList.add('error')}
+  finally{button.disabled=false}
+}
+for(const [family,card] of Object.entries(cards)){
+  const button=card.querySelector('.prepare'),out=card.querySelector('.result');
+  button.onclick=()=>prepareDemo(family,button,out)
+}
+for(const button of document.querySelectorAll('.admin-prepare')){
+  const panel=button.closest('.demo-control'),out=panel.querySelector('.result');
+  button.onclick=()=>prepareDemo(button.dataset.family,button,out)
+}
 // Update the local clock only; refreshing never dispatches remediation.
 setInterval(renderRefreshAge,15000);refresh();
 </script></body></html>
