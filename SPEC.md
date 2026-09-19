@@ -270,6 +270,22 @@ The repository and GitHub Pages site are public learning material.
 - `README.md`, `PROJECT_STATUS.md`, this `SPEC.md`, and `ROADMAP.md` describe the current public project contract;
 - `CONTEXT.md` is retained for coding-agent/session continuity and is not the human public introduction.
 
+## Personal LAB demo standing authority
+
+For the active personal-LAB SecCop / Config Console demo, Amit explicitly authorized routine bounded work to continue without repeated approval prompts.
+
+Within an active owning Issue/PR, G may directly execute and validate:
+- read-only AWS discovery, Config aggregation and affected-resource detail;
+- minimal read-only IAM required by that approved evidence path;
+- GUI/code/test changes and deployment;
+- named demo DNS/TLS/reverse-proxy/auth configuration;
+- service reload/restart needed for deployment;
+- existing bounded demo re-arm paths already defined by this SPEC.
+
+Do not stop or ask to stop the retained demo host merely because validation completed. Keep it running unless Amit explicitly requests a cost-saving shutdown.
+
+This standing authority does not permit termination, destructive deletion, secrets publication, company/PROD mutation, generic model-accessible AWS mutation, new arbitrary controls/accounts, or unrelated IAM expansion.
+
 ## Change authority
 
 For personal LAB/DEV **read-only** account expansion, Issue #68 and this contract permit a reusable broad read role and staged 2 -> 3-4 account proof without repeated per-service least-privilege redesign.
