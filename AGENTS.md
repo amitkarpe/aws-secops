@@ -69,7 +69,7 @@ For implementation-ready work where repository changes are expected, G owns the 
 - Treat every AWS MCP connected account as an independent control-plane context: select the exact connection, STS-verify it, then keep reads/writes bound to that connection for the operation.
 - A successful AWS MCP read proves connectivity, not mutation authority. Mutation still requires the active Issue/SPEC plus Amit's current authorization.
 - When G can complete a task safely through GitHub + AWS MCP, continue working through validation/fix/retest loops instead of pausing only because Codex was not used.
-- Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md): after testing/validation ask Amit before a graceful STOP, never terminate. Start the same verified retained host only when resumed work needs it, under Issue #110's bounded authority; verify identity, activity and health first.
+- Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md): keep the retained demo host running during active personal-LAB work. Do not proactively ask to stop it after validation. Stop only when Amit explicitly requests a cost-saving shutdown; never terminate. Start the same verified retained host only when resumed work needs it, and verify identity, activity and health first.
 - Use repository-owned IaC for durable AWS desired state whenever practical.
 - Prefer short-lived, repo-specific GitHub OIDC credentials over stored AWS access keys.
 - Keep PR validation credential-free where possible. Live deployment should be main-only/manual for this lab unless an approved Issue changes that contract.
