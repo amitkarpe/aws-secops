@@ -8,11 +8,11 @@ Updated: 2026-09-19
 
 ## Current Authority
 
-- Issue #114 / PR #115: polish the SecOps Admin Control Center re-arm UX and Config Dashboard navigation.
-- Personal-LAB standing authority is active: continue bounded demo implementation/deployment/validation without repeated approval prompts.
-- Keep the retained demo host running; do not proactively ask for shutdown after validation. Stop only when Amit explicitly requests a cost-saving shutdown. Never terminate.
-- Validate GitHub first, then STS on the exact personal-LAB connection from Issue #106 before AWS work.
-- Preserve the existing bounded remediation and human-approval boundaries; no generic rollback/revoke or arbitrary AWS admin API.
+- Config Dashboard is the single active hosted dashboard.
+- `ops.astromedicomp.org` redirects to Config Dashboard; the legacy 100-S3 / 10-SG Operator path is internal/historical only.
+- Demo controls use the Issue #82/#120 four-account CodeBuild prepare path: exactly 4 retained S3 demo buckets or exactly 4 retained unattached demo Security Groups.
+- Compliance Agent remains the separate governed remediation agent.
+- Personal-LAB standing authority remains active; keep the retained host running unless Amit explicitly requests shutdown.
 
 ## Current UI
 
