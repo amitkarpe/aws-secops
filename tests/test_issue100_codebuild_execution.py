@@ -89,10 +89,10 @@ class CodeBuildExecutionTests(unittest.TestCase):
             value = codebuild_execution.run("prepare", SG_CONTROL, timeout=1)
 
         self.assertEqual(value["decision"], "PREPARE")
-        start = json.dumps(calls[0])
-        self.assertIn('"SECOPS_MODE"', start)
-        self.assertIn('"prepare"', start)
-        self.assertNotIn("SECOPS_BATCH_ID", start)
+        start = calls[0]
+        overrides = json.loads(start[start.index("--environment-variables-override") + 1])
+        self.assertIn({"name": "SECOPS_MODE", "value": "prepare", "type": "PLAINTEXT"}, overrides)
+        self.assertNotIn("SECOPS_BATCH_ID", json.dumps(overrides))
 
     def test_source_contains_no_generic_model_selected_overrides(self):
         import pathlib
