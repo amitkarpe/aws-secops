@@ -332,37 +332,71 @@ def _config_state(session: TargetSession, control: str, resource_id: str, provid
     return normalize_config_state(found, provider_compliant=provider_compliant)
 
 
-def prepare(sessions: list[TargetSession]) -> dict[str, Any]:
+def _s3_noncompliant(value: dict[str, Any] | None) -> bool:
+    return isinstance(value, dict) and all(value.get(key) is False for key in (
+        "BlockPublicAcls",
+        "IgnorePublicAcls",
+        "BlockPublicPolicy",
+        "RestrictPublicBuckets",
+    ))
+
+
+def prepare(sessions: list[TargetSession], control: str) -> dict[str, Any]:
+    if control not in CONTROLS:
+        raise ValueError("unsupported control")
+
+    mutation_count = 0
+    changed_aliases: list[str] = []
     for session in sessions:
-        bucket = _ensure_bucket(session)
-        sg_id = _ensure_sg(session)
-        _assert_bucket_safe_for_rearm(session, bucket)
-        if not _sg_is_unattached(session, sg_id):
-            raise AwsError("demo Security Group is attached")
-        _run([
-            "s3api", "put-public-access-block",
-            "--bucket", bucket,
-            "--public-access-block-configuration",
-            "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false",
-        ], env=session.env)
-        rules = _open_ssh_rule_ids(session, sg_id)
-        if len(rules) > 1:
-            raise AwsError("demo Security Group has multiple unrestricted SSH rules")
-        if not rules:
-            _run([
-                "ec2", "authorize-security-group-ingress",
-                "--group-id", sg_id,
-                "--ip-permissions",
-                "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=0.0.0.0/0,Description=aws-secops-issue82-demo}]",
-            ], env=session.env)
-    return {
-        "campaign": "issue-82-s3-sg-config-e2e",
-        "mode": "PREPARE",
-        "aliases": list(ALIASES),
-        "s3": "SAFE_NONCOMPLIANT",
-        "sg": "SAFE_NONCOMPLIANT_UNATTACHED",
-        "config": "EVIDENCE_ONLY",
-        "resource_identifiers": "hidden-by-default",
+        if control == S3_CONTROL:
+            bucket = _ensure_bucket(session)
+            _assert_bucket_safe_for_rearm(session, bucket)
+            before = _get_bpa(session, bucket)
+            if not _s3_noncompliant(before):
+                _run([
+                    "s3api", "put-public-access-block",
+                    "--bucket", bucket,
+                    "--public-access-block-configuration",
+                    "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false",
+                ], env=session.env)
+                mutation_count += 1
+                changed_aliases.append(session.target.alias)
+            if not _s3_noncompliant(_get_bpa(session, bucket)):
+                raise AwsError("S3 provider readback did not prove demo starting state")
+        else:
+            sg_id = _ensure_sg(session)
+            if not _sg_is_unattached(session, sg_id):
+                raise AwsError("demo Security Group is attached")
+            rules = _open_ssh_rule_ids(session, sg_id)
+            if len(rules) > 1:
+                raise AwsError("demo Security Group has multiple unrestricted SSH rules")
+            if not rules:
+                _run([
+                    "ec2", "authorize-security-group-ingress",
+                    "--group-id", sg_id,
+                    "--ip-permissions",
+                    "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=0.0.0.0/0,Description=aws-secops-issue82-demo}]",
+                ], env=session.env)
+                mutation_count += 1
+                changed_aliases.append(session.target.alias)
+            if len(_open_ssh_rule_ids(session, sg_id)) != 1:
+                raise AwsError("SG provider readback did not prove demo starting state")
+
+    frozen, pending, config_states = _plan_for_control(sessions, control)
+    if len(pending) != 4:
+        raise AwsError("four-account prepare did not leave exactly four non-compliant demo targets")
+    return public_result(
+        control=control,
+        batch=frozen,
+        aliases=ALIASES,
+        decision="PREPARE",
+        mutation_count=mutation_count,
+        provider_verified=True,
+        config_states=config_states,
+    ) | {
+        "prepared_aliases": list(ALIASES),
+        "changed_aliases": changed_aliases,
+        "starting_state": "NON_COMPLIANT",
     }
 
 
@@ -490,7 +524,9 @@ def main() -> int:
     sessions = [_assume(target) for target in targets]
 
     if args.mode == "prepare":
-        result = prepare(sessions)
+        if not args.control:
+            parser.error("--control is required for prepare")
+        result = prepare(sessions, args.control)
     elif args.mode == "plan":
         if not args.control:
             parser.error("--control is required for plan")
