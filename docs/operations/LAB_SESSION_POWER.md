@@ -2,16 +2,18 @@
 
 Authority: Amit's explicit request in Issue #110. Applies only to the retained personal-LAB host serving Ops Operator Center and LibreChat, not the four remediation target accounts or any work/office host.
 
-## After testing or validation
+## During active personal-LAB demo work
 
-Ask Amit whether to **STOP the LAB instance, never terminate it**. A request for a reminder is not permission to stop immediately. Record the validation checkpoint and whether the shutdown prompt was delivered on the owning Issue/PR.
+Keep the retained LAB instance running. Do not proactively ask Amit to stop it at each validation checkpoint.
 
-Before an approved stop:
+A stop is considered only when Amit explicitly requests a cost-saving shutdown. Never terminate the instance.
+
+Before an explicitly requested stop:
 
 1. Select the intended AWS MCP connection and verify its account with STS, using `ap-southeast-1`; use the personal-LAB account gate from Issue #106.
 2. Re-discover the exact retained host, verify ownership and state, and confirm that no deployment, CodeBuild execution, remediation, tests or other active host work would be interrupted. Stop if the target or activity is ambiguous.
-3. Explain that Ops and LibreChat will be unavailable while the host is stopped. Preserve MongoDB data, EBS volumes, journals, manifests and configuration.
-4. After Amit confirms that exact stop, use normal EC2 `StopInstances`, with no force or skip-OS-shutdown options. Verify the final `stopped` state and record it.
+3. Explain that Ops, Config Console and LibreChat will be unavailable while the host is stopped. Preserve MongoDB data, EBS volumes, journals, manifests and configuration.
+4. Use normal EC2 `StopInstances` only after Amit has explicitly requested that shutdown, with no force or skip-OS-shutdown options. Verify the final `stopped` state and record it.
 
 Never use `TerminateInstances`, delete disks, clean up resources, resize, migrate, or change IAM/network/DNS under this authority. Stop is a reversible power action, not cleanup. This rule does not authorize bypassing a validation or safety failure.
 
@@ -25,4 +27,4 @@ Do not auto-enroll another host or account. Unexpected, stopping, shutting-down,
 
 ## Reminder behavior
 
-The interactive session should ask at the validation-complete checkpoint. A reminder may check durable completion state later, but it never performs an AWS power action itself. Avoid duplicate reminders for a checkpoint already acknowledged, prompted or recorded as stopped.
+Do not prompt for shutdown merely because validation completed. Mention shutdown only when Amit asks about cost-saving or explicitly requests a stop. A reminder never performs an AWS power action itself.
