@@ -242,23 +242,22 @@ Demo v1 trusts the retained host/deployment configuration, LibreChat approval co
 
 The demo does not claim hostile multi-tenant isolation, tamper-proof approval records, production identity governance or complete host-wide IAM isolation.
 
-## Operator / admin boundary
+## Unified dashboard / demo-admin boundary
 
-The current Operator UI supports bounded demo preparation, status and troubleshooting. Raw batch IDs and `/bulk` are engineering details.
+The active hosted dashboard is now **Config Dashboard** at `config.astromedicomp.org`.
 
-`Prepare demo` is a separate confirmed operator-maintenance path. It deliberately changes only the owned lab resources back to the known non-compliant demo state after provider guards. It is not exposed as an agent reset tool and is not remediation approval.
+The former `ops.astromedicomp.org` surface is retired from the active product and redirects to Config Dashboard. The retained legacy 100-S3 / 10-SG worker may remain internally available for historical tests or an explicitly requested legacy demo, but it is not the active demo-preparation path.
 
-S3 Operator status is saved batch evidence, not a fresh S3 scan. New successful S3 readbacks persist per-item `verified_at`; the card reports the latest saved readback event. Old journals lacking those timestamps show **not recorded**, never a guessed time from file modification or batch creation. The latest event is not an all-resource freshness guarantee. SG status performs current EC2 reads and reports unknowns explicitly. Partial Config counts remain labeled partial and cannot erase the saved provider/batch metrics.
+The active Config Dashboard contains a small personal-LAB-only **Demo controls** surface. It may re-arm exactly one supported control family at a time through the fixed four-account CodeBuild path:
 
-Long term, an Operations Console may aggregate:
+- S3 Block Public Access: exactly one retained Issue #82 demo bucket in each of `lab-dev`, `lab-poc`, `lab-qa`, and `lab-sec`;
+- Restricted SSH: exactly one retained unattached Issue #82 Security Group in each of those four aliases.
 
-- platform/service health;
-- remediation history and progress;
-- approvals and Policy outcomes;
-- correlation links into CloudTrail, CloudWatch and Config;
-- provider verification and uncertain-state reconciliation.
+The re-arm path is separate from agent remediation approval. It uses the existing registered targets, deterministic resource discovery, provider guards, fixed CodeBuild project, controller role, direct provider readback, and alias-only public result. It is idempotent and reports a truthful mutation count from 0 through 4.
 
-It must not become a generic arbitrary-AWS mutation console.
+The Config Dashboard remains read-only for evidence. Demo controls are the only bounded dashboard mutation extension and must not become a generic AWS administration surface.
+
+The separate **Compliance Agent** remains the real agent surface for finding -> explanation -> human approval -> governed remediation -> verification.
 
 ## Publication / documentation contract
 
