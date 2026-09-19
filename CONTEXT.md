@@ -8,10 +8,11 @@ Updated: 2026-09-19
 
 ## Current Authority
 
-- Issue #110 / PR #111: add light/dark theme without redesigning the accepted Operator layout; record the LAB stop-after-validation reminder and on-demand start rule.
-- Continue that PR until merged; check its latest outcome before attempting any implementation or deployment again.
-- Validate GitHub first, then STS on the exact personal-LAB connection from Issue #106 with `ap-southeast-1` selected. Never use a work/office connection for this task.
-- No backend/API, authentication, approval, IAM, remediation, resize or migration changes.
+- Issue #114 / PR #115: polish the SecOps Admin Control Center re-arm UX and Config Dashboard navigation.
+- Personal-LAB standing authority is active: continue bounded demo implementation/deployment/validation without repeated approval prompts.
+- Keep the retained demo host running; do not proactively ask for shutdown after validation. Stop only when Amit explicitly requests a cost-saving shutdown. Never terminate.
+- Validate GitHub first, then STS on the exact personal-LAB connection from Issue #106 before AWS work.
+- Preserve the existing bounded remediation and human-approval boundaries; no generic rollback/revoke or arbitrary AWS admin API.
 
 ## Current UI
 
@@ -25,8 +26,9 @@ Updated: 2026-09-19
 
 Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md).
 
-- After validation, ask Amit before graceful STOP; never terminate. No stop is authorized by the reminder request alone.
-- On resumed runtime work, start only the same STS-verified, rediscovered retained host if stopped; verify SSM, services and endpoint/auth health.
+- Keep the retained host running during active demo work. Do not ask for STOP merely because validation completed.
+- Stop only when Amit explicitly requests a cost-saving shutdown; never terminate.
+- If a later explicit stop has occurred, start only the same STS-verified retained host when runtime work resumes; verify SSM, services and endpoint/auth health.
 - Do not interrupt active work or start the host for repository-only work. Preserve data, disks, journals and configuration.
 - Record validation-complete, prompt-delivered and stop-confirmed checkpoints on the owning Issue/PR. Do not infer power state from this file.
 
