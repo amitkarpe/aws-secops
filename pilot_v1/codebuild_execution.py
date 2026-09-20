@@ -14,7 +14,7 @@ import subprocess
 import time
 from typing import Any
 
-from .multi_account_campaign import S3_CONTROL, SG_CONTROL
+from .multi_account_campaign import ALIASES, S3_CONTROL, SG_CONTROL, normalize_selected_aliases
 
 PROJECT = "aws-secops-four-account-executor"
 REGION = "ap-southeast-1"
@@ -60,9 +60,11 @@ def _validate(
     control: str,
     batch_id: str | None,
     exclusions: list[str] | None = None,
+    include_accounts: list[str] | None = None,
 ) -> None:
     exclusions = list(exclusions or [])
-    if mode not in {"prepare", "plan", "execute"}:
+    selected = normalize_selected_aliases(include_accounts)
+    if mode not in {"prepare", "plan", "execute", "verify"}:
         raise ValueError("unsupported execution mode")
     if control not in CONTROLS:
         raise ValueError("unsupported control")
@@ -72,7 +74,9 @@ def _validate(
     else:
         if not isinstance(batch_id, str) or not BATCH_RE.fullmatch(batch_id):
             raise ValueError("exact frozen batch id required")
-    if len(exclusions) > 3 or len(exclusions) != len(set(exclusions)):
+    if mode == "prepare" and list(selected) != list(ALIASES):
+        raise ValueError("prepare demo reset remains all-four only")
+    if len(exclusions) >= len(selected) or len(exclusions) != len(set(exclusions)):
         raise ValueError("invalid exact one-time exclusions")
     if any(not isinstance(value, str) or not value or len(value) > 255 or any(ch in value for ch in "*?[]") for value in exclusions):
         raise ValueError("invalid exact one-time exclusion")
@@ -84,16 +88,23 @@ def run(
     batch_id: str | None = None,
     *,
     exclusions: list[str] | None = None,
+    include_accounts: list[str] | None = None,
     timeout: int = 150,
 ) -> dict[str, Any]:
     exclusions = list(exclusions or [])
-    _validate(mode, control, batch_id, exclusions)
+    selected = list(normalize_selected_aliases(include_accounts))
+    _validate(mode, control, batch_id, exclusions, selected)
     overrides = [
         {"name": "SECOPS_MODE", "value": mode, "type": "PLAINTEXT"},
         {"name": "SECOPS_CONTROL", "value": control, "type": "PLAINTEXT"},
     ]
     if batch_id is not None:
         overrides.append({"name": "SECOPS_BATCH_ID", "value": batch_id, "type": "PLAINTEXT"})
+    overrides.append({
+        "name": "SECOPS_INCLUDE_ACCOUNTS_JSON",
+        "value": json.dumps(selected, separators=(",", ":")),
+        "type": "PLAINTEXT",
+    })
     if exclusions:
         overrides.append({
             "name": "SECOPS_EXCLUDE_RESOURCES_JSON",
