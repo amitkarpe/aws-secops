@@ -83,17 +83,31 @@ def call(operation: str, control: str) -> dict:
         raise ValueError("Remediation plan unavailable; no AWS change requested.") from None
 
 
-def multi_account_call(operation: str, control: str, batch_id: str | None = None) -> dict:
+def multi_account_call(
+    operation: str,
+    control: str,
+    batch_id: str | None = None,
+    exclude_resources: list[str] | None = None,
+) -> dict:
     if control not in ORDERED_CONTROLS or operation not in {"prepare", "execute"}:
         raise ValueError("unsupported four-account execution request")
+    exclusions = list(exclude_resources or [])
+    if len(exclusions) > 3 or len(exclusions) != len(set(exclusions)):
+        raise ValueError("exact one-time exclusions must be unique and leave at least one target")
+    if any(not isinstance(value, str) or not value or len(value) > 255 or any(ch in value for ch in "*?[]") for value in exclusions):
+        raise ValueError("invalid exact one-time exclusion")
     base = backend()
     if operation == "prepare":
         if batch_id is not None:
             raise ValueError("prepare does not accept batch id")
         path = "/api/operator/multi-account-execution-plan"
         payload = {"control": control}
+        if exclusions:
+            payload["exclude_resources"] = exclusions
         timeout = 170
     else:
+        if exclusions:
+            raise ValueError("execute exclusions are frozen server-side during prepare")
         if not isinstance(batch_id, str) or not re.fullmatch(r"[a-f0-9]{20}", batch_id):
             raise ValueError("exact frozen batch id required")
         path = "/api/operator/multi-account-execute"
@@ -261,7 +275,7 @@ server = FastMCP(
         "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS resource change and does not approve execution. "
-        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control), then immediately invoke execute_multi_account_remediation(control,batch_id) so LibreChat can show its native Approve/Reject card. "
+        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id) so LibreChat can show its native Approve/Reject card. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
         "Reject means no executor call. S3 and SG approvals remain separate. prepare_remediation(control) is legacy retained single-account behavior only."
     ),
 )
@@ -290,9 +304,16 @@ def get_multi_account_remediation_plan(
 @server.tool()
 def prepare_multi_account_remediation(
     control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
+    exclude_resources: list[str] | None = None,
 ) -> dict:
-    """Prepare one exact four-account frozen batch for an explicit fix request. No AWS resource mutation."""
-    return multi_account_call("prepare", control)
+    """Prepare one exact frozen batch, optionally excluding up to three exact current finding resources.
+
+    S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
+    exact Security Group IDs or exact deterministic demo group names. Wildcards,
+    ambiguous/unmatched resources and excluding every target fail closed.
+    Preparation makes no AWS resource mutation.
+    """
+    return multi_account_call("prepare", control, exclude_resources=exclude_resources)
 
 
 @server.tool()
