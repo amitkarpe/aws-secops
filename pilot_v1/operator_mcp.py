@@ -88,6 +88,7 @@ def multi_account_call(
     control: str,
     batch_id: str | None = None,
     scope_hash: str | None = None,
+    include_accounts: list[str] | None = None,
     exclude_resources: list[str] | None = None,
     exception_reason: str | None = None,
     exception_reference: str | None = None,
@@ -95,6 +96,13 @@ def multi_account_call(
 ) -> dict:
     if control not in ORDERED_CONTROLS or operation not in {"prepare", "execute"}:
         raise ValueError("unsupported four-account execution request")
+    selected = list(include_accounts or [])
+    if selected and (len(selected) != len(set(selected)) or not 1 <= len(selected) <= 4
+            or any(alias not in {"lab-dev", "lab-poc", "lab-qa", "lab-sec"} for alias in selected)):
+        raise ValueError("selected accounts must be 1-4 unique registered LAB aliases")
+    canonical = [alias for alias in ("lab-dev", "lab-poc", "lab-qa", "lab-sec") if alias in set(selected)]
+    if selected and selected != canonical:
+        raise ValueError("selected accounts must use canonical alias order")
     exclusions = list(exclude_resources or [])
     if len(exclusions) > 3 or len(exclusions) != len(set(exclusions)):
         raise ValueError("exact one-time exclusions must be unique and leave at least one target")
@@ -106,6 +114,8 @@ def multi_account_call(
             raise ValueError("prepare does not accept execution identifiers")
         path = "/api/operator/multi-account-execution-plan"
         payload = {"control": control}
+        if selected:
+            payload["include_accounts"] = selected
         if exclusions:
             payload["exclude_resources"] = exclusions
             payload["exception_reason"] = exception_reason
@@ -288,7 +298,7 @@ server = FastMCP(
         "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS resource change and does not approve execution. "
-        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
+        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, include_accounts, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. The selected account list is frozen during prepare and never supplied again at execute. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
         "Reject means no executor call. S3 and SG approvals remain separate. prepare_remediation(control) is legacy retained single-account behavior only."
     ),
 )
@@ -317,14 +327,16 @@ def get_multi_account_remediation_plan(
 @server.tool()
 def prepare_multi_account_remediation(
     control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
+    include_accounts: list[str] | None = None,
     exclude_resources: list[str] | None = None,
     exception_reason: str | None = None,
     exception_reference: str | None = None,
     exception_expires_at: str | None = None,
 ) -> dict:
-    """Prepare one exact frozen batch, optionally excluding up to three exact current finding resources.
+    """Prepare one exact frozen batch for 1-4 exact registered LAB accounts.
 
-    S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
+    Omit include_accounts for all four. Accounts not selected are outside scope,
+    not exceptions. S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
     exact Security Group IDs or exact deterministic demo group names. Wildcards,
     ambiguous/unmatched resources and excluding every target fail closed.
     A reason is required for any exclusion; reference and YYYY-MM-DD expiry are
@@ -333,6 +345,7 @@ def prepare_multi_account_remediation(
     return multi_account_call(
         "prepare",
         control,
+        include_accounts=include_accounts,
         exclude_resources=exclude_resources,
         exception_reason=exception_reason,
         exception_reference=exception_reference,
@@ -346,13 +359,27 @@ def execute_multi_account_remediation(
     batch_id: str,
     scope_hash: str,
 ) -> dict:
-    """ASK: Execute one exact frozen four-account remediation batch after native human approval.
+    """ASK: Execute one exact frozen selected-account remediation batch after native human approval.
 
-    Reject means this tool is not called. Approve dispatches only the exact
-    control + frozen batch through the fixed CodeBuild project and existing
-    G/O controller role. Direct provider readback must prove completion.
+    Reject means this tool is not called. Approve applies only the frozen
+    selected account/resource scope. Execution returns quickly with AWS service
+    verification pending; verification is a separate read-only step.
     """
     return multi_account_call("execute", control, batch_id, scope_hash)
+
+
+@server.tool()
+def verify_multi_account_remediation(
+    control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
+) -> dict:
+    """Read-only: verify the latest applied remediation directly in AWS service state and show AWS Config evaluation."""
+    base = backend()
+    request = Request(
+        base + "/api/operator/multi-account-verify",
+        data=json.dumps({"control": control}).encode(),
+        headers={"Origin": base, "Content-Type": "application/json"},
+    )
+    return _request(request, timeout=200)
 
 
 @server.tool()
