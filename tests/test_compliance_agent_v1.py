@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from pydantic import ValidationError
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "agents" / "compliance-agent-v1" / "src"
@@ -60,6 +66,22 @@ class ConfigBackendTests(unittest.TestCase):
     def test_loopback_backend_only(self):
         with self.assertRaises(config_backend.BackendEvidenceError):
             config_backend._base("https://example.com")
+        with self.assertRaisesRegex(config_backend.BackendEvidenceError, "port 1111"):
+            config_backend._base("http://127.0.0.1:4444")
+
+    def test_empty_resource_ids_are_not_reported_available(self):
+        row = {
+            "accountId": "",
+            "resourceId": "",
+            "resourceIds": [],
+        }
+        self.assertEqual(config_backend._optional_identifiers(row), {})
+
+    def test_nonempty_resource_ids_are_preserved(self):
+        self.assertEqual(
+            config_backend._optional_identifiers({"resourceIds": ["bucket-a"]}),
+            {"resource_ids": ["bucket-a"]},
+        )
 
 
 class HarnessClientTests(unittest.TestCase):
@@ -85,6 +107,38 @@ class HarnessClientTests(unittest.TestCase):
         with self.assertRaises(harness_client.HarnessError):
             harness_client.invoke("evidence", arn, client=Client())
 
+    def test_tooluse_word_in_normal_text_is_not_a_tool_event(self):
+        class Client:
+            def invoke_harness(self, **kwargs):
+                return {"stream": iter([
+                    {"contentBlockDelta": {"delta": {"text": "The word toolUse is ordinary answer text."}}},
+                ])}
+        arn = "arn:aws:bedrock-agentcore:ap-southeast-1:123456789012:harness/compliance_agent_v1-AbC123"
+        value = harness_client.invoke("evidence", arn, client=Client())
+        self.assertIn("toolUse", value["answer"])
+
+    def test_invalid_harness_response_is_sanitized(self):
+        class Client:
+            def invoke_harness(self, **kwargs):
+                return "not-an-object"
+        arn = "arn:aws:bedrock-agentcore:ap-southeast-1:123456789012:harness/compliance_agent_v1-AbC123"
+        with self.assertRaisesRegex(harness_client.HarnessError, "invalid response"):
+            harness_client.invoke("evidence", arn, client=Client())
+
+    def test_stream_failure_is_sanitized(self):
+        def broken():
+            yield {"contentBlockDelta": {"delta": {"text": "partial"}}}
+            raise RuntimeError("private provider detail")
+
+        class Client:
+            def invoke_harness(self, **kwargs):
+                return {"stream": broken()}
+
+        arn = "arn:aws:bedrock-agentcore:ap-southeast-1:123456789012:harness/compliance_agent_v1-AbC123"
+        with self.assertRaisesRegex(harness_client.HarnessError, "stream failed") as error:
+            harness_client.invoke("evidence", arn, client=Client())
+        self.assertNotIn("private provider detail", str(error.exception))
+
 
 class AgentTests(unittest.TestCase):
     def test_answer_uses_evidence_and_no_mutation(self):
@@ -105,12 +159,40 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(value["runtime"], "Amazon Bedrock AgentCore Harness")
         self.assertFalse(value["mutation"])
 
+    def test_invalid_request_fails_before_backend_read(self):
+        with patch.object(agent, "current_evidence") as evidence:
+            with self.assertRaisesRegex(ValueError, "user request is invalid"):
+                agent.answer("   ", harness_arn="arn:any")
+        evidence.assert_not_called()
+
 
 class McpServerRegressionTests(unittest.TestCase):
-    def test_mcp_server_has_no_runtime_model_config_mutation(self):
-        source = (SRC / "compliance_agent_v1" / "mcp_server.py").read_text()
-        self.assertNotIn("model_config =", source)
-        self.assertNotIn("ConfigDict", source)
+    def test_mcp_stdio_initializes_with_one_strict_tool(self):
+        async def probe():
+            env = dict(os.environ)
+            env["PYTHONPATH"] = str(SRC) + os.pathsep + env.get("PYTHONPATH", "")
+            env["AWS_EC2_METADATA_DISABLED"] = "true"
+            params = StdioServerParameters(
+                command=sys.executable,
+                args=["-m", "compliance_agent_v1.mcp_server"],
+                env=env,
+            )
+            async with stdio_client(params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    tools = await session.list_tools()
+                    self.assertEqual([tool.name for tool in tools.tools], ["ask_compliance_agent_v1"])
+
+        asyncio.run(probe())
+
+    def test_mcp_argument_model_rejects_unexpected_arguments(self):
+        from compliance_agent_v1.mcp_server import mcp
+
+        tools = mcp._tool_manager.list_tools()
+        self.assertEqual([tool.name for tool in tools], ["ask_compliance_agent_v1"])
+        model = tools[0].fn_metadata.arg_model
+        with self.assertRaises(ValidationError):
+            model.model_validate({"request": "status", "unexpected": "blocked"})
 
 
 class RepoIsolationTests(unittest.TestCase):
@@ -123,6 +205,18 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("compliance_agent_v1", combined)
         self.assertEqual(spec["name"], "Compliance Agent v1")
         self.assertEqual(spec["tools"], ["ask_compliance_agent_v1_mcp_compliance_agent_v1"])
+
+    def test_access_helper_is_bounded_and_idempotent(self):
+        helper = (ROOT / "integration" / "ensure-compliance-v1-access.cjs").read_text()
+        self.assertIn("AWS Compliance Agent", helper)
+        self.assertIn("Compliance Agent v1", helper)
+        self.assertIn("target user must already have source-agent access", helper)
+        self.assertIn("conflicting target ACL; manual review required", helper)
+        self.assertIn("countDocuments", helper)
+        self.assertIn("findOne", helper)
+        self.assertIn("insertOne", helper)
+        self.assertNotIn("deleteOne", helper)
+        self.assertNotIn("amitkarpe@", helper)
 
     def test_harness_is_dedicated_no_tool_runtime(self):
         template = (ROOT / "agents" / "compliance-agent-v1" / "infra" / "template.yml").read_text()

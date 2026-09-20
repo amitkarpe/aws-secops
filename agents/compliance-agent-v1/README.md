@@ -108,9 +108,10 @@ controls are present as exactly eight account/control checks.
 
 ### Runtime dependencies
 
-- Python 3.12+
-- latest compatible boto3 with AgentCore `InvokeHarness`
-- MCP Python SDK
+- Python 3.12 (deployed release runtime; CI also retains broader repository coverage)
+- boto3 1.43.98 with AgentCore `InvokeHarness`
+- MCP Python SDK 1.30.0
+- Pydantic 2.13.5
 - existing EC2 instance role with exact `bedrock-agentcore:InvokeHarness`
   permission for the dedicated v1 Harness only
 
@@ -127,11 +128,11 @@ identifier fidelity before LibreChat smoke testing.
 - AgentCore Harness golden prompts: PASS 5/5
 - read-only / no-mutation boundary: PASS
 - installed MCP bridge startup and invocation: PASS
-- LibreChat agent registration: PASS
-- GitHub regression CI: PASS (run 236)
-- verified commit: `8779cf9bd771be296b7983bf20e3881de3e10e48`
+- LibreChat agent registration and ACL visibility: PASS
+- authenticated LibreChat UI smoke: PASS
+- direct installed MCP invocation: PASS
+- release hardening: Issue #133 / PR #134
 
-Not yet claimed:
-- authenticated LibreChat UI/API smoke;
-- published GitHub Release `compliance-agent-v1.0.0`.
+Remaining:
+- publish and verify GitHub Release `compliance-agent-v1.0.0`.
 

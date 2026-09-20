@@ -44,3 +44,26 @@ jobs:
           for file in integration/*.cjs; do
             node --check "$file"
           done
+
+  compliance-agent-v1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: /dev/null
+      AWS_SHARED_CREDENTIALS_FILE: /dev/null
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: agents/compliance-agent-v1/requirements.txt
+      - name: Install exact verified v1 dependencies
+        run: python -m pip install -r agents/compliance-agent-v1/requirements.txt
+      - name: Compliance Agent v1 regression
+        run: python -m unittest -v tests.test_compliance_agent_v1

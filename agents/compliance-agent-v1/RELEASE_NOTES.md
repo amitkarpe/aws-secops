@@ -16,7 +16,7 @@ Owning Issue: #123
 
 Replace the broken legacy status path with a clean isolated Compliance Agent that reads the unified four-account Config backend and can be tested automatically without Amit manually exercising LibreChat.
 
-### Implementing architecture
+### Verified architecture
 
 - dedicated AgentCore Harness `compliance_agent_v1`;
 - Nova 2 Lite, Memory disabled, no Harness tools;
@@ -24,7 +24,7 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - one new LibreChat MCP bridge and one new named `Compliance Agent v1` shell;
 - no dependency on retired port 4444 or legacy `pilot_v1.compliance_mcp`.
 
-### Planned user-visible capabilities
+### Verified user-visible capabilities
 
 - current S3 Block Public Access status across four LAB aliases;
 - current restricted SSH status across four LAB aliases;
@@ -41,14 +41,16 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - identifier fidelity: PASS — unavailable identifiers were not fabricated;
 - approval/execution boundary: PASS — v1 remained read-only;
 - installed MCP bridge: PASS — one tool only, `ask_compliance_agent_v1`;
-- LibreChat registration: PASS — `Compliance Agent v1` exists with only the v1 MCP tool;
-- GitHub regression CI: PASS — workflow run 236;
+- LibreChat registration and ACL visibility: PASS — `Compliance Agent v1` is selectable by the authorized user;
+- authenticated LibreChat UI smoke: PASS — the expected v1 MCP tool ran and returned four-account evidence;
+- direct installed MCP invocation: PASS — exactly one tool and `mutation=false`;
 - live proof date: 2026-09-20;
-- exact verified commit: `8779cf9bd771be296b7983bf20e3881de3e10e48`.
+- pre-hardening verified baseline: `d2c4125b712ccddd675c3c34a1284aaa7d503afc`;
+- release hardening candidate: Issue #133 / PR #134.
 
 Remaining before RELEASED:
-- authenticated LibreChat UI/API smoke;
-- publish GitHub Release `compliance-agent-v1.0.0`.
+- merge the release-hardening candidate;
+- publish and verify GitHub Release `compliance-agent-v1.0.0` from that final merge commit.
 
 ### Known legacy defect being replaced
 

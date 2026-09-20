@@ -31,6 +31,8 @@ def _base(value: str) -> str:
     if parsed.path not in {"", "/"} or parsed.query or parsed.fragment or parsed.username or parsed.password:
         raise BackendEvidenceError("Config backend URL is not canonical")
     port = parsed.port or 80
+    if port != 1111:
+        raise BackendEvidenceError("Config backend must use loopback port 1111")
     return f"http://{parsed.hostname}:{port}"
 
 
@@ -64,7 +66,11 @@ def _optional_identifiers(row: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, str) and 1 <= len(value) <= 512:
             out[target] = value
     values = row.get("resourceIds")
-    if isinstance(values, list) and all(isinstance(x, str) and 1 <= len(x) <= 512 for x in values[:50]):
+    if (
+        isinstance(values, list)
+        and values
+        and all(isinstance(x, str) and 1 <= len(x) <= 512 for x in values[:50])
+    ):
         out["resource_ids"] = values[:50]
     return out
 

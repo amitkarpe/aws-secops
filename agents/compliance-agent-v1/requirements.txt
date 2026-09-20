@@ -1,3 +1,5 @@
-boto3>=1.40,<2
-mcp>=1.30,<2
-pydantic>=2.12,<3
+# Exact direct dependency versions verified on the retained Compliance Agent v1 runtime on 2026-09-20.
+# Change these pins only with the v1 regression suite and live Harness smoke.
+boto3==1.43.98
+mcp==1.30.0
+pydantic==2.13.5
