@@ -1,6 +1,6 @@
 # Compliance Agent v1
 
-Status: **IMPLEMENTING — Issue #125**
+Status: **VERIFIED — release publication pending (Issue #125)**
 
 Owning Issue: #123
 
@@ -41,7 +41,7 @@ Exactly two controls:
 - `s3-bucket-level-public-access-prohibited`
 - `restricted-ssh`
 
-Planned capabilities:
+Verified capabilities:
 
 - current status;
 - finding explanation;
@@ -52,7 +52,7 @@ Planned capabilities:
 - programmatic golden-prompt invocation against Harness;
 - minimal LibreChat browser smoke.
 
-## Planned implementation layout
+## Implementation layout
 
 ```text
 agents/compliance-agent-v1/
@@ -64,7 +64,7 @@ agents/compliance-agent-v1/
   tests/
 ```
 
-No implementation belongs in this planning PR.
+Implementation now lives in this isolated v1 line; legacy port 4444 and `pilot_v1.compliance_mcp` remain excluded.
 
 ## Identifier handling
 
@@ -119,3 +119,19 @@ controls are present as exactly eight account/control checks.
 Run `compliance_agent_v1.acceptance` against the dedicated Harness ARN. It
 checks status, explanation, no-change planning, explicit-fix boundary, and
 identifier fidelity before LibreChat smoke testing.
+
+
+## Verification status — 2026-09-20
+
+- Config backend: PASS (4 aliases × 2 controls = 8 checks)
+- AgentCore Harness golden prompts: PASS 5/5
+- read-only / no-mutation boundary: PASS
+- installed MCP bridge startup and invocation: PASS
+- LibreChat agent registration: PASS
+- GitHub regression CI: PASS (run 236)
+- verified commit: `8779cf9bd771be296b7983bf20e3881de3e10e48`
+
+Not yet claimed:
+- authenticated LibreChat UI/API smoke;
+- published GitHub Release `compliance-agent-v1.0.0`.
+
