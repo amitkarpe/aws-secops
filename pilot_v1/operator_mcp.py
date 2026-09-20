@@ -88,6 +88,9 @@ def multi_account_call(
     control: str,
     batch_id: str | None = None,
     exclude_resources: list[str] | None = None,
+    exception_reason: str | None = None,
+    exception_reference: str | None = None,
+    exception_expires_at: str | None = None,
 ) -> dict:
     if control not in ORDERED_CONTROLS or operation not in {"prepare", "execute"}:
         raise ValueError("unsupported four-account execution request")
@@ -104,6 +107,13 @@ def multi_account_call(
         payload = {"control": control}
         if exclusions:
             payload["exclude_resources"] = exclusions
+            payload["exception_reason"] = exception_reason
+            if exception_reference:
+                payload["exception_reference"] = exception_reference
+            if exception_expires_at:
+                payload["exception_expires_at"] = exception_expires_at
+        elif any(value for value in (exception_reason, exception_reference, exception_expires_at)):
+            raise ValueError("exception metadata requires an exact exclusion")
         timeout = 170
     else:
         if exclusions:
@@ -305,15 +315,26 @@ def get_multi_account_remediation_plan(
 def prepare_multi_account_remediation(
     control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
     exclude_resources: list[str] | None = None,
+    exception_reason: str | None = None,
+    exception_reference: str | None = None,
+    exception_expires_at: str | None = None,
 ) -> dict:
     """Prepare one exact frozen batch, optionally excluding up to three exact current finding resources.
 
     S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
     exact Security Group IDs or exact deterministic demo group names. Wildcards,
     ambiguous/unmatched resources and excluding every target fail closed.
-    Preparation makes no AWS resource mutation.
+    A reason is required for any exclusion; reference and YYYY-MM-DD expiry are
+    optional one-time risk-acceptance metadata. Preparation makes no AWS mutation.
     """
-    return multi_account_call("prepare", control, exclude_resources=exclude_resources)
+    return multi_account_call(
+        "prepare",
+        control,
+        exclude_resources=exclude_resources,
+        exception_reason=exception_reason,
+        exception_reference=exception_reference,
+        exception_expires_at=exception_expires_at,
+    )
 
 
 @server.tool()
