@@ -7,6 +7,7 @@ normal remediation authorization remains in LibreChat native ASK + Gateway Polic
 from __future__ import annotations
 
 import argparse
+import hashlib
 from http.server import HTTPServer
 import json
 import os
@@ -210,10 +211,52 @@ class OperatorService(BulkService):
                 raise ValueError("invalid exact exclusion resource")
         return values
 
-    def prepare_multi_account_execution(self, control: str, exclude_resources: object = None) -> dict:
+    @staticmethod
+    def _normalize_exception_metadata(
+        exclusions: list[str],
+        reason: object = None,
+        reference: object = None,
+        expires_at: object = None,
+    ) -> dict:
+        if not exclusions:
+            if any(value not in {None, ""} for value in (reason, reference, expires_at)):
+                raise ValueError("exception metadata requires at least one exclusion")
+            return {"reason": None, "reference": None, "expires_at": None}
+        if not isinstance(reason, str) or not 3 <= len(reason.strip()) <= 200:
+            raise ValueError("one-time exclusion reason is required")
+        reason = reason.strip()
+        if reference in {None, ""}:
+            reference = None
+        elif (not isinstance(reference, str) or len(reference) > 64
+              or not all(ch.isalnum() or ch in "._:/-" for ch in reference)):
+            raise ValueError("invalid exception reference")
+        if expires_at in {None, ""}:
+            expires_at = None
+        elif not isinstance(expires_at, str):
+            raise ValueError("invalid exception expiry")
+        else:
+            try:
+                time.strptime(expires_at, "%Y-%m-%d")
+            except ValueError as exc:
+                raise ValueError("exception expiry must be YYYY-MM-DD") from exc
+            if expires_at < time.strftime("%Y-%m-%d", time.gmtime()):
+                raise ValueError("exception expiry is already past")
+        return {"reason": reason, "reference": reference, "expires_at": expires_at}
+
+    def prepare_multi_account_execution(
+        self,
+        control: str,
+        exclude_resources: object = None,
+        exception_reason: object = None,
+        exception_reference: object = None,
+        exception_expires_at: object = None,
+    ) -> dict:
         if control not in {S3_CONTROL, SG_CONTROL}:
             raise ValueError("one exact supported control required")
         exclusions = self._normalize_exclusions(exclude_resources)
+        exception = self._normalize_exception_metadata(
+            exclusions, exception_reason, exception_reference, exception_expires_at
+        )
         current = self.multi_account_status()
         rows = current.get("accounts", [])
         if len(rows) != 4 or any(row.get("controls", {}).get(control) != "NON_COMPLIANT" for row in rows):
@@ -233,6 +276,17 @@ class OperatorService(BulkService):
         batch_id = result.get("batch_id")
         if not isinstance(batch_id, str):
             raise RuntimeError("frozen batch id missing")
+        scope_payload = {
+            "control": control,
+            "batch_id": batch_id,
+            "pending_aliases": pending_aliases,
+            "excluded_aliases": excluded_aliases,
+            "exclude_resources": exclusions,
+            "exception": exception,
+        }
+        scope_hash = hashlib.sha256(
+            json.dumps(scope_payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()[:24]
         cache = self._execution_cache()
         cache["plans"][control] = {
             "control": control,
@@ -240,6 +294,8 @@ class OperatorService(BulkService):
             "pending_aliases": pending_aliases,
             "excluded_aliases": excluded_aliases,
             "exclude_resources": exclusions,
+            "exception": exception,
+            "scope_hash": scope_hash,
             "created_at": int(time.time()),
         }
         self._save_execution_cache(cache)
@@ -252,6 +308,8 @@ class OperatorService(BulkService):
             "excluded_aliases": excluded_aliases,
             "excluded_resources": exclusions,
             "exception_source": "one-time-user-exclusion" if exclusions else None,
+            "exception": exception if exclusions else None,
+            "scope_hash": scope_hash,
             "native_ask_required": True,
             "next_execution": {
                 "tool": "execute_multi_account_remediation_mcp_aws_compliance_planner",
@@ -284,6 +342,8 @@ class OperatorService(BulkService):
             "excluded_aliases": plan.get("excluded_aliases", []),
             "excluded_resources": plan.get("exclude_resources", []),
             "exception_source": "one-time-user-exclusion" if plan.get("exclude_resources") else None,
+            "exception": plan.get("exception") if plan.get("exclude_resources") else None,
+            "scope_hash": plan.get("scope_hash"),
             "age_seconds": age,
             "account_ids": "hidden-by-default",
             "resource_identifiers": "hidden-by-default",
@@ -323,6 +383,8 @@ class OperatorService(BulkService):
             "excluded_aliases": result.get("excluded_aliases", []),
             "excluded_resources": exclusions,
             "exception_source": "one-time-user-exclusion" if exclusions else None,
+            "exception": preview.get("exception") if exclusions else None,
+            "scope_hash": preview.get("scope_hash"),
             "config_states": result.get("config"),
             "execution_backend": result.get("execution_backend"),
             "account_ids": "hidden-by-default",
@@ -598,10 +660,17 @@ class OperatorHandler(BulkHandler):
             elif self.path == "/api/operator/prepare-batch" and set(data) == {"control"}:
                 result = self.service.prepare_batch(data["control"])
             elif (self.path == "/api/operator/multi-account-execution-plan"
-                  and set(data).issubset({"control", "exclude_resources"})
+                  and set(data).issubset({
+                      "control", "exclude_resources", "exception_reason",
+                      "exception_reference", "exception_expires_at",
+                  })
                   and "control" in data):
                 result = self.service.prepare_multi_account_execution(
-                    data["control"], data.get("exclude_resources")
+                    data["control"],
+                    data.get("exclude_resources"),
+                    data.get("exception_reason"),
+                    data.get("exception_reference"),
+                    data.get("exception_expires_at"),
                 )
             elif self.path == "/api/operator/multi-account-execute" and set(data) == {"control", "batch_id"}:
                 result = self.service.execute_multi_account(data["control"], data["batch_id"])
