@@ -18,27 +18,22 @@ Exactly two supported controls:
 1. S3 bucket-level Block Public Access
 2. Security Group restricted SSH
 
-The current management/operator story is:
+Current clean read path:
 
 ```text
 Organization AWS Config
         ↓
-ops.astromedicomp.org
+Config Dashboard
         ↓
-live four-account alias-only status
+Compliance Agent v1
         ↓
-sec.astromedicomp.org
-AWS Compliance Agent
+strict loopback Config adapter (:1111)
         ↓
-read-only four-account status + plan
+dedicated Amazon Bedrock AgentCore Harness
         ↓
-explicit governed G/O execution path
+Nova 2 Lite reasoning, no Harness tools
         ↓
-GitHub OIDC exact AWS change
-        ↓
-direct provider readback
-        ↓
-AWS Config converges independently
+read-only answer in LibreChat
 ```
 
 The core security principle remains:
@@ -49,104 +44,94 @@ The core security principle remains:
 
 | Capability | Current evidence |
 |---|---|
-| Four-account Config status | **LIVE** — both controls across exactly four aliases |
-| Four-account Compliance Agent plan | **LIVE / read-only** — no multi-account chat executor |
-| S3 Reject | **PASS** — 0 writes |
-| S3 Approve | **PASS** — 4 exact provider-verified BPA updates |
-| SG Reject | **PASS** — 0 writes |
-| SG Approve | **PASS** — 4 exact provider-verified SSH revocations |
-| Config convergence | **PASS** — both controls `COMPLIANT x4` |
-| Idempotent rerun | **PASS** — `ALREADY_COMPLIANT`, 0 writes |
-| Public-safe output | **PASS** — aliases only; raw AWS identifiers hidden |
+| Four-account Config status | **LIVE** — exactly 4 aliases × 2 controls |
+| Compliance Agent v1 | **LIVE** — AgentCore Harness-backed, read-only |
+| v1 golden prompts | **PASS 5/5** — status, explain, plan, fix guard, identifiers |
+| v1 LibreChat smoke | **PASS** — selectable agent, expected MCP tool, four-account response |
+| v1 MCP boundary | **PASS** — exactly one tool, no mutation capability |
+| Four-account governed remediation proof | **PASS** — separate bounded approval/execution path with provider readback |
+| S3/SSH Reject | **PASS** — 0 writes for the rejected exact batch |
+| S3/SSH Approve | **PASS** — exact provider-verified changes |
+| Config convergence | **PASS** — independent asynchronous evidence |
 
-The final four-account web/API acceptance was re-run on 2026-09-18 after Issue #95.
+Latest clean v1 live acceptance: **2026-09-20**.
 
-## Two execution boundaries
+## Two agent paths
 
-### Live four-account scope
+### Compliance Agent v1 — current clean specialist
 
-The Compliance Agent can read current organization Config state and produce a four-account remediation plan.
+- AgentCore Harness is the reasoning layer.
+- Current evidence comes only from the unified Config backend.
+- v1 exposes one read-only MCP tool: `ask_compliance_agent_v1`.
+- v1 does **not** execute remediation.
+- Operational identifiers may be returned only when the authorized evidence actually contains them.
 
-It **cannot** execute a four-account mutation from chat.
+### Governed remediation path — separate bounded capability
 
-Four-account writes remain on the separate governed path:
+The existing AWS Compliance Agent / Issue #100 path preserves the approved mutation contract:
 
 ```text
-G / GitHub durable decision
-        ↓
-O = GitHub OIDC
-        ↓
+explicit fix intent
+   ↓
+frozen exact four-account plan
+   ↓
+native Approve / Reject
+   ↓
+fixed CodeBuild + existing G/O controller
+   ↓
 exact target sessions
-        ↓
-bounded control-specific AWS action
-        ↓
-provider verification
+   ↓
+provider readback
+   ↓
+independent Config convergence
 ```
 
-### Legacy retained single-account demo
+This is not a generic AWS administration path and is not inherited by Compliance Agent v1.
 
-The earlier retained runtime still exists for engineering/history:
+## Current web surfaces
 
-- 100 S3 demo buckets
-- 10 unattached Security Groups
-- native LibreChat approval + exact-tool flows
+- **Config Dashboard:** https://config.astromedicomp.org/
+- **Compliance Agent / LibreChat:** https://sec.astromedicomp.org/
+- `ops.astromedicomp.org` is retained only as a redirect/legacy entry point.
 
-It is now explicitly **Legacy retained single-account demo** on the Operator page and is not the default answer for generic current-status or remediation-plan questions.
+## Release state
 
-## Operator pages
+The clean v1 baseline is verified and ready for tag/release:
 
-- **Operations Console:** https://ops.astromedicomp.org/
-  - primary: live four-account Config matrix
-  - secondary: latest accepted E2E proof
-  - legacy section: retained 100-S3 / 10-SG demo
-- **AWS Compliance Agent:** https://sec.astromedicomp.org/
-  - generic status -> live four-account status
-  - generic plan -> live four-account plan
-  - legacy retained tools only when explicitly requested
-
-## 3-minute demo
-
-Start with [Agentic SecOps — 3-minute demo](docs/operations/AGENTIC_DEMO_3_MIN.md).
-
-Short story:
-
-1. Show four aliases and both controls in the Operator page.
-2. Ask the Compliance Agent for current status.
-3. Ask for the four-account remediation plan.
-4. Re-arm only through the governed operator/G/O path when a live non-compliant demo is required.
-5. Prove Reject = 0 writes.
-6. Prove Approve = exact provider-verified changes.
-7. Show Config convergence to `COMPLIANT x4`.
-8. Rerun and show `ALREADY_COMPLIANT` / 0 writes.
+- planned tag: `compliance-agent-v1.0.0`
+- in-repo release history: [agents/compliance-agent-v1/RELEASE_NOTES.md](agents/compliance-agent-v1/RELEASE_NOTES.md)
+- canonical user-facing history: GitHub Releases
+- GitHub Release publication is still pending while Issue #125 remains open.
 
 ## Current evidence
 
+- [Compliance Agent v1](agents/compliance-agent-v1/README.md)
 - [Management audit view](docs/operations/MANAGEMENT_AUDIT_VIEW.md)
 - [Architecture](docs/architecture.md)
 - [Governance](docs/governance.md)
-- [Operations Console direction](docs/operator-console.md)
 - [Project status](PROJECT_STATUS.md)
 - [Demo v1](docs/demo-v1.md) — retained legacy/single-account detail
 
 Key milestones:
 
-- Issue #82 / PRs #83–#84 — four-account provider E2E
-- Issue #88 / PRs #89–#91 — organization AWS Config evidence
-- Issue #87 / PR #92 — management rehearsal
-- Issue #93 / PR #94 — acceptance evidence on ops/sec
-- Issue #95 / PRs #96–#98 — live four-account ops/sec default scope
+- Issue #82 — four-account provider E2E
+- Issue #88 — organization Config evidence
+- Issue #100 — native governed four-account chat execution path
+- Issue #120 — four-account demo re-arm + legacy Operator retirement
+- Issues #123/#125 — clean Compliance Agent v1 + AgentCore Harness acceptance
+- Issue #130 — next read-only AWS MCP evidence-source experiment
 
 ## Important boundaries
 
 - Personal LAB only; no Synapxe/work/office authority.
-- Exactly two supported controls.
-- Four-account chat tools are read-only.
-- Multi-account mutation remains on the separate governed GitHub OIDC path.
+- Exactly four registered aliases and two supported controls for v1.
+- Compliance Agent v1 is read-only and has no execution tool.
+- Governed mutation remains a separate exact approval/execution path.
 - Reject means zero writes for that exact batch.
 - Provider readback proves remediation completion.
 - AWS Config is independent asynchronous evidence.
 - No generic model-accessible AWS administration tool is exposed.
-- Public/default output hides account IDs, ARNs, bucket names, Security Group IDs and credentials.
+- Never commit credentials, tokens, auth/session material, or private runtime evidence.
 
 ### Fresh ChatGPT operator session
 
