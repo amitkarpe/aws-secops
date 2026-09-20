@@ -33,6 +33,7 @@ def run(harness_arn: str, backend_url: str) -> dict:
                 "likely an ec2", "password-based", "password authentication",
                 "network acl", "iam polic", "attacker activity", "exploitability",
                 "vpc cidr", "security policy", "all three", "re-run aws config",
+                "new aws config evaluation",
             )
             passed = passed and not any(x in lower for x in forbidden)
             if name == "plan":
