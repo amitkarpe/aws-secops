@@ -27,6 +27,8 @@ if (spec?.name !== 'Compliance Agent v1') throw Error('unexpected agent name');
 if (spec?.provider !== 'bedrock' || spec?.model !== 'global.amazon.nova-2-lite-v1:0') throw Error('unexpected v1 model');
 if (JSON.stringify(spec?.tools) !== JSON.stringify(expectedTools)) throw Error('unexpected v1 tool set');
 if (typeof spec?.instructions !== 'string' || !spec.instructions.includes('native Approve/Reject')) throw Error('governed approval instructions required');
+if (!Array.isArray(spec?.conversation_starters) || spec.conversation_starters.length < 1 || spec.conversation_starters.length > 4) throw Error('1-4 conversation starters required');
+if (spec.conversation_starters.some((x) => typeof x !== 'string' || x.length < 1 || x.length > 80)) throw Error('invalid conversation starter');
 
 const update = {
   name: spec.name,
@@ -36,6 +38,7 @@ const update = {
   model_parameters: spec.model_parameters,
   instructions: spec.instructions,
   tools: spec.tools,
+  conversation_starters: spec.conversation_starters,
 };
 const js = String.raw`
 const update = ${JSON.stringify(update)};
@@ -55,7 +58,10 @@ if (String(after.author) !== String(before.author) || after.id !== before.id) {
 if (JSON.stringify(after.tools) !== JSON.stringify(update.tools)) {
   throw new Error('v1 agent tools not updated exactly');
 }
-print(JSON.stringify({status:'READY', id:after.id, toolCount:after.tools.length}));
+if (JSON.stringify(after.conversation_starters) !== JSON.stringify(update.conversation_starters)) {
+  throw new Error('v1 conversation starters not updated exactly');
+}
+print(JSON.stringify({status:'READY', id:after.id, toolCount:after.tools.length, starterCount:after.conversation_starters.length}));
 `;
 
 const output = execFileSync('mongosh', [database, '--quiet', '--eval', js], {
@@ -65,5 +71,5 @@ const output = execFileSync('mongosh', [database, '--quiet', '--eval', js], {
 }).trim();
 const line = output.split(/\r?\n/).filter(Boolean).at(-1);
 const result = JSON.parse(line);
-if (result?.status !== 'READY' || result?.toolCount !== 3) throw Error('v1 agent update verification failed');
-console.log('COMPLIANCE_AGENT_V1_RECORD=READY TOOLS=3');
+if (result?.status !== 'READY' || result?.toolCount !== 3 || result?.starterCount !== 4) throw Error('v1 agent update verification failed');
+console.log('COMPLIANCE_AGENT_V1_RECORD=READY TOOLS=3 STARTERS=4');
