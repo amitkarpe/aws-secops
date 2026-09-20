@@ -272,6 +272,15 @@ class RepoIsolationTests(unittest.TestCase):
         installer = (ROOT / "integration" / "install-compliance-v1.cjs").read_text()
         spec = json.loads((ROOT / "integration" / "compliance-agent-v1.json").read_text())
         self.assertEqual(spec["name"], "Compliance Agent v1")
+        self.assertEqual(spec["conversation_starters"], ["Status", "Fix S3", "Fix SSH", "Verify latest"])
+        self.assertLessEqual(len(spec["conversation_starters"]), 4)
+        self.assertIn("| AWS Account | 🪣 S3 Block Public Access | 🛡️ Restricted SSH |", spec["instructions"])
+        self.assertIn("✅ COMPLIANT", spec["instructions"])
+        self.assertIn("❌ NON-COMPLIANT", spec["instructions"])
+        self.assertIn("➡️ Next:", spec["instructions"])
+        self.assertIn("native LibreChat Approve/Reject remains mandatory", spec["instructions"])
+        self.assertIn("AWS service verification", spec["instructions"])
+        self.assertIn("AWS Config evaluation", spec["instructions"])
         self.assertEqual(spec["tools"], [
             "ask_compliance_agent_v1_mcp_compliance_agent_v1",
             "prepare_multi_account_remediation_mcp_aws_compliance_planner",
@@ -314,6 +323,8 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("after.id !== before.id", updater)
         self.assertIn("String(after.author) !== String(before.author)", updater)
         self.assertIn("toolCount !== 3", updater)
+        self.assertIn("starterCount !== 4", updater)
+        self.assertIn("conversation_starters: spec.conversation_starters", updater)
         self.assertNotIn("insertOne", updater)
         self.assertNotIn("deleteOne", updater)
 
