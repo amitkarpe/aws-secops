@@ -29,11 +29,12 @@ class Issue151SingleNativeApprovalTests(unittest.TestCase):
                 include_accounts=["lab-dev"],
             )
 
-        transition = result["assistant_transition"]
+        payload = result.structuredContent
+        transition = payload["assistant_transition"]
         self.assertEqual(transition["mode"], "IMMEDIATE_NATIVE_ASK")
         self.assertIn("Do not emit assistant text", transition["instruction"])
         self.assertIn("native Approve/Reject + Submit card", transition["instruction"])
-        self.assertEqual(result["next_execution"], frozen["next_execution"])
+        self.assertEqual(payload["next_execution"], frozen["next_execution"])
 
     def test_chat_words_never_become_authorization_contract(self):
         spec = operator_mcp.server.instructions

@@ -1,10 +1,14 @@
 """One-tool LibreChat MCP shell for Compliance Agent v1."""
 from __future__ import annotations
 
+import json
+
 from mcp.server.fastmcp import FastMCP
+from mcp.types import CallToolResult, EmbeddedResource, TextContent, TextResourceContents
 from pydantic import ConfigDict
 
 from .agent import answer
+from .ui_cards import render_fleet_card
 
 mcp = FastMCP(
     "Compliance Agent v1",
@@ -17,9 +21,25 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-def ask_compliance_agent_v1(request: str) -> dict:
+def ask_compliance_agent_v1(request: str) -> CallToolResult:
     """Answer one AWS compliance request using live four-account Config evidence and AgentCore Harness reasoning."""
-    return answer(request)
+    value = answer(request)
+    content = [
+        TextContent(type="text", text=json.dumps(value, separators=(",", ":"), sort_keys=True)),
+    ]
+    lower = request.lower()
+    if not any(token in lower for token in ("fix ", "apply ", "execute ", "remediate ")):
+        content.append(
+            EmbeddedResource(
+                type="resource",
+                resource=TextResourceContents(
+                    uri="ui://compliance-agent-v1/fleet-status",
+                    mimeType="text/html",
+                    text=render_fleet_card(value["evidence"]),
+                ),
+            )
+        )
+    return CallToolResult(content=content, structuredContent=value)
 
 
 # Fail closed on unexpected/coerced MCP arguments without mutating FastMCP settings.

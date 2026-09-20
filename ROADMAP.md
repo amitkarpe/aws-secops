@@ -11,6 +11,10 @@
 - Issue #68 is closed; its original two-account prerequisite is no longer the current roadmap gate.
 - Compliance Agent v1 implemented as a clean isolated AgentCore Harness-backed specialist.
 - Compliance Agent v1 live E2E: Config 4×2 checks, five golden prompts, one-tool MCP, LibreChat authenticated smoke, zero mutation.
+- Selective 1–4 LAB account remediation with exact frozen scope and native approval — Issue #147.
+- Fast remediation response with separate read-only AWS service verification and independent AWS Config evaluation — Issue #147.
+- Concise demo prompts, readable status tables and single native Approve/Reject + Submit handoff — Issues #148/#151.
+- Four-account demo re-arm restored after selective-scope rollout, including mixed-state idempotency regression — Issue #153.
 
 ## Current
 
@@ -35,6 +39,17 @@ Issue #140 is the future master roadmap for:
 - large-scale performance acceptance.
 
 Do not implement all of #140 as one change. Choose one bounded milestone at a time.
+
+Active bounded Ops UX milestone: **Issue #155 — native LibreChat MCP rich results**.
+
+Issue #155 implements Phase 1 only:
+- fleet compliance status card;
+- remediation preview card;
+- remediation result / verification card;
+- progressive disclosure for batch/scope technical IDs;
+- simple Ops wording: AWS change, AWS service verification, AWS Config evaluation.
+
+CSV/export remains the next separate bounded UX milestone after visual acceptance of #155.
 
 First bounded exception milestone: **Issue #141**.
 
