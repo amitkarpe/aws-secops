@@ -49,14 +49,18 @@ const planner = {
   command:'/opt/aws-secops/.venv-mcp/bin/python',
   args:['-m','pilot_v1.operator_mcp'],
   env:{PYTHONPATH:'/opt/aws-secops',SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'},
-  timeout:190000,
+  timeout:300000,
   initTimeout:15000,
   chatMenu:false,
   serverInstructions:true,
 };
 const existingPlanner=updated.mcpServers.aws_compliance_planner;
-if (!existingPlanner || !isDeepStrictEqual(existingPlanner,planner))
+const previousPlanner={...planner,timeout:190000};
+if (!existingPlanner)
   throw Error('exact existing four-account compliance planner MCP required');
+if (!isDeepStrictEqual(existingPlanner,planner) && !isDeepStrictEqual(existingPlanner,previousPlanner))
+  throw Error('existing four-account compliance planner MCP differs; review before replacing');
+updated.mcpServers.aws_compliance_planner=planner;
 
 const prepareTool='prepare_multi_account_remediation_mcp_aws_compliance_planner';
 if (!approval.allow.includes(prepareTool)) approval.allow.push(prepareTool);
