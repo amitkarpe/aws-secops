@@ -14,7 +14,8 @@ Scope:
 - S3 Block Public Access;
 - restricted SSH;
 - status / explain / plan;
-- automated acceptance;
+- Amazon Bedrock AgentCore Harness as the primary agent reasoning/tool layer;
+- automated backend + Harness + LibreChat acceptance;
 - no generic AWS administration.
 
 ### AWS Ops Agent v1
@@ -64,3 +65,21 @@ Do not call the product `DevOps Agent` or `DevSecOps Agent` until it genuinely i
 Prove stable contracts in Compliance Agent v1 first.
 
 Future AWS Ops Agent versions should consume those proven contracts rather than copy legacy agent code.
+
+
+## Knowledge and memory progression
+
+Keep operational truth separate from semantic knowledge.
+
+### Compliance Agent v1
+- structured operational event ledger first;
+- KISS storage: S3 JSON event objects;
+- exact actor/resource/time/before/after/provider-verification queries use the ledger;
+- no RAG required.
+
+### Later
+- add AgentCore Memory for conversation continuity and episodic/user context;
+- add Bedrock Knowledge Bases/RAG for growing runbooks, SOPs, policies, architecture and incident documentation;
+- move operational event storage to DynamoDB when indexed/queryable history needs outgrow simple S3 JSON.
+
+RAG supplements operational truth; it does not replace the change ledger or CloudTrail evidence.
