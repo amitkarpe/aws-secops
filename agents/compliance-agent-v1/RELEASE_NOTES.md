@@ -1,6 +1,8 @@
 # Compliance Agent Release Notes
 
-This file is append-only product history for the clean Compliance Agent line.
+This file is the in-repo source/history for the clean Compliance Agent line.
+
+**Canonical user-facing release history:** GitHub Releases, following the same product-history style as projects such as OpenAI Codex.
 
 ## v1.0.0 — PLANNED
 
@@ -27,7 +29,8 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 
 - Config/backend contract test;
 - four-account MCP/tool test;
-- five golden agent prompts;
+- AgentCore Harness availability/invocation test;
+- five golden Harness prompts;
 - identifier-fidelity check;
 - approval-boundary check;
 - minimal LibreChat browser smoke;
@@ -39,10 +42,14 @@ The current legacy Compliance Agent still routes `get_multi_account_status` thro
 
 ### Release evidence required before changing this status to RELEASED
 
+Publish a GitHub Release tagged `compliance-agent-v1.0.0` containing:
+
+- Highlights;
+- AgentCore Harness/runtime architecture;
+- backend/tool contract changes;
 - exact release commit;
-- CI/test run;
+- CI/acceptance run;
 - live proof date;
-- acceptance summary;
 - known limitations;
 - rollback/reference commit.
 
@@ -50,11 +57,9 @@ The current legacy Compliance Agent still routes `get_multi_account_status` thro
 
 ## Release-note rule
 
-For every later version append a new section and create a durable snapshot under:
+For every later version append a new section here and publish a new immutable GitHub Release.
 
-`docs/releases/<product>-vX.Y.Z.md`
-
-Do not rewrite prior released notes.
+Do not rewrite prior published release notes.
 
 ### Identifier policy clarification
 
