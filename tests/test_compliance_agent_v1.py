@@ -294,6 +294,15 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("multi-account-approval-hook.cjs", installer)
         self.assertIn("four-account v1 execution must not be statically allowed", installer)
 
+    def test_agent_updater_preserves_identity_and_exact_tools(self):
+        updater = (ROOT / "integration" / "update-compliance-v1-agent.cjs").read_text()
+        self.assertIn("expected exactly one existing Compliance Agent v1", updater)
+        self.assertIn("after.id !== before.id", updater)
+        self.assertIn("String(after.author) !== String(before.author)", updater)
+        self.assertIn("toolCount !== 3", updater)
+        self.assertNotIn("insertOne", updater)
+        self.assertNotIn("deleteOne", updater)
+
     def test_access_helper_is_bounded_and_idempotent(self):
         helper = (ROOT / "integration" / "ensure-compliance-v1-access.cjs").read_text()
         self.assertIn("AWS Compliance Agent", helper)
