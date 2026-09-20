@@ -87,6 +87,7 @@ def multi_account_call(
     operation: str,
     control: str,
     batch_id: str | None = None,
+    scope_hash: str | None = None,
     exclude_resources: list[str] | None = None,
     exception_reason: str | None = None,
     exception_reference: str | None = None,
@@ -101,8 +102,8 @@ def multi_account_call(
         raise ValueError("invalid exact one-time exclusion")
     base = backend()
     if operation == "prepare":
-        if batch_id is not None:
-            raise ValueError("prepare does not accept batch id")
+        if batch_id is not None or scope_hash is not None:
+            raise ValueError("prepare does not accept execution identifiers")
         path = "/api/operator/multi-account-execution-plan"
         payload = {"control": control}
         if exclusions:
@@ -120,8 +121,10 @@ def multi_account_call(
             raise ValueError("execute exclusions are frozen server-side during prepare")
         if not isinstance(batch_id, str) or not re.fullmatch(r"[a-f0-9]{20}", batch_id):
             raise ValueError("exact frozen batch id required")
+        if not isinstance(scope_hash, str) or not re.fullmatch(r"[a-f0-9]{24}", scope_hash):
+            raise ValueError("exact frozen scope hash required")
         path = "/api/operator/multi-account-execute"
-        payload = {"control": control, "batch_id": batch_id}
+        payload = {"control": control, "batch_id": batch_id, "scope_hash": scope_hash}
         timeout = 170
     request = Request(
         base + path,
@@ -285,7 +288,7 @@ server = FastMCP(
         "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS resource change and does not approve execution. "
-        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id) so LibreChat can show its native Approve/Reject card. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
+        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
         "Reject means no executor call. S3 and SG approvals remain separate. prepare_remediation(control) is legacy retained single-account behavior only."
     ),
 )
@@ -341,6 +344,7 @@ def prepare_multi_account_remediation(
 def execute_multi_account_remediation(
     control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
     batch_id: str,
+    scope_hash: str,
 ) -> dict:
     """ASK: Execute one exact frozen four-account remediation batch after native human approval.
 
@@ -348,7 +352,7 @@ def execute_multi_account_remediation(
     control + frozen batch through the fixed CodeBuild project and existing
     G/O controller role. Direct provider readback must prove completion.
     """
-    return multi_account_call("execute", control, batch_id)
+    return multi_account_call("execute", control, batch_id, scope_hash)
 
 
 @server.tool()
