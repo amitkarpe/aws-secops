@@ -42,7 +42,7 @@ Planned capabilities:
 - current status;
 - finding explanation;
 - bounded remediation plan;
-- privacy-safe output;
+- operational detail, including account/resource identifiers when the authorized backend provides them;
 - preserved approval/security boundary;
 - automated backend/MCP/agent acceptance harness;
 - minimal LibreChat browser smoke.
@@ -60,3 +60,11 @@ agents/compliance-agent-v1/
 ```
 
 No implementation belongs in this planning PR.
+
+## Identifier handling
+
+Compliance Agent v1 does not use alias-only privacy masking as an acceptance requirement.
+
+- Return account/resource identifiers when they are supplied by an authorized backend/tool and help operations.
+- Do not invent identifiers that the backend does not provide.
+- Never expose credentials, secrets, tokens, auth/session material or unrelated private data.
