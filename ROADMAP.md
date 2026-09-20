@@ -21,6 +21,33 @@
 - publish immutable GitHub Release `compliance-agent-v1.0.0`;
 - close Issues #123/#125 after release evidence is verified.
 
+### Scalable Ops UX + governed exceptions — Issue #140
+
+Issue #140 is the future master roadmap for:
+- rich inline Ops cards;
+- CSV/export;
+- deterministic one-time exclusions;
+- managed exception registry and expiry;
+- 50+ account pagination/filter/query contracts;
+- Artifact analytics;
+- Jira integration;
+- exception governance/audit lifecycle;
+- large-scale performance acceptance.
+
+Do not implement all of #140 as one change. Choose one bounded milestone at a time.
+
+First bounded exception milestone: **Issue #141**.
+
+Issue #141 plans exact one-time exclusions for the current two controls only:
+- `Fix all S3 findings except bucket X`;
+- `Fix restricted SSH except security group Y`.
+
+Required rule:
+
+`discovered_set - excluded_set = included_set`
+
+The approval view must show included and excluded resources before execution. Excluded resources remain truthful AWS findings and are never reported as fixed.
+
 ### Read-only AWS MCP evidence source — Issue #130
 
 Evaluate the already-proven persistent read-only AWS MCP for investigation/evidence only:
@@ -36,6 +63,9 @@ It must not bypass the existing governed mutation path.
 
 ## Later
 
+- managed/persistent exception registry with owner, reason, approval, expiry/review date and Jira/change reference;
+- rich MCP UI resources and CSV export for large Ops result sets;
+- 50+ account / 100k-finding scale contracts with server-side pagination/filtering;
 - structured operational event ledger for exact agent-mediated change history;
 - AgentCore Memory for conversational/episodic continuity, not authoritative audit;
 - Bedrock Knowledge Bases/RAG when unstructured runbooks, SOPs, policies and incident narratives justify semantic retrieval;
