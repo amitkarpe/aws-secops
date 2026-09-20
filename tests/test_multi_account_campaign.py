@@ -78,8 +78,15 @@ class Issue82CampaignContractTests(unittest.TestCase):
         sg = batch_id(SG_CONTROL, refs)
         self.assertNotEqual(s3, sg)
         self.assertEqual(s3, batch_id(S3_CONTROL, refs))
+        excluded = batch_id(S3_CONTROL, refs, ["lab-dev"])
+        self.assertNotEqual(s3, excluded)
+        self.assertEqual(excluded, batch_id(S3_CONTROL, refs, ["lab-dev"]))
         with self.assertRaises(ValueError):
             batch_id(S3_CONTROL, list(reversed(refs)))
+        with self.assertRaises(ValueError):
+            batch_id(S3_CONTROL, refs, ["lab-poc", "lab-dev"])
+        with self.assertRaises(ValueError):
+            batch_id(S3_CONTROL, refs, ["lab-dev", "lab-dev"])
 
     def test_public_result_hides_identifiers_and_caps_mutations(self):
         states = {alias: "PENDING" for alias in ALIASES}
@@ -133,6 +140,12 @@ class Issue82CampaignContractTests(unittest.TestCase):
         self.assertIn("def prepare(sessions: list[TargetSession], control: str)", text)
         self.assertIn("changed_aliases", text)
         self.assertIn("four-account prepare did not leave exactly four non-compliant demo targets", text)
+        self.assertIn("--exclude-resource", text)
+        self.assertIn("one or more exclusion resources did not resolve exactly", text)
+        self.assertIn("excluded resource is not currently non-compliant", text)
+        self.assertIn("exclusions removed every remediation target", text)
+        self.assertIn("resource_names = {sg_id, _sg_name(session.target)}", text)
+        self.assertIn("batch_id(control, refs, excluded_aliases)", text)
         self.assertIn("SourceIdentifier", text)
         self.assertIn("S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED", text)
         self.assertIn("INCOMING_SSH_DISABLED", text)
