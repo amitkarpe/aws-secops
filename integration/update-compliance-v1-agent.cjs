@@ -22,6 +22,7 @@ const expectedTools = [
   'ask_compliance_agent_v1_mcp_compliance_agent_v1',
   'prepare_multi_account_remediation_mcp_aws_compliance_planner',
   'execute_multi_account_remediation_mcp_aws_compliance_planner',
+  'verify_multi_account_remediation_mcp_aws_compliance_planner',
 ];
 if (spec?.name !== 'Compliance Agent v1') throw Error('unexpected agent name');
 if (spec?.provider !== 'bedrock' || spec?.model !== 'global.amazon.nova-2-lite-v1:0') throw Error('unexpected v1 model');
@@ -71,5 +72,5 @@ const output = execFileSync('mongosh', [database, '--quiet', '--eval', js], {
 }).trim();
 const line = output.split(/\r?\n/).filter(Boolean).at(-1);
 const result = JSON.parse(line);
-if (result?.status !== 'READY' || result?.toolCount !== 3 || result?.starterCount !== 4) throw Error('v1 agent update verification failed');
-console.log('COMPLIANCE_AGENT_V1_RECORD=READY TOOLS=3 STARTERS=4');
+if (result?.status !== 'READY' || result?.toolCount !== 4 || result?.starterCount !== 4) throw Error('v1 agent update verification failed');
+console.log('COMPLIANCE_AGENT_V1_RECORD=READY TOOLS=4 STARTERS=4');
