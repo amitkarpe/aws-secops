@@ -125,7 +125,7 @@ def multi_account_call(
             raise ValueError("exact frozen scope hash required")
         path = "/api/operator/multi-account-execute"
         payload = {"control": control, "batch_id": batch_id, "scope_hash": scope_hash}
-        timeout = 170
+        timeout = 280
     request = Request(
         base + path,
         data=json.dumps(payload).encode(),
