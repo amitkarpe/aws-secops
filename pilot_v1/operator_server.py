@@ -434,7 +434,28 @@ class OperatorService(BulkService):
         }
 
     def execute_multi_account(self, control: str, batch_id: str, scope_hash: str) -> dict:
-        preview = self.multi_account_execution_preview(control)
+        if control not in {S3_CONTROL, SG_CONTROL}:
+            raise ValueError("one exact supported control required")
+        plan = self._execution_cache().get("plans", {}).get(control)
+        if not isinstance(plan, dict):
+            raise ValueError("no prepared four-account execution")
+        age = int(time.time()) - int(plan.get("created_at", 0))
+        if age < 0:
+            raise ValueError("prepared four-account execution has invalid age")
+        expired = age > 900
+        preview = {
+            "version": 1,
+            "scope": "four-account-live-config",
+            "control": control,
+            "batch_id": plan.get("batch_id"),
+            "pending_aliases": plan.get("pending_aliases"),
+            "excluded_aliases": plan.get("excluded_aliases", []),
+            "excluded_resources": plan.get("exclude_resources", []),
+            "exception": plan.get("exception") if plan.get("exclude_resources") else None,
+            "scope_hash": plan.get("scope_hash"),
+            "execution_state": plan.get("execution_state", "PENDING_APPROVAL"),
+            "age_seconds": age,
+        }
         if (
             preview.get("batch_id") != batch_id
             or not isinstance(scope_hash, str)
@@ -456,7 +477,7 @@ class OperatorService(BulkService):
         # Any retry after dispatch, or any changed Config scope from an older
         # pre-state-tracking batch, reconciles provider state before deciding
         # whether another write is safe.
-        if execution_state == "EXECUTING" or not all_noncompliant:
+        if expired or execution_state == "EXECUTING" or not all_noncompliant:
             reconciliation = self._reconcile_multi_account_execution(preview, exclusions)
             if reconciliation["state"] == "RECOVERED_VERIFIED":
                 response = self._multi_account_execution_response(
@@ -464,6 +485,10 @@ class OperatorService(BulkService):
                 )
                 self._clear_multi_account_execution(control)
                 return response
+            if expired:
+                raise RuntimeError(
+                    "expired frozen batch did not reconcile to verified completion; no execution was dispatched"
+                )
             if execution_state == "EXECUTING":
                 raise RuntimeError(
                     "previous remediation outcome is still unresolved; no second execution was dispatched"
