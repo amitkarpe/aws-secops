@@ -1,7 +1,6 @@
 """AgentCore Harness invocation for Compliance Agent v1."""
 from __future__ import annotations
 
-import json
 import re
 import uuid
 from typing import Any
@@ -13,6 +12,17 @@ HARNESS_RE = re.compile(
 
 class HarnessError(RuntimeError):
     pass
+
+
+def _contains_tool_use(value: Any) -> bool:
+    if isinstance(value, dict):
+        return any(
+            str(key).lower() == "tooluse" or _contains_tool_use(item)
+            for key, item in value.items()
+        )
+    if isinstance(value, (list, tuple)):
+        return any(_contains_tool_use(item) for item in value)
+    return False
 
 
 def _client(region: str):
@@ -61,7 +71,7 @@ def invoke(prompt: str, harness_arn: str, *, region: str = "ap-southeast-1", cli
                 raise HarnessError("AgentCore Harness returned a runtime error")
             # v1 has no configured tools. Reject any unexpected tool event rather than
             # trusting model-generated or future service-side tool access.
-            if "tooluse" in json.dumps(event, default=str).lower():
+            if _contains_tool_use(event):
                 raise HarnessError("Compliance Agent v1 attempted an unexpected tool call")
             delta = event.get("contentBlockDelta", {}).get("delta", {})
             text = delta.get("text") if isinstance(delta, dict) else None
