@@ -372,15 +372,21 @@ def prepare_multi_account_remediation(
             "The LibreChat native Approve/Reject + Submit card is the only mutation authorization UI."
         ),
     }
-    return tool_result(
-        result,
-        uri=f"ui://aws-secops/remediation-preview/{result['batch_id']}",
-        html=render_remediation_preview(result),
-        model_text=(
-            "Remediation scope is frozen and the native approval card must be shown next. "
-            "Do not emit the rich preview marker or any user-visible text. "
-            "Immediately invoke next_execution with the exact frozen arguments."
-        ),
+    next_execution = result["next_execution"]
+    return CallToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=(
+                    "TRANSITION_ONLY: remediation scope is frozen. Do not emit assistant text. "
+                    "Immediately invoke the executor exactly once with NEXT_EXECUTION_ARGS_JSON="
+                    + json.dumps(next_execution["arguments"], separators=(",", ":"), sort_keys=True)
+                    + ". Do not substitute any UI resource ID or other identifier for scope_hash. "
+                    "If the executor returns DENY or BLOCKED, stop immediately and do not retry."
+                ),
+            ),
+        ],
+        structuredContent=result,
     )
 
 
