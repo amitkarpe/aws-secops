@@ -6,7 +6,7 @@ This project explores one narrow question:
 
 > How can an AI operator use AWS compliance evidence to explain and plan a safe fix **without receiving generic AWS write access**?
 
-## Current clean read path
+## Current Compliance Agent v1 path
 
 ```text
 AWS Config / unified Config backend
@@ -20,7 +20,7 @@ Nova 2 Lite reasoning
 read-only LibreChat answer
 ```
 
-Compliance Agent v1 exposes exactly one MCP tool and the Harness itself has no tools.
+The Harness itself has no tools. The v1 shell uses one clean Harness-backed read tool plus the exact four-account prepare/executor pair for explicit fix intent.
 
 ## Separate governed mutation path
 
@@ -40,17 +40,17 @@ provider readback
 independent AWS Config convergence
 ```
 
-The clean v1 agent does not inherit this execution authority.
+Compliance Agent v1 inherits only this bounded execution contract; it does not gain generic AWS administration.
 
 ## Current verified state
 
 | Item | Status |
 |---|---|
 | Four-account Config evidence | **LIVE — 4 aliases × 2 controls** |
-| Compliance Agent v1 | **LIVE / read-only** |
+| Compliance Agent v1 | **LIVE — reasoning + human-approved bounded remediation** |
 | AgentCore Harness | **PASS — dedicated v1 Harness** |
 | Harness tools | **0** |
-| MCP tools exposed by v1 | **1 — ask_compliance_agent_v1** |
+| MCP tools exposed by v1 | **3 — ask, exact prepare, exact native-ASK execute** |
 | Golden prompts | **PASS 5/5** |
 | Authenticated LibreChat smoke | **PASS** |
 | Governed four-account remediation proof | **PASS — separate bounded path** |
