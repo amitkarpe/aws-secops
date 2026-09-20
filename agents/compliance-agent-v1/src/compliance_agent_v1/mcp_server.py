@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
-from pydantic import ConfigDict
-
 from .agent import answer
 
 mcp = FastMCP(
@@ -23,5 +21,4 @@ def ask_compliance_agent_v1(request: str) -> dict:
 
 
 if __name__ == "__main__":
-    mcp.settings.model_config = ConfigDict(extra="forbid")
     mcp.run(transport="stdio")
