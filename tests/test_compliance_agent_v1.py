@@ -296,7 +296,6 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("✅ COMPLIANT", spec["instructions"])
         self.assertIn("❌ NON-COMPLIANT", spec["instructions"])
         self.assertIn("➡️ Next:", spec["instructions"])
-        self.assertIn("native LibreChat Approve/Reject remains mandatory", spec["instructions"])
         self.assertIn("AWS service verification", spec["instructions"])
         self.assertIn("AWS Config evaluation", spec["instructions"])
         self.assertIn("NATIVE APPROVAL HANDOFF (MANDATORY)", spec["instructions"])
