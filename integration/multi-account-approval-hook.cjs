@@ -6,11 +6,15 @@ const CONTROLS = new Set([
   'restricted-ssh',
 ]);
 
-module.exports = () => () => async (input) => {
+module.exports = () => (context) => async (input) => {
+  if (typeof context?.userId !== 'string' || context.userId.length < 1) {
+    return {decision: 'deny', reason: 'DENY — authenticated LibreChat user context is required. No execution.'};
+  }
   const args = input?.toolInput ?? {};
-  if (Object.keys(args).sort().join(',') !== 'batch_id,control' ||
+  if (Object.keys(args).sort().join(',') !== 'batch_id,control,scope_hash' ||
       !CONTROLS.has(args.control) ||
-      !/^[a-f0-9]{20}$/.test(args.batch_id ?? '')) {
+      !/^[a-f0-9]{20}$/.test(args.batch_id ?? '') ||
+      !/^[a-f0-9]{24}$/.test(args.scope_hash ?? '')) {
     return {decision: 'deny', reason: 'DENY — invalid or edited four-account execution scope. No dispatch.'};
   }
   try {
@@ -27,6 +31,7 @@ module.exports = () => () => async (input) => {
         preview?.scope !== 'four-account-live-config' ||
         preview?.control !== args.control ||
         preview?.batch_id !== args.batch_id ||
+        preview?.scope_hash !== args.scope_hash ||
         !Array.isArray(pending) ||
         !Array.isArray(excludedAliases) ||
         !Array.isArray(excludedResources) ||
@@ -54,6 +59,7 @@ module.exports = () => () => async (input) => {
         exception.reason.length < 3 ||
         (exception.reference !== null && typeof exception.reference !== 'string') ||
         (exception.expires_at !== null && typeof exception.expires_at !== 'string') ||
+        typeof exception.requested_at !== 'string' ||
         typeof scopeHash !== 'string' ||
         !/^[a-f0-9]{24}$/.test(scopeHash)
     )) {
@@ -67,7 +73,7 @@ module.exports = () => () => async (input) => {
       : '';
     return {
       decision: 'ask',
-      reason: `ASK — Approve ${title} remediation for the frozen included scope: ${includedText}. Action: ${action}.${excludedText} Reject + Submit = zero CodeBuild dispatch and zero remediation. Approve + Submit runs only the included frozen scope through the fixed CodeBuild project and existing G/O controller role. Direct provider readback must prove included-resource success; AWS Config may converge later. This does not approve excluded resources, the other control, or future batches.`
+      reason: `ASK — Approve ${title} remediation for the frozen included scope: ${includedText}. Action: ${action}.${excludedText} Reject + Submit = zero remediation execution dispatch and zero AWS resource writes. A read-only planning build has already frozen and validated this exact scope. Approve + Submit runs only the included frozen scope through the fixed CodeBuild project and existing G/O controller role. Direct provider readback must prove included-resource success; AWS Config may converge later. This does not approve excluded resources, the other control, or future batches.`
     };
   } catch {
     return {decision: 'deny', reason: 'BLOCKED — exact four-account execution preview unavailable. No dispatch.'};
