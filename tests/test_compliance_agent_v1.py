@@ -194,11 +194,14 @@ class AgentTests(unittest.TestCase):
         }
         def fake(prompt, arn, region):
             self.assertIn("AUTHORITATIVE_EVIDENCE_JSON", prompt)
-            self.assertIn("requires the separate governed approval/execution path", prompt)
+            self.assertIn("governed native approval/execution path", prompt)
+            self.assertNotIn("execution is not available in Compliance Agent v1", prompt)
             return {"answer": "grounded", "session_id": "x", "events": 1}
         with patch.object(agent, "current_evidence", return_value=evidence):
             value = agent.answer("status", harness_arn="arn:any", harness_call=fake)
         self.assertEqual(value["runtime"], "Amazon Bedrock AgentCore Harness")
+        self.assertEqual(value["evidence"]["check_count"], 1)
+        self.assertEqual(len(value["evidence"]["checks"]), 1)
         self.assertFalse(value["mutation"])
 
     def test_invalid_request_fails_before_backend_read(self):
@@ -284,6 +287,8 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("NATIVE APPROVAL HANDOFF (MANDATORY)", spec["instructions"])
         self.assertIn("do not emit assistant text", spec["instructions"])
         self.assertIn("native Approve/Reject + Submit card", spec["instructions"])
+        self.assertIn("RICH RESULTS", spec["instructions"])
+        self.assertIn("UI Resource Marker", spec["instructions"])
         self.assertEqual(spec["tools"], [
             "ask_compliance_agent_v1_mcp_compliance_agent_v1",
             "prepare_multi_account_remediation_mcp_aws_compliance_planner",
