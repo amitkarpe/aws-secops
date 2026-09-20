@@ -382,7 +382,7 @@ def prepare(sessions: list[TargetSession], control: str) -> dict[str, Any]:
             if len(_open_ssh_rule_ids(session, sg_id)) != 1:
                 raise AwsError("SG provider readback did not prove demo starting state")
 
-    frozen, pending, config_states = _plan_for_control(sessions, control)
+    frozen, pending, config_states, _, _ = _plan_for_control(sessions, control)
     if len(pending) != 4:
         raise AwsError("four-account prepare did not leave exactly four non-compliant demo targets")
     return public_result(
