@@ -16,6 +16,10 @@ _STATUS = {
     "NOT_APPLICABLE": ("🚫", "NOT IN SCOPE", "muted"),
 }
 
+_RESIZE_BOOTSTRAP = """<script>
+(()=>{const send=()=>{const d=document.documentElement,b=document.body;const width=d.clientWidth||d.scrollWidth||1;const natural=Math.max(d.scrollHeight,b?b.scrollHeight:0);const height=Math.min(Math.max(natural+4,260),720);parent.postMessage({type:"ui-size-change",payload:{width,height}},"*");};new ResizeObserver(send).observe(document.documentElement);addEventListener("load",send,{once:true});requestAnimationFrame(send);})();
+</script>"""
+
 
 def _e(value: object) -> str:
     return escape(str(value), quote=True)
@@ -96,4 +100,4 @@ small{{font-size:9px;opacity:.62}}@media(max-width:650px){{.metrics{{grid-templa
 <table><thead><tr><th>AWS Account</th><th>🪣 S3 Block Public Access</th><th>🛡️ Restricted SSH</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table>
 <div class="next">➡️ Next: <b>{_e(next_action)}</b></div>
-</section></body></html>"""
+</section>{_RESIZE_BOOTSTRAP}</body></html>"""
