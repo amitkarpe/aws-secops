@@ -83,6 +83,48 @@ class ConfigBackendTests(unittest.TestCase):
             {"resource_ids": ["bucket-a"]},
         )
 
+    def test_resource_ids_are_bounded_and_truthfully_marked(self):
+        values = [f"resource-{i}" for i in range(10)]
+        result = config_backend._optional_identifiers({
+            "accountId": "123456789012",
+            "resourceId": "primary-resource",
+            "resourceIds": values,
+        })
+        self.assertEqual(result["account_id"], "123456789012")
+        self.assertEqual(result["resource_id"], "primary-resource")
+        self.assertEqual(result["resource_ids"], values[:config_backend.MAX_RESOURCE_IDS])
+        self.assertTrue(result["resource_ids_truncated"])
+        self.assertEqual(result["resource_ids_supplied"], 10)
+
+    def test_ambiguous_identifier_fields_are_omitted(self):
+        result = config_backend._optional_identifiers({
+            "accountId": "123456789012",
+            "AccountId": "999999999999",
+            "resourceId": "one",
+            "ResourceId": "two",
+        })
+        self.assertNotIn("account_id", result)
+        self.assertNotIn("resource_id", result)
+
+    def test_oversized_backend_response_fails_closed(self):
+        class Response:
+            status = 200
+            headers = {"content-type": "application/json"}
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, _limit):
+                return b"x" * (config_backend.MAX_BACKEND_BYTES + 1)
+
+        class Opener:
+            def open(self, *_args, **_kwargs):
+                return Response()
+
+        with patch.object(config_backend, "build_opener", return_value=Opener()):
+            with self.assertRaisesRegex(config_backend.BackendEvidenceError, "too large"):
+                config_backend._get_json("http://127.0.0.1:1111", "/api/diagnostics")
+
 
 class HarnessClientTests(unittest.TestCase):
     def test_invoke_harness_text_stream(self):
@@ -164,6 +206,36 @@ class AgentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "user request is invalid"):
                 agent.answer("   ", harness_arn="arn:any")
         evidence.assert_not_called()
+
+    def test_max_request_and_bounded_identifiers_fit_harness_prompt(self):
+        checks = []
+        for alias in config_backend.ALIASES:
+            for control in config_backend.CONTROLS:
+                item = {
+                    "account_alias": alias,
+                    "control": control,
+                    "status": "NON_COMPLIANT",
+                    "affected_resources": 10,
+                }
+                item.update(config_backend._optional_identifiers({
+                    "accountId": "123456789012",
+                    "resourceId": "r" * config_backend.MAX_IDENTIFIER_CHARS,
+                    "resourceIds": ["x" * config_backend.MAX_IDENTIFIER_CHARS] * 10,
+                }))
+                checks.append(item)
+        evidence = {
+            "version": 1,
+            "source": "Unified Config backend",
+            "fetched_at": "now",
+            "aliases": list(config_backend.ALIASES),
+            "controls": list(config_backend.CONTROLS),
+            "checks": checks,
+            "identifiers_available": True,
+            "read_only": True,
+        }
+        prompt = agent.build_prompt("q" * 4000, evidence)
+        self.assertLess(len(prompt), 24000)
+        self.assertIn("resource_ids_truncated", prompt)
 
 
 class McpServerRegressionTests(unittest.TestCase):
