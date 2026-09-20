@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import tempfile
+import time
 import unittest
+from pathlib import Path
 
 from pilot_v1.operator_server import OperatorService, SG_CONTROL
 from pilot_v1.operator_mcp import server
@@ -61,17 +65,28 @@ class Issue141ExceptionContractTests(unittest.TestCase):
         self.assertNotIn("exception_reason", execute_props)
 
     def test_execute_rejects_changed_scope_hash_before_dispatch(self):
-        service = object.__new__(OperatorService)
-        service.multi_account_execution_preview = lambda _control: {
-            "batch_id": "a" * 20,
-            "scope_hash": "b" * 24,
-        }
-        with self.assertRaisesRegex(ValueError, "does not match frozen plan"):
-            service.execute_multi_account(SG_CONTROL, "a" * 20, "c" * 24)
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp) / "execution.json"
+            state.write_text(json.dumps({
+                "version": 1,
+                "plans": {
+                    SG_CONTROL: {
+                        "control": SG_CONTROL,
+                        "batch_id": "a" * 20,
+                        "scope_hash": "b" * 24,
+                        "pending_aliases": ["lab-poc", "lab-qa", "lab-sec"],
+                        "excluded_aliases": ["lab-dev"],
+                        "exclude_resources": ["aws-secops-issue82-lab-dev"],
+                        "created_at": int(time.time()),
+                    }
+                },
+            }))
+            service = object.__new__(OperatorService)
+            service.execution_state = state
+            with self.assertRaisesRegex(ValueError, "does not match frozen plan"):
+                service.execute_multi_account(SG_CONTROL, "a" * 20, "c" * 24)
 
     def test_approval_hook_requires_scope_hash_and_authenticated_context(self):
-        from pathlib import Path
-
         root = Path(__file__).resolve().parents[1]
         hook = (root / "integration" / "multi-account-approval-hook.cjs").read_text()
         self.assertIn("batch_id,control,scope_hash", hook)
