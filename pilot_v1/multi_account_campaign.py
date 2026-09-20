@@ -106,24 +106,41 @@ def normalize_config_state(state: str | None, *, provider_compliant: bool) -> st
     return state
 
 
+def normalize_selected_aliases(values: Iterable[str] | None = None) -> tuple[str, ...]:
+    selected = list(ALIASES if values is None else values)
+    if not selected or len(selected) > len(ALIASES) or len(selected) != len(set(selected)):
+        raise ValueError("selected accounts must be 1-4 unique approved aliases")
+    canonical = tuple(alias for alias in ALIASES if alias in set(selected))
+    if list(canonical) != selected:
+        raise ValueError("selected accounts must use canonical approved alias order")
+    return canonical
+
+
 def batch_id(
     control: str,
     entries: Iterable[tuple[str, str]],
     excluded_aliases: Iterable[str] = (),
+    selected_aliases: Iterable[str] | None = None,
 ) -> str:
     if control not in CONTROLS:
         raise ValueError("unsupported Issue #82 control")
+    selected = normalize_selected_aliases(selected_aliases)
     normalized = list(entries)
-    if [alias for alias, _ in normalized] != list(ALIASES):
-        raise ValueError("Issue #82 frozen batch must contain the four aliases in order")
+    if [alias for alias, _ in normalized] != list(selected):
+        raise ValueError("Issue #82 frozen batch must contain selected aliases in canonical order")
     if any(not re.fullmatch(r"[a-f0-9]{12,64}", ref) for _, ref in normalized):
         raise ValueError("Issue #82 resource reference must be a hash")
     excluded = list(excluded_aliases)
-    canonical = [alias for alias in ALIASES if alias in set(excluded)]
+    canonical = [alias for alias in selected if alias in set(excluded)]
     if excluded != canonical:
-        raise ValueError("Issue #82 exclusions must be unique approved aliases in canonical order")
+        raise ValueError("Issue #82 exclusions must be unique selected aliases in canonical order")
     body = json.dumps(
-        {"control": control, "targets": normalized, "excluded_aliases": excluded},
+        {
+            "control": control,
+            "targets": normalized,
+            "selected_aliases": list(selected),
+            "excluded_aliases": excluded,
+        },
         separators=(",", ":"), sort_keys=True,
     )
     return hashlib.sha256(body.encode()).hexdigest()[:20]
@@ -162,14 +179,15 @@ def public_result(
     config_states: dict[str, str],
 ) -> dict[str, Any]:
     alias_list = list(aliases)
-    if alias_list != list(ALIASES):
-        raise ValueError("Issue #82 public result must contain exactly the approved aliases")
+    selected = list(normalize_selected_aliases(alias_list))
+    if alias_list != selected:
+        raise ValueError("Issue #82 public result aliases must be selected approved aliases")
     if decision not in {"PLAN", "PREPARE", "REJECT", "APPROVE", "ALREADY_COMPLIANT"}:
         raise ValueError("invalid Issue #82 decision")
-    if mutation_count < 0 or mutation_count > 4:
+    if mutation_count < 0 or mutation_count > len(alias_list):
         raise ValueError("invalid Issue #82 mutation count")
-    if set(config_states) != set(ALIASES):
-        raise ValueError("Issue #82 Config evidence must cover all four aliases")
+    if set(config_states) != set(alias_list):
+        raise ValueError("Issue #82 Config evidence must cover selected aliases")
     return {
         "version": 1,
         "campaign": "issue-82-s3-sg-config-e2e",
@@ -179,7 +197,7 @@ def public_result(
         "decision": decision,
         "mutation_count": mutation_count,
         "provider_verified": provider_verified,
-        "config": {alias: config_states[alias] for alias in ALIASES},
+        "config": {alias: config_states[alias] for alias in alias_list},
         "account_ids": "hidden-by-default",
         "resource_identifiers": "hidden-by-default",
         "oidc_session": "AccessMode=oidc-lab-admin",

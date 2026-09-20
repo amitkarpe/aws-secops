@@ -27,6 +27,7 @@ from pilot_v1.multi_account_campaign import (
     batch_id,
     has_unrestricted_ssh,
     normalize_config_state,
+    normalize_selected_aliases,
     parse_targets,
     public_result,
     s3_bpa_compliant,
@@ -464,7 +465,8 @@ def _plan_for_control(
     # already provider-compliant while exact excluded targets remain unchanged.
     # Preparation still requires decision=PLAN, so this cannot authorize a new
     # mutation. It is required for idempotent timeout reconciliation.
-    frozen = batch_id(control, refs, excluded_aliases)
+    selected_aliases = tuple(session.target.alias for session in sessions)
+    frozen = batch_id(control, refs, excluded_aliases, selected_aliases)
     return frozen, pending, config_states, excluded_aliases, requested
 
 
@@ -480,7 +482,7 @@ def plan(
     return public_result(
         control=control,
         batch=frozen,
-        aliases=ALIASES,
+        aliases=tuple(session.target.alias for session in sessions),
         decision=decision,
         mutation_count=0,
         provider_verified=not pending and not excluded_aliases,
@@ -509,7 +511,7 @@ def execute(
         return public_result(
             control=control,
             batch=frozen,
-            aliases=ALIASES,
+            aliases=tuple(session.target.alias for session in sessions),
             decision="ALREADY_COMPLIANT",
             mutation_count=0,
             provider_verified=not excluded_aliases,
@@ -519,13 +521,14 @@ def execute(
             "excluded_count": len(excluded_aliases),
             "exception_source": "one-time-user-exclusion" if exclusions else None,
         }
-    if len(pending) + len(excluded_aliases) != 4:
+    selected_aliases = tuple(session.target.alias for session in sessions)
+    if len(pending) + len(excluded_aliases) != len(selected_aliases):
         raise AwsError("Issue #82 execution scope is incomplete")
     if decision == "reject":
         return public_result(
             control=control,
             batch=frozen,
-            aliases=ALIASES,
+            aliases=tuple(session.target.alias for session in sessions),
             decision="REJECT",
             mutation_count=0,
             provider_verified=False,
@@ -564,43 +567,81 @@ def execute(
             ], env=session.env)
             mutation_count += 1
 
-    _, after_pending, after_config, after_excluded_aliases, _ = _plan_for_control(
-        sessions, control, exclude_resources
-    )
-    if after_pending:
-        raise AwsError("provider readback did not prove included remediation")
-    if after_excluded_aliases != excluded_aliases:
-        raise AwsError("excluded resource scope changed during execution")
     return public_result(
         control=control,
         batch=frozen,
-        aliases=ALIASES,
+        aliases=tuple(session.target.alias for session in sessions),
         decision="APPROVE",
         mutation_count=mutation_count,
-        provider_verified=True,
-        config_states=after_config,
+        provider_verified=False,
+        config_states=before_config,
     ) | {
         "included_aliases": included_aliases,
         "excluded_aliases": excluded_aliases,
         "excluded_count": len(excluded_aliases),
         "exception_source": "one-time-user-exclusion" if exclusions else None,
+        "aws_service_verification": "PENDING",
+        "aws_config_evaluation": "PENDING",
+        "message": (
+            f"AWS change applied to {mutation_count} selected account(s). "
+            "AWS service verification is pending. AWS Config evaluation may update later."
+        ),
+    }
+
+
+def verify(
+    sessions: list[TargetSession],
+    control: str,
+    expected_batch: str,
+    exclude_resources: list[str] | None = None,
+) -> dict[str, Any]:
+    frozen, pending, config_states, excluded_aliases, exclusions = _plan_for_control(
+        sessions, control, exclude_resources
+    )
+    if frozen != expected_batch:
+        raise ValueError("frozen batch id mismatch")
+    selected_aliases = [session.target.alias for session in sessions]
+    verified = not pending
+    return public_result(
+        control=control,
+        batch=frozen,
+        aliases=selected_aliases,
+        decision="ALREADY_COMPLIANT" if verified else "PLAN",
+        mutation_count=0,
+        provider_verified=verified,
+        config_states=config_states,
+    ) | {
+        "included_aliases": [alias for alias in selected_aliases if alias not in excluded_aliases],
+        "pending_aliases": [session.target.alias for session in pending],
+        "excluded_aliases": excluded_aliases,
+        "excluded_count": len(excluded_aliases),
+        "exception_source": "one-time-user-exclusion" if exclusions else None,
+        "aws_service_verification": "VERIFIED" if verified else "NOT_VERIFIED",
+        "aws_config_evaluation": config_states,
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("prepare", "plan", "execute"))
+    parser.add_argument("mode", choices=("prepare", "plan", "execute", "verify"))
     parser.add_argument("--control", choices=CONTROLS)
     parser.add_argument("--decision", choices=("approve", "reject"))
     parser.add_argument("--batch-id")
     parser.add_argument("--exclude-resource", action="append", default=[])
+    parser.add_argument("--include-account", action="append", default=[])
     args = parser.parse_args()
 
     raw = os.environ.get(TARGETS_ENV, "")
     targets = parse_targets(raw)
-    sessions = [_assume(target) for target in targets]
+    selected_aliases = normalize_selected_aliases(args.include_account or None)
+    selected_targets = tuple(target for target in targets if target.alias in set(selected_aliases))
+    if tuple(target.alias for target in selected_targets) != selected_aliases:
+        raise ValueError("selected target scope mismatch")
+    sessions = [_assume(target) for target in selected_targets]
 
     if args.mode == "prepare":
+        if args.include_account:
+            parser.error("prepare demo reset remains all-four only")
         if not args.control:
             parser.error("--control is required for prepare")
         result = prepare(sessions, args.control)
@@ -608,10 +649,14 @@ def main() -> int:
         if not args.control:
             parser.error("--control is required for plan")
         result = plan(sessions, args.control, args.exclude_resource)
-    else:
+    elif args.mode == "execute":
         if not args.control or not args.decision or not args.batch_id:
             parser.error("--control, --decision and --batch-id are required for execute")
         result = execute(sessions, args.control, args.decision, args.batch_id, args.exclude_resource)
+    else:
+        if not args.control or not args.batch_id:
+            parser.error("--control and --batch-id are required for verify")
+        result = verify(sessions, args.control, args.batch_id, args.exclude_resource)
 
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0

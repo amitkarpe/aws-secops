@@ -66,6 +66,10 @@ const prepareTool='prepare_multi_account_remediation_mcp_aws_compliance_planner'
 if (!approval.allow.includes(prepareTool)) approval.allow.push(prepareTool);
 approval.ask = approval.ask.filter(name => name !== prepareTool);
 
+const verifyTool='verify_multi_account_remediation_mcp_aws_compliance_planner';
+if (!approval.allow.includes(verifyTool)) approval.allow.push(verifyTool);
+approval.ask = approval.ask.filter(name => name !== verifyTool);
+
 const executeNames=[
   'execute_multi_account_remediation_mcp_aws_compliance_planner',
   'mcp:aws_compliance_planner:execute_multi_account_remediation',
@@ -91,4 +95,4 @@ if(rendered!==raw){
   fs.writeFileSync(temp,rendered,{mode:fs.statSync(file).mode&0o777,flag:'wx'});
   fs.renameSync(temp,file);
 }
-console.log('COMPLIANCE_AGENT_V1=READY READ=ALLOW PREPARE=ALLOW EXECUTE=ASK HARNESS_TOOLS=0');
+console.log('COMPLIANCE_AGENT_V1=READY READ=ALLOW PREPARE=ALLOW VERIFY=ALLOW EXECUTE=ASK HARNESS_TOOLS=0');

@@ -81,7 +81,7 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
         with patch("pilot_v1.operator_server.run_four_account_build", side_effect=fake_run):
             result = service.execute_multi_account(SG_CONTROL, "a" * 20, "b" * 24)
 
-        self.assertEqual(calls, ["plan"])
+        self.assertEqual(calls, ["verify"])
         self.assertEqual(result["decision"], "RECOVERED_VERIFIED")
         self.assertIsNone(result["mutation_count"])
         self.assertEqual(result["verified_included_count"], 3)
@@ -100,7 +100,7 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
             result = service.execute_multi_account(SG_CONTROL, "a" * 20, "b" * 24)
 
         self.assertEqual(run.call_count, 1)
-        self.assertEqual(run.call_args.args[0], "plan")
+        self.assertEqual(run.call_args.args[0], "verify")
         self.assertEqual(result["decision"], "RECOVERED_VERIFIED")
         self.assertNotIn(SG_CONTROL, json.loads(path.read_text())["plans"])
 
@@ -108,7 +108,7 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
         service, path = self.make_service(state="PENDING_APPROVAL", age_seconds=1800)
 
         def fake_run(mode, *args, **kwargs):
-            self.assertEqual(mode, "plan")
+            self.assertEqual(mode, "verify")
             return {
                 **self.recovered_plan(),
                 "decision": "PLAN",
@@ -137,7 +137,7 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "no second execution was dispatched"):
                 service.execute_multi_account(SG_CONTROL, "a" * 20, "b" * 24)
 
-        self.assertEqual(calls, ["plan"])
+        self.assertEqual(calls, ["verify"])
         saved = json.loads(path.read_text())["plans"][SG_CONTROL]
         self.assertEqual(saved["execution_state"], "EXECUTING")
 
@@ -197,10 +197,11 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
             result = service.execute_multi_account(SG_CONTROL, "a" * 20, "b" * 24)
 
         self.assertEqual(observed_state, ["EXECUTING"])
-        self.assertEqual(result["decision"], "APPROVE")
+        self.assertEqual(result["decision"], "APPLIED_PENDING_VERIFICATION")
         self.assertEqual(result["mutation_count"], 3)
-        self.assertFalse(result["recovered_after_timeout"])
-        self.assertNotIn(SG_CONTROL, json.loads(path.read_text())["plans"])
+        self.assertEqual(result["aws_service_verification"], "PENDING")
+        saved = json.loads(path.read_text())["plans"][SG_CONTROL]
+        self.assertEqual(saved["execution_state"], "APPLIED_PENDING_VERIFICATION")
 
     def test_timeout_keeps_executing_state_for_reconciliation(self):
         service, path = self.make_service(state="PENDING_APPROVAL")

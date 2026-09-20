@@ -24,20 +24,30 @@ module.exports = () => (context) => async (input) => {
     if (!response.ok) throw Error('unavailable');
     const preview = await response.json();
     const pending = preview?.pending_aliases;
+    const selectedAccounts = preview?.selected_accounts ?? [];
+    const unselectedAccounts = preview?.unselected_accounts ?? [];
     const excludedAliases = preview?.excluded_aliases ?? [];
     const excludedResources = preview?.excluded_resources ?? [];
     const allAliases = [...(pending ?? []), ...excludedAliases].sort();
+    const allowed = ['lab-dev','lab-poc','lab-qa','lab-sec'];
     if (preview?.version !== 1 ||
         preview?.scope !== 'four-account-live-config' ||
         preview?.control !== args.control ||
         preview?.batch_id !== args.batch_id ||
         preview?.scope_hash !== args.scope_hash ||
         !Array.isArray(pending) ||
+        !Array.isArray(selectedAccounts) ||
+        !Array.isArray(unselectedAccounts) ||
         !Array.isArray(excludedAliases) ||
         !Array.isArray(excludedResources) ||
         excludedAliases.length !== excludedResources.length ||
-        JSON.stringify(allAliases) !== JSON.stringify(['lab-dev','lab-poc','lab-qa','lab-sec'].sort()) ||
-        new Set(allAliases).size !== 4 ||
+        selectedAccounts.length < 1 ||
+        selectedAccounts.length > 4 ||
+        selectedAccounts.some((x) => !allowed.includes(x)) ||
+        new Set(selectedAccounts).size !== selectedAccounts.length ||
+        JSON.stringify([...selectedAccounts].sort()) !== JSON.stringify(allAliases) ||
+        unselectedAccounts.some((x) => !allowed.includes(x) || selectedAccounts.includes(x)) ||
+        new Set([...selectedAccounts, ...unselectedAccounts]).size !== 4 ||
         pending.length < 1 ||
         typeof preview?.age_seconds !== 'number' ||
         preview.age_seconds < 0 ||
@@ -51,6 +61,9 @@ module.exports = () => (context) => async (input) => {
       ? 'enable all four bucket-level Block Public Access settings on each included bucket'
       : 'remove only TCP/22 ingress from 0.0.0.0/0 on each included exact unattached demo Security Group';
     const includedText = pending.join(', ');
+    const unselectedText = unselectedAccounts.length
+      ? ` Accounts outside requested scope: ${unselectedAccounts.join(', ')}.`
+      : '';
     const exception = preview?.exception ?? null;
     const scopeHash = preview?.scope_hash;
     if (excludedResources.length && (
@@ -73,7 +86,7 @@ module.exports = () => (context) => async (input) => {
       : '';
     return {
       decision: 'ask',
-      reason: `ASK — Approve ${title} remediation for the frozen included scope: ${includedText}. Action: ${action}.${excludedText} Reject + Submit = zero remediation execution dispatch and zero AWS resource writes. A read-only planning build has already frozen and validated this exact scope. Approve + Submit runs only the included frozen scope through the fixed CodeBuild project and existing G/O controller role. Direct provider readback must prove included-resource success; AWS Config may converge later. This does not approve excluded resources, the other control, or future batches.`
+      reason: `ASK — Approve ${title} remediation for the frozen selected scope: ${includedText}. Action: ${action}.${unselectedText}${excludedText} Reject + Submit = zero remediation execution dispatch and zero AWS resource writes. A read-only planning build has already frozen and validated this exact scope. Approve + Submit applies only the included frozen scope. AWS service verification runs separately after the change; AWS Config evaluation may update later. This does not approve unselected accounts, excluded resources, the other control, or future batches.`
     };
   } catch {
     return {decision: 'deny', reason: 'BLOCKED — exact four-account execution preview unavailable. No dispatch.'};

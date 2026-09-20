@@ -249,9 +249,24 @@ class OperatorService(BulkService):
             "requested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
 
+    @staticmethod
+    def _normalize_selected_accounts(values: object = None) -> list[str]:
+        allowed = ["lab-dev", "lab-poc", "lab-qa", "lab-sec"]
+        if values is None:
+            return allowed
+        if not isinstance(values, list) or not 1 <= len(values) <= 4:
+            raise ValueError("selected accounts must be a list of 1-4 approved aliases")
+        if len(values) != len(set(values)) or any(not isinstance(x, str) or x not in allowed for x in values):
+            raise ValueError("selected accounts must be unique approved aliases")
+        canonical = [alias for alias in allowed if alias in set(values)]
+        if values != canonical:
+            raise ValueError("selected accounts must use canonical alias order")
+        return canonical
+
     def prepare_multi_account_execution(
         self,
         control: str,
+        include_accounts: object = None,
         exclude_resources: object = None,
         exception_reason: object = None,
         exception_reference: object = None,
@@ -259,24 +274,33 @@ class OperatorService(BulkService):
     ) -> dict:
         if control not in {S3_CONTROL, SG_CONTROL}:
             raise ValueError("one exact supported control required")
+        selected_accounts = self._normalize_selected_accounts(include_accounts)
+        unselected_accounts = [alias for alias in ["lab-dev", "lab-poc", "lab-qa", "lab-sec"] if alias not in selected_accounts]
         exclusions = self._normalize_exclusions(exclude_resources)
         exception = self._normalize_exception_metadata(
             exclusions, exception_reason, exception_reference, exception_expires_at
         )
         current = self.multi_account_status()
         rows = current.get("accounts", [])
-        if len(rows) != 4 or any(row.get("controls", {}).get(control) != "NON_COMPLIANT" for row in rows):
-            raise ValueError("four-account execution requires all four aliases NON_COMPLIANT")
-        result = run_four_account_build("plan", control, exclusions=exclusions)
+        by_alias = {row.get("alias"): row for row in rows if isinstance(row, dict)}
+        if any(
+            alias not in by_alias
+            or by_alias[alias].get("controls", {}).get(control) != "NON_COMPLIANT"
+            for alias in selected_accounts
+        ):
+            raise ValueError("selected account scope must currently be NON_COMPLIANT")
+        result = run_four_account_build(
+            "plan", control, exclusions=exclusions, include_accounts=selected_accounts
+        )
         pending_aliases = result.get("pending_aliases")
         excluded_aliases = result.get("excluded_aliases", [])
         if result.get("decision") != "PLAN":
             raise ValueError("frozen plan is not eligible")
         if (not isinstance(pending_aliases, list) or not isinstance(excluded_aliases, list)
-                or len(pending_aliases) + len(excluded_aliases) != 4
+                or len(pending_aliases) + len(excluded_aliases) != len(selected_accounts)
                 or set(pending_aliases) & set(excluded_aliases)
-                or set(pending_aliases) | set(excluded_aliases) != {"lab-dev", "lab-poc", "lab-qa", "lab-sec"}):
-            raise ValueError("frozen plan scope is not exactly the four registered aliases")
+                or set(pending_aliases) | set(excluded_aliases) != set(selected_accounts)):
+            raise ValueError("frozen plan scope does not match selected registered aliases")
         if result.get("excluded_count") != len(exclusions):
             raise ValueError("frozen plan exclusion count mismatch")
         batch_id = result.get("batch_id")
@@ -285,6 +309,8 @@ class OperatorService(BulkService):
         scope_payload = {
             "control": control,
             "batch_id": batch_id,
+            "selected_accounts": selected_accounts,
+            "unselected_accounts": unselected_accounts,
             "pending_aliases": pending_aliases,
             "excluded_aliases": excluded_aliases,
             "exclude_resources": exclusions,
@@ -297,6 +323,8 @@ class OperatorService(BulkService):
         cache["plans"][control] = {
             "control": control,
             "batch_id": batch_id,
+            "selected_accounts": selected_accounts,
+            "unselected_accounts": unselected_accounts,
             "pending_aliases": pending_aliases,
             "excluded_aliases": excluded_aliases,
             "exclude_resources": exclusions,
@@ -311,6 +339,8 @@ class OperatorService(BulkService):
             "scope": "four-account-live-config",
             "control": control,
             "batch_id": batch_id,
+            "selected_accounts": selected_accounts,
+            "unselected_accounts": unselected_accounts,
             "pending_aliases": pending_aliases,
             "excluded_aliases": excluded_aliases,
             "excluded_resources": exclusions,
@@ -323,7 +353,8 @@ class OperatorService(BulkService):
                 "arguments": {"control": control, "batch_id": batch_id, "scope_hash": scope_hash},
             },
             "message": (
-                f"Exact batch frozen: {len(pending_aliases)} included, {len(exclusions)} excluded. "
+                f"Exact batch frozen for {len(selected_accounts)} selected account(s): "
+                f"{len(pending_aliases)} included, {len(exclusions)} excluded. "
                 "Invoke the native-ASK executor for this exact scope."
             ),
             "mutation": False,
@@ -345,6 +376,8 @@ class OperatorService(BulkService):
             "scope": "four-account-live-config",
             "control": control,
             "batch_id": plan.get("batch_id"),
+            "selected_accounts": plan.get("selected_accounts", ["lab-dev", "lab-poc", "lab-qa", "lab-sec"]),
+            "unselected_accounts": plan.get("unselected_accounts", []),
             "pending_aliases": plan.get("pending_aliases"),
             "excluded_aliases": plan.get("excluded_aliases", []),
             "excluded_resources": plan.get("exclude_resources", []),
@@ -376,12 +409,19 @@ class OperatorService(BulkService):
         batch_id = preview["batch_id"]
         expected_included = list(preview.get("pending_aliases") or [])
         expected_excluded = list(preview.get("excluded_aliases") or [])
-        result = run_four_account_build("plan", control, exclusions=exclusions, timeout=180)
+        result = run_four_account_build(
+            "verify",
+            control,
+            batch_id,
+            exclusions=exclusions,
+            include_accounts=preview.get("selected_accounts"),
+            timeout=180,
+        )
         if result.get("batch_id") != batch_id:
             raise RuntimeError("provider reconciliation batch scope changed")
         if result.get("excluded_aliases", []) != expected_excluded:
             raise RuntimeError("excluded resource changed; operator review required")
-        pending = result.get("pending_aliases")
+        pending = result.get("pending_aliases", [])
         if not isinstance(pending, list):
             raise RuntimeError("provider reconciliation returned invalid included scope")
         if pending == expected_included:
@@ -448,6 +488,8 @@ class OperatorService(BulkService):
             "scope": "four-account-live-config",
             "control": control,
             "batch_id": plan.get("batch_id"),
+            "selected_accounts": plan.get("selected_accounts", ["lab-dev", "lab-poc", "lab-qa", "lab-sec"]),
+            "unselected_accounts": plan.get("unselected_accounts", []),
             "pending_aliases": plan.get("pending_aliases"),
             "excluded_aliases": plan.get("excluded_aliases", []),
             "excluded_resources": plan.get("exclude_resources", []),
@@ -469,9 +511,12 @@ class OperatorService(BulkService):
 
         current = self.multi_account_status()
         rows = current.get("accounts", [])
-        all_noncompliant = (
-            len(rows) == 4
-            and all(row.get("controls", {}).get(control) == "NON_COMPLIANT" for row in rows)
+        selected_accounts = list(preview.get("selected_accounts") or [])
+        by_alias = {row.get("alias"): row for row in rows if isinstance(row, dict)}
+        all_noncompliant = bool(selected_accounts) and all(
+            alias in by_alias
+            and by_alias[alias].get("controls", {}).get(control) == "NON_COMPLIANT"
+            for alias in selected_accounts
         )
 
         # Any retry after dispatch, or any changed Config scope from an older
@@ -498,7 +543,12 @@ class OperatorService(BulkService):
         self._mark_multi_account_execution(control, "EXECUTING")
         try:
             result = run_four_account_build(
-                "execute", control, batch_id, exclusions=exclusions, timeout=240
+                "execute",
+                control,
+                batch_id,
+                exclusions=exclusions,
+                include_accounts=selected_accounts,
+                timeout=180,
             )
         except BuildError:
             # Keep EXECUTING. A later call must reconcile provider state and
@@ -506,20 +556,78 @@ class OperatorService(BulkService):
             raise
 
         if result.get("decision") not in {"APPROVE", "ALREADY_COMPLIANT"}:
-            raise RuntimeError("unexpected four-account execution result")
+            raise RuntimeError("unexpected selective execution result")
         expected_mutations = len(preview.get("pending_aliases") or [])
-        if result.get("decision") == "APPROVE" and (
-            result.get("mutation_count") != expected_mutations or result.get("provider_verified") is not True
-        ):
-            raise RuntimeError("provider verification did not prove exact included remediation")
+        if result.get("decision") == "APPROVE" and result.get("mutation_count") != expected_mutations:
+            raise RuntimeError("AWS change count did not match exact selected scope")
         if result.get("excluded_aliases", []) != preview.get("excluded_aliases", []):
             raise RuntimeError("excluded scope changed during execution")
 
-        response = self._multi_account_execution_response(
-            preview, exclusions, result, recovered=False
+        self._mark_multi_account_execution(control, "APPLIED_PENDING_VERIFICATION")
+        return {
+            "version": 1,
+            "scope": "selected-lab-accounts",
+            "control": control,
+            "batch_id": batch_id,
+            "decision": "APPLIED_PENDING_VERIFICATION",
+            "selected_accounts": selected_accounts,
+            "unselected_accounts": preview.get("unselected_accounts", []),
+            "included_aliases": preview.get("pending_aliases", []),
+            "excluded_aliases": preview.get("excluded_aliases", []),
+            "excluded_resources": exclusions,
+            "scope_hash": scope_hash,
+            "aws_change_applied": True,
+            "aws_service_verification": "PENDING",
+            "aws_config_evaluation": "PENDING",
+            "mutation_count": result.get("mutation_count"),
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+            "message": (
+                f"AWS change applied to {expected_mutations} selected account(s). "
+                "AWS service verification is pending. AWS Config evaluation may update later."
+            ),
+        }
+
+    def verify_multi_account_execution(self, control: str) -> dict:
+        if control not in {S3_CONTROL, SG_CONTROL}:
+            raise ValueError("one exact supported control required")
+        plan = self._execution_cache().get("plans", {}).get(control)
+        if not isinstance(plan, dict):
+            raise ValueError("no recent remediation batch available to verify")
+        if plan.get("execution_state") not in {"APPLIED_PENDING_VERIFICATION", "EXECUTING", "VERIFIED"}:
+            raise ValueError("latest remediation has not been applied")
+        selected_accounts = self._normalize_selected_accounts(plan.get("selected_accounts"))
+        exclusions = self._normalize_exclusions(plan.get("exclude_resources"))
+        result = run_four_account_build(
+            "verify",
+            control,
+            plan.get("batch_id"),
+            exclusions=exclusions,
+            include_accounts=selected_accounts,
+            timeout=180,
         )
-        self._clear_multi_account_execution(control)
-        return response
+        verified = result.get("aws_service_verification") == "VERIFIED"
+        if verified:
+            self._mark_multi_account_execution(control, "VERIFIED")
+        return {
+            "version": 1,
+            "scope": "selected-lab-accounts",
+            "control": control,
+            "selected_accounts": selected_accounts,
+            "unselected_accounts": plan.get("unselected_accounts", []),
+            "included_aliases": result.get("included_aliases", []),
+            "excluded_aliases": result.get("excluded_aliases", []),
+            "aws_service_verification": result.get("aws_service_verification", "NOT_VERIFIED"),
+            "aws_config_evaluation": result.get("config", {}),
+            "verified": verified,
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+            "message": (
+                "AWS service verification complete."
+                if verified else
+                "AWS service verification is not complete; no automatic remediation retry was dispatched."
+            ),
+        }
 
 
     def status(self) -> dict:
@@ -767,6 +875,7 @@ class OperatorHandler(BulkHandler):
             "/api/operator/prepare-batch",
             "/api/operator/multi-account-execution-plan",
             "/api/operator/multi-account-execute",
+            "/api/operator/multi-account-verify",
         }:
             super().do_POST(); return
         if not self._local_host() or not self._same_loopback_origin():
@@ -786,12 +895,13 @@ class OperatorHandler(BulkHandler):
                 result = self.service.prepare_batch(data["control"])
             elif (self.path == "/api/operator/multi-account-execution-plan"
                   and set(data).issubset({
-                      "control", "exclude_resources", "exception_reason",
+                      "control", "include_accounts", "exclude_resources", "exception_reason",
                       "exception_reference", "exception_expires_at",
                   })
                   and "control" in data):
                 result = self.service.prepare_multi_account_execution(
                     data["control"],
+                    data.get("include_accounts"),
                     data.get("exclude_resources"),
                     data.get("exception_reason"),
                     data.get("exception_reference"),
@@ -801,6 +911,8 @@ class OperatorHandler(BulkHandler):
                 result = self.service.execute_multi_account(
                     data["control"], data["batch_id"], data["scope_hash"]
                 )
+            elif self.path == "/api/operator/multi-account-verify" and set(data) == {"control"}:
+                result = self.service.verify_multi_account_execution(data["control"])
             else:
                 raise ValueError("invalid operator request")
             self._json(200, result)
