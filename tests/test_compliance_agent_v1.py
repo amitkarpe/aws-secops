@@ -268,15 +268,40 @@ class McpServerRegressionTests(unittest.TestCase):
 
 
 class RepoIsolationTests(unittest.TestCase):
-    def test_v1_integration_is_isolated_from_legacy(self):
+    def test_v1_integration_uses_clean_read_path_and_bounded_existing_executor(self):
         installer = (ROOT / "integration" / "install-compliance-v1.cjs").read_text()
         spec = json.loads((ROOT / "integration" / "compliance-agent-v1.json").read_text())
-        combined = installer + json.dumps(spec)
-        self.assertNotIn("localhost:4444", combined)
-        self.assertNotIn("pilot_v1", combined)
-        self.assertIn("compliance_agent_v1", combined)
         self.assertEqual(spec["name"], "Compliance Agent v1")
-        self.assertEqual(spec["tools"], ["ask_compliance_agent_v1_mcp_compliance_agent_v1"])
+        self.assertEqual(spec["tools"], [
+            "ask_compliance_agent_v1_mcp_compliance_agent_v1",
+            "prepare_multi_account_remediation_mcp_aws_compliance_planner",
+            "execute_multi_account_remediation_mcp_aws_compliance_planner",
+        ])
+        instructions = spec["instructions"]
+        self.assertIn("READ / EXPLAIN / PLAN", instructions)
+        self.assertIn("EXPLICIT FIX", instructions)
+        self.assertIn("Reject/cancel means zero CodeBuild dispatch", instructions)
+        self.assertIn("two separate native approval decisions", instructions)
+        self.assertIn("never combine them into Approve All", instructions)
+        self.assertIn("Harness remains tool-free", instructions)
+        self.assertNotIn("start_batch_execution_mcp_aws_secops_executor", json.dumps(spec))
+        self.assertNotIn("start_sg_batch_execution_mcp_aws_compliance", json.dumps(spec))
+        self.assertIn("CONFIG_BACKEND_URL:'http://127.0.0.1:1111'", installer)
+        self.assertIn("pilot_v1.operator_mcp", installer)
+        self.assertIn("SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'", installer)
+        self.assertIn("prepare_multi_account_remediation_mcp_aws_compliance_planner", installer)
+        self.assertIn("execute_multi_account_remediation_mcp_aws_compliance_planner", installer)
+        self.assertIn("multi-account-approval-hook.cjs", installer)
+        self.assertIn("four-account v1 execution must not be statically allowed", installer)
+
+    def test_agent_updater_preserves_identity_and_exact_tools(self):
+        updater = (ROOT / "integration" / "update-compliance-v1-agent.cjs").read_text()
+        self.assertIn("expected exactly one existing Compliance Agent v1", updater)
+        self.assertIn("after.id !== before.id", updater)
+        self.assertIn("String(after.author) !== String(before.author)", updater)
+        self.assertIn("toolCount !== 3", updater)
+        self.assertNotIn("insertOne", updater)
+        self.assertNotIn("deleteOne", updater)
 
     def test_access_helper_is_bounded_and_idempotent(self):
         helper = (ROOT / "integration" / "ensure-compliance-v1-access.cjs").read_text()

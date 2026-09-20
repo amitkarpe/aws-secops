@@ -4,7 +4,7 @@ The design separates **evidence**, **reasoning**, **authorization**, **execution
 
 No prompt or model response is an AWS-change security boundary.
 
-## Plane A — Compliance Agent v1 read path
+## Plane A — Compliance Agent v1 reasoning path
 
 ```text
 Organization / account Config evidence
@@ -43,9 +43,9 @@ Compliance Agent v1 can:
 - produce a no-change remediation plan;
 - return identifiers only when authorized evidence contains them.
 
-It cannot execute remediation.
+For explicit fix intent, the same LibreChat agent may leave this reasoning plane and invoke the bounded execution plane below.
 
-## Plane B — separate governed mutation path
+## Plane B — Compliance Agent v1 governed mutation path
 
 ```text
 explicit fix intent
@@ -65,7 +65,7 @@ direct provider readback
 AWS Config converges independently
 ```
 
-This path is bounded to the existing four LAB aliases and two controls. It is not a generic AWS administration surface and is not part of Compliance Agent v1's tool set.
+This path is bounded to the existing four LAB aliases and two controls. It is now part of Compliance Agent v1's shell tool set, but native human approval remains the authorization boundary and the Harness itself receives no mutation tool.
 
 ## Plane C — historical / retained experiments
 

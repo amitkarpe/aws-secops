@@ -1,6 +1,6 @@
 # Compliance Agent v1
 
-Status: **VERIFIED — release publication pending (Issue #125)**
+Status: **IMPLEMENTING GOVERNED REMEDIATION — Issues #125/#138**
 
 Owning Issue: #123
 
@@ -47,10 +47,10 @@ Implemented v1 scope:
 - finding explanation;
 - bounded remediation plan;
 - operational detail, including account/resource identifiers when the authorized backend provides them;
-- preserved approval/security boundary;
+- explicit fix intent with separate native human approval;
 - automated backend/MCP/AgentCore Harness acceptance;
 - programmatic golden-prompt invocation against Harness;
-- LibreChat v1 registration/integration.
+- LibreChat v1 registration/integration;\n- exact four-account S3/SSH remediation through the existing approved CodeBuild/G/O executor.
 
 ## Implementation layout
 
@@ -90,18 +90,24 @@ Compliance Agent v1 should start with a structured operational event ledger, not
 
 ```text
 LibreChat: Compliance Agent v1
-   -> one read-only MCP tool: ask_compliance_agent_v1
-   -> strict loopback Config adapter (:1111)
-   -> authoritative 4-account evidence packet
-   -> dedicated AgentCore Harness: compliance_agent_v1
-   -> Nova 2 Lite reasoning, no tools
-   -> answer back to LibreChat
+   -> read/explain/plan: ask_compliance_agent_v1
+      -> strict loopback Config adapter (:1111)
+      -> authoritative 4-account evidence packet
+      -> dedicated AgentCore Harness: compliance_agent_v1
+      -> Nova 2 Lite reasoning, no Harness tools
+      -> answer back to LibreChat
+
+   -> explicit fix: prepare_multi_account_remediation
+      -> frozen exact four-account batch, no AWS mutation
+      -> execute_multi_account_remediation
+      -> native Approve / Reject
+      -> fixed CodeBuild + existing G/O controller
+      -> exact target sessions
+      -> direct provider readback
+      -> independent Config convergence
 ```
 
-The Harness is deliberately **tool-free** in v1. Current AWS evidence is fetched
-deterministically by the local adapter before inference. This prevents the model
-from selecting a generic AWS/tool surface while still making AgentCore Harness
-the reasoning layer.
+The Harness remains deliberately **tool-free**. Current AWS evidence is fetched deterministically before inference. Explicit remediation does not give the Harness AWS tools; the LibreChat shell invokes only the existing exact four-account prepare/executor contract, and the executor remains behind native human approval.
 
 The adapter fails closed unless all four registered aliases and both supported
 controls are present as exactly eight account/control checks.
@@ -126,13 +132,12 @@ identifier fidelity before LibreChat smoke testing.
 
 - Config backend: PASS (4 aliases × 2 controls = 8 checks)
 - AgentCore Harness golden prompts: PASS 5/5
-- read-only / no-mutation boundary: PASS
+- Harness no-tool reasoning boundary: PASS
 - installed MCP bridge startup and invocation: PASS
 - LibreChat agent registration and ACL visibility: PASS
 - authenticated LibreChat UI smoke: PASS
 - direct installed MCP invocation: PASS
 - release hardening: Issue #133 / PR #134
 
-Remaining:
-- publish and verify GitHub Release `compliance-agent-v1.0.0`.
+Remaining:\n- complete Issue #138 Reject + Approve live E2E for both controls;\n- publish and verify GitHub Release `compliance-agent-v1.0.0`.
 

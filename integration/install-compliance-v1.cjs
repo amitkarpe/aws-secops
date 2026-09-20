@@ -40,9 +40,43 @@ if (existing && !isDeepStrictEqual(existing,server))
   throw Error('existing compliance_agent_v1 MCP differs; review before replacing');
 updated.mcpServers.compliance_agent_v1 = server;
 
-const tool='ask_compliance_agent_v1_mcp_compliance_agent_v1';
-if (!approval.allow.includes(tool)) approval.allow.push(tool);
-approval.ask = approval.ask.filter(name => name !== tool);
+const readTool='ask_compliance_agent_v1_mcp_compliance_agent_v1';
+if (!approval.allow.includes(readTool)) approval.allow.push(readTool);
+approval.ask = approval.ask.filter(name => name !== readTool);
+
+const planner = {
+  type:'stdio',
+  command:'/opt/aws-secops/.venv-mcp/bin/python',
+  args:['-m','pilot_v1.operator_mcp'],
+  env:{PYTHONPATH:'/opt/aws-secops',SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'},
+  timeout:190000,
+  initTimeout:15000,
+  chatMenu:false,
+  serverInstructions:true,
+};
+const existingPlanner=updated.mcpServers.aws_compliance_planner;
+if (!existingPlanner || !isDeepStrictEqual(existingPlanner,planner))
+  throw Error('exact existing four-account compliance planner MCP required');
+
+const prepareTool='prepare_multi_account_remediation_mcp_aws_compliance_planner';
+if (!approval.allow.includes(prepareTool)) approval.allow.push(prepareTool);
+approval.ask = approval.ask.filter(name => name !== prepareTool);
+
+const executeNames=[
+  'execute_multi_account_remediation_mcp_aws_compliance_planner',
+  'mcp:aws_compliance_planner:execute_multi_account_remediation',
+];
+for(const name of executeNames){
+  if(approval.allow.includes(name)) throw Error('four-account v1 execution must not be statically allowed');
+  if(!approval.ask.includes(name)) approval.ask.push(name);
+  const hook={matcher:name,module:'/opt/aws-secops/integration/multi-account-approval-hook.cjs'};
+  approval.hooks??=[];
+  const existingHook=approval.hooks.find(h=>h.matcher===name);
+  if(existingHook&&!isDeepStrictEqual(existingHook,hook)) throw Error('existing four-account approval hook differs');
+  if(!existingHook) approval.hooks.push(hook);
+}
+if(!fs.existsSync('/opt/aws-secops/integration/multi-account-approval-hook.cjs'))
+  throw Error('four-account approval hook missing');
 
 const rendered=yaml.dump(updated,{lineWidth:-1,noRefs:true});
 if(!isDeepStrictEqual(yaml.load(rendered),updated)) throw Error('YAML round trip differs');
@@ -53,4 +87,4 @@ if(rendered!==raw){
   fs.writeFileSync(temp,rendered,{mode:fs.statSync(file).mode&0o777,flag:'wx'});
   fs.renameSync(temp,file);
 }
-console.log('COMPLIANCE_AGENT_V1_MCP=READY TOOL=ALLOW LEGACY_MCP=PRESERVED');
+console.log('COMPLIANCE_AGENT_V1=READY READ=ALLOW PREPARE=ALLOW EXECUTE=ASK HARNESS_TOOLS=0');
