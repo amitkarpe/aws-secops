@@ -11,6 +11,7 @@ import hashlib
 from http.server import HTTPServer
 import json
 import os
+import re
 import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -221,7 +222,7 @@ class OperatorService(BulkService):
         if not exclusions:
             if any(value not in {None, ""} for value in (reason, reference, expires_at)):
                 raise ValueError("exception metadata requires at least one exclusion")
-            return {"reason": None, "reference": None, "expires_at": None}
+            return {"reason": None, "reference": None, "expires_at": None, "requested_at": None}
         if not isinstance(reason, str) or not 3 <= len(reason.strip()) <= 200:
             raise ValueError("one-time exclusion reason is required")
         reason = reason.strip()
@@ -241,7 +242,12 @@ class OperatorService(BulkService):
                 raise ValueError("exception expiry must be YYYY-MM-DD") from exc
             if expires_at < time.strftime("%Y-%m-%d", time.gmtime()):
                 raise ValueError("exception expiry is already past")
-        return {"reason": reason, "reference": reference, "expires_at": expires_at}
+        return {
+            "reason": reason,
+            "reference": reference,
+            "expires_at": expires_at,
+            "requested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
 
     def prepare_multi_account_execution(
         self,
@@ -313,7 +319,7 @@ class OperatorService(BulkService):
             "native_ask_required": True,
             "next_execution": {
                 "tool": "execute_multi_account_remediation_mcp_aws_compliance_planner",
-                "arguments": {"control": control, "batch_id": batch_id},
+                "arguments": {"control": control, "batch_id": batch_id, "scope_hash": scope_hash},
             },
             "message": (
                 f"Exact batch frozen: {len(pending_aliases)} included, {len(exclusions)} excluded. "
@@ -349,9 +355,14 @@ class OperatorService(BulkService):
             "resource_identifiers": "hidden-by-default",
         }
 
-    def execute_multi_account(self, control: str, batch_id: str) -> dict:
+    def execute_multi_account(self, control: str, batch_id: str, scope_hash: str) -> dict:
         preview = self.multi_account_execution_preview(control)
-        if preview.get("batch_id") != batch_id:
+        if (
+            preview.get("batch_id") != batch_id
+            or not isinstance(scope_hash, str)
+            or not re.fullmatch(r"[a-f0-9]{24}", scope_hash)
+            or preview.get("scope_hash") != scope_hash
+        ):
             raise ValueError("submitted batch does not match frozen plan")
         current = self.multi_account_status()
         rows = current.get("accounts", [])
@@ -672,8 +683,10 @@ class OperatorHandler(BulkHandler):
                     data.get("exception_reference"),
                     data.get("exception_expires_at"),
                 )
-            elif self.path == "/api/operator/multi-account-execute" and set(data) == {"control", "batch_id"}:
-                result = self.service.execute_multi_account(data["control"], data["batch_id"])
+            elif self.path == "/api/operator/multi-account-execute" and set(data) == {"control", "batch_id", "scope_hash"}:
+                result = self.service.execute_multi_account(
+                    data["control"], data["batch_id"], data["scope_hash"]
+                )
             else:
                 raise ValueError("invalid operator request")
             self._json(200, result)
