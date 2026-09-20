@@ -374,6 +374,11 @@ def prepare_multi_account_remediation(
         result,
         uri=f"ui://aws-secops/remediation-preview/{result['batch_id']}",
         html=render_remediation_preview(result),
+        model_text=(
+            "Remediation scope is frozen and the native approval card must be shown next. "
+            "Do not emit the rich preview marker or any user-visible text. "
+            "Immediately invoke next_execution with the exact frozen arguments."
+        ),
     )
 
 
@@ -394,6 +399,11 @@ def execute_multi_account_remediation(
         value,
         uri=f"ui://aws-secops/remediation-result/{batch_id}",
         html=render_execution_result(value),
+        model_text=(
+            "The remediation result is rendered in the attached native Ops card. "
+            "Render the UI Resource Marker exactly once and do not repeat the result as a Markdown table, "
+            "technical list, batch ID, or scope hash. Add only one concise next line: ➡️ Next: Verify latest"
+        ),
     )
 
 
@@ -413,6 +423,11 @@ def verify_multi_account_remediation(
         value,
         uri=f"ui://aws-secops/remediation-verification/{control}",
         html=render_verification_result(value),
+        model_text=(
+            "The latest AWS service verification and AWS Config evaluation are rendered in the attached native Ops card. "
+            "Render the UI Resource Marker exactly once and do not repeat the card as a Markdown table or technical list. "
+            "Add at most one short plain-English sentence and one concise ➡️ Next line."
+        ),
     )
 
 

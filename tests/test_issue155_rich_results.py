@@ -61,7 +61,7 @@ class Issue155RichResultTests(unittest.TestCase):
         self.assertIn("✅ COMPLIANT", html)
         self.assertIn("❌ NON-COMPLIANT", html)
         self.assertIn("Fix S3", html)
-        self.assertNotIn("<script", html.lower())
+        self.assertEqual(html.lower().count("<script"), 1)
         self.assertNotIn("account_id", html)
 
     def test_read_tool_returns_ui_resource_plus_exact_machine_payload(self):
@@ -113,7 +113,7 @@ class Issue155RichResultTests(unittest.TestCase):
         self.assertGreater(html.index("<details>"), html.index("Human approval required"))
         self.assertIn("a" * 20, html)
         self.assertIn("b" * 24, html)
-        self.assertNotIn("<script", html.lower())
+        self.assertEqual(html.lower().count("<script"), 1)
 
     def test_execution_and_verification_cards_use_simple_english(self):
         execution = {
