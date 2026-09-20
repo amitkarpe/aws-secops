@@ -23,6 +23,10 @@ Do not:
 
 The new agent will use the unified Config backend and current four-account contracts.
 
+**Agent layer:** Amazon Bedrock AgentCore Harness is the intended primary reasoning/tool runtime for Compliance Agent v1. LibreChat is the frontend/client, not the source of agent truth.
+
+This corrects the current split architecture: the repository already proved a live read-only AgentCore Harness operator, while the broken LibreChat Compliance Agent followed a separate legacy path to retired port 4444.
+
 ## v1 scope
 
 Exactly four aliases:
@@ -44,7 +48,8 @@ Planned capabilities:
 - bounded remediation plan;
 - operational detail, including account/resource identifiers when the authorized backend provides them;
 - preserved approval/security boundary;
-- automated backend/MCP/agent acceptance harness;
+- automated backend/MCP/AgentCore Harness acceptance;
+- programmatic golden-prompt invocation against Harness;
 - minimal LibreChat browser smoke.
 
 ## Planned implementation layout
@@ -68,3 +73,14 @@ Compliance Agent v1 does not use alias-only privacy masking as an acceptance req
 - Return account/resource identifiers when they are supplied by an authorized backend/tool and help operations.
 - Do not invent identifiers that the backend does not provide.
 - Never expose credentials, secrets, tokens, auth/session material or unrelated private data.
+
+
+## Operational history vs memory vs RAG
+
+Compliance Agent v1 should start with a structured operational event ledger, not RAG.
+
+- Exact change history — who, what resource, when, before/after, approval, provider verification — belongs in structured events.
+- KISS v1 storage: one JSON event object per change in S3. Move to DynamoDB only when query volume/indexing needs justify it.
+- AgentCore Memory is for conversation/session/episodic memory, not authoritative operational audit.
+- Bedrock Knowledge Bases/RAG should be added later for runbooks, SOPs, policies, architecture docs and incident narratives when semantic document retrieval becomes useful.
+- CloudTrail remains deeper AWS-native evidence, but the normal agent should be able to answer known agent-mediated change history from the structured ledger first.
