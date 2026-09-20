@@ -106,7 +106,11 @@ def normalize_config_state(state: str | None, *, provider_compliant: bool) -> st
     return state
 
 
-def batch_id(control: str, entries: Iterable[tuple[str, str]]) -> str:
+def batch_id(
+    control: str,
+    entries: Iterable[tuple[str, str]],
+    excluded_aliases: Iterable[str] = (),
+) -> str:
     if control not in CONTROLS:
         raise ValueError("unsupported Issue #82 control")
     normalized = list(entries)
@@ -114,7 +118,14 @@ def batch_id(control: str, entries: Iterable[tuple[str, str]]) -> str:
         raise ValueError("Issue #82 frozen batch must contain the four aliases in order")
     if any(not re.fullmatch(r"[a-f0-9]{12,64}", ref) for _, ref in normalized):
         raise ValueError("Issue #82 resource reference must be a hash")
-    body = json.dumps({"control": control, "targets": normalized}, separators=(",", ":"), sort_keys=True)
+    excluded = list(excluded_aliases)
+    canonical = [alias for alias in ALIASES if alias in set(excluded)]
+    if excluded != canonical:
+        raise ValueError("Issue #82 exclusions must be unique approved aliases in canonical order")
+    body = json.dumps(
+        {"control": control, "targets": normalized, "excluded_aliases": excluded},
+        separators=(",", ":"), sort_keys=True,
+    )
     return hashlib.sha256(body.encode()).hexdigest()[:20]
 
 
