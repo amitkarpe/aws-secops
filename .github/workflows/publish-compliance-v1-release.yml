@@ -37,8 +37,9 @@ jobs:
           - Approval/execution boundary: PASS
           - Installed MCP bridge: PASS
           - Authenticated LibreChat UI smoke: PASS
+          - Evidence payload bounded below the Harness prompt ceiling: PASS
           - Final direct MCP invocation: PASS, `mutation=false`
-          - Regression CI: PASS
+          - Regression CI: PASS — full suite #256 plus dedicated v1 runtime job
           - Live proof date: 2026-09-20
 
           ### Architecture
@@ -53,10 +54,10 @@ jobs:
           - No generic AWS administration capability is exposed.
 
           ### Exact release commit
-          `d2c4125b712ccddd675c3c34a1284aaa7d503afc`
+          `229644d7c5408fd5e06de353297e80a2f10389fc`
 
           ### Rollback/reference
-          Previous verified runtime baseline: `8779cf9bd771be296b7983bf20e3881de3e10e48`
+          Previous verified runtime baseline: `1afe9d1f47389bf480b68b20a22ef50054ae64db`
           EOF
 
-          gh release create compliance-agent-v1.0.0             --repo "$GITHUB_REPOSITORY"             --target d2c4125b712ccddd675c3c34a1284aaa7d503afc             --title "Compliance Agent v1.0.0"             --notes-file /tmp/release-notes.md
+          gh release create compliance-agent-v1.0.0             --repo "$GITHUB_REPOSITORY"             --target 229644d7c5408fd5e06de353297e80a2f10389fc             --title "Compliance Agent v1.0.0"             --notes-file /tmp/release-notes.md
