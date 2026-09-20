@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from mcp.shared.exceptions import McpError
+from pydantic import ValidationError
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "agents" / "compliance-agent-v1" / "src"
@@ -156,13 +156,17 @@ class McpServerRegressionTests(unittest.TestCase):
                     await session.initialize()
                     tools = await session.list_tools()
                     self.assertEqual([tool.name for tool in tools.tools], ["ask_compliance_agent_v1"])
-                    with self.assertRaises(McpError):
-                        await session.call_tool(
-                            "ask_compliance_agent_v1",
-                            {"request": "status", "unexpected": "blocked"},
-                        )
 
         asyncio.run(probe())
+
+    def test_mcp_argument_model_rejects_unexpected_arguments(self):
+        from compliance_agent_v1.mcp_server import mcp
+
+        tools = mcp._tool_manager.list_tools()
+        self.assertEqual([tool.name for tool in tools], ["ask_compliance_agent_v1"])
+        model = tools[0].fn_metadata.arg_model
+        with self.assertRaises(ValidationError):
+            model.model_validate({"request": "status", "unexpected": "blocked"})
 
 
 class RepoIsolationTests(unittest.TestCase):
