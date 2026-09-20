@@ -66,6 +66,22 @@ class ConfigBackendTests(unittest.TestCase):
     def test_loopback_backend_only(self):
         with self.assertRaises(config_backend.BackendEvidenceError):
             config_backend._base("https://example.com")
+        with self.assertRaisesRegex(config_backend.BackendEvidenceError, "port 1111"):
+            config_backend._base("http://127.0.0.1:4444")
+
+    def test_empty_resource_ids_are_not_reported_available(self):
+        row = {
+            "accountId": "",
+            "resourceId": "",
+            "resourceIds": [],
+        }
+        self.assertEqual(config_backend._optional_identifiers(row), {})
+
+    def test_nonempty_resource_ids_are_preserved(self):
+        self.assertEqual(
+            config_backend._optional_identifiers({"resourceIds": ["bucket-a"]}),
+            {"resource_ids": ["bucket-a"]},
+        )
 
 
 class HarnessClientTests(unittest.TestCase):
@@ -90,6 +106,16 @@ class HarnessClientTests(unittest.TestCase):
         arn = "arn:aws:bedrock-agentcore:ap-southeast-1:123456789012:harness/compliance_agent_v1-AbC123"
         with self.assertRaises(harness_client.HarnessError):
             harness_client.invoke("evidence", arn, client=Client())
+
+    def test_tooluse_word_in_normal_text_is_not_a_tool_event(self):
+        class Client:
+            def invoke_harness(self, **kwargs):
+                return {"stream": iter([
+                    {"contentBlockDelta": {"delta": {"text": "The word toolUse is ordinary answer text."}}},
+                ])}
+        arn = "arn:aws:bedrock-agentcore:ap-southeast-1:123456789012:harness/compliance_agent_v1-AbC123"
+        value = harness_client.invoke("evidence", arn, client=Client())
+        self.assertIn("toolUse", value["answer"])
 
     def test_invalid_harness_response_is_sanitized(self):
         class Client:
@@ -186,6 +212,7 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("Compliance Agent v1", helper)
         self.assertIn("target user must already have source-agent access", helper)
         self.assertIn("conflicting target ACL; manual review required", helper)
+        self.assertIn("countDocuments", helper)
         self.assertIn("findOne", helper)
         self.assertIn("insertOne", helper)
         self.assertNotIn("deleteOne", helper)
