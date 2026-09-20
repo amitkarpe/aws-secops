@@ -13,6 +13,9 @@ CONTROLS = (
     "restricted-ssh",
 )
 STATUSES = {"COMPLIANT", "NON_COMPLIANT", "INSUFFICIENT_DATA", "NOT_REPORTED", "NOT_APPLICABLE"}
+MAX_BACKEND_BYTES = 512 * 1024
+MAX_IDENTIFIER_CHARS = 128
+MAX_RESOURCE_IDS = 4
 
 
 class BackendEvidenceError(RuntimeError):
@@ -45,7 +48,13 @@ def _get_json(base_url: str, path: str, *, timeout: float = 65.0) -> dict[str, A
             content_type = response.headers.get("content-type", "")
             if response.status != 200 or "application/json" not in content_type.lower():
                 raise BackendEvidenceError("Config backend returned an unexpected response")
-            value = json.load(response)
+            raw = response.read(MAX_BACKEND_BYTES + 1)
+            if len(raw) > MAX_BACKEND_BYTES:
+                raise BackendEvidenceError("Config backend response is too large")
+            try:
+                value = json.loads(raw)
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                raise BackendEvidenceError("Config backend returned invalid JSON") from exc
     except BackendEvidenceError:
         raise
     except Exception as exc:
@@ -56,22 +65,31 @@ def _get_json(base_url: str, path: str, *, timeout: float = 65.0) -> dict[str, A
 
 
 def _optional_identifiers(row: dict[str, Any]) -> dict[str, Any]:
-    """Preserve authorized identifiers only when the backend actually supplies them."""
+    """Preserve a bounded subset of authorized identifiers supplied by the backend."""
     out: dict[str, Any] = {}
-    for source, target in (
-        ("accountId", "account_id"), ("AccountId", "account_id"),
-        ("resourceId", "resource_id"), ("ResourceId", "resource_id"),
-    ):
-        value = row.get(source)
-        if isinstance(value, str) and 1 <= len(value) <= 512:
-            out[target] = value
+
+    account_values = {
+        row.get(key) for key in ("accountId", "AccountId")
+        if isinstance(row.get(key), str) and row.get(key).isdigit() and len(row.get(key)) == 12
+    }
+    if len(account_values) == 1:
+        out["account_id"] = next(iter(account_values))
+
+    resource_values = {
+        row.get(key) for key in ("resourceId", "ResourceId")
+        if isinstance(row.get(key), str) and 1 <= len(row.get(key)) <= MAX_IDENTIFIER_CHARS
+    }
+    if len(resource_values) == 1:
+        out["resource_id"] = next(iter(resource_values))
+
     values = row.get("resourceIds")
-    if (
-        isinstance(values, list)
-        and values
-        and all(isinstance(x, str) and 1 <= len(x) <= 512 for x in values[:50])
-    ):
-        out["resource_ids"] = values[:50]
+    if isinstance(values, list) and values:
+        limited = values[:MAX_RESOURCE_IDS]
+        if all(isinstance(x, str) and 1 <= len(x) <= MAX_IDENTIFIER_CHARS for x in limited):
+            out["resource_ids"] = limited
+            if len(values) > MAX_RESOURCE_IDS:
+                out["resource_ids_truncated"] = True
+                out["resource_ids_supplied"] = len(values)
     return out
 
 
