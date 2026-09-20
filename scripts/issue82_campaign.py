@@ -400,15 +400,35 @@ def prepare(sessions: list[TargetSession], control: str) -> dict[str, Any]:
     }
 
 
-def _plan_for_control(sessions: list[TargetSession], control: str) -> tuple[str, list[TargetSession], dict[str, str]]:
+def _plan_for_control(
+    sessions: list[TargetSession],
+    control: str,
+    exclude_resources: list[str] | None = None,
+) -> tuple[str, list[TargetSession], dict[str, str], list[str], list[str]]:
+    requested = list(exclude_resources or [])
+    if len(requested) != len(set(requested)) or len(requested) > 3:
+        raise ValueError("one-time exclusions must be unique and leave at least one target")
+    if any(
+        not isinstance(value, str)
+        or not value
+        or len(value) > 255
+        or any(ch in value for ch in "*?[]")
+        for value in requested
+    ):
+        raise ValueError("invalid exact exclusion resource")
+
     pending: list[TargetSession] = []
     refs: list[tuple[str, str]] = []
     config_states: dict[str, str] = {}
+    excluded_aliases: list[str] = []
+    matched: set[str] = set()
+
     for session in sessions:
         if control == S3_CONTROL:
             bucket = session.bucket or _find_bucket(session)
             provider_ok = s3_bpa_compliant(_get_bpa(session, bucket))
             resource_id = bucket
+            resource_names = {bucket}
         elif control == SG_CONTROL:
             sg_id = session.sg_id or _find_sg(session)
             group = _get_sg(session, sg_id)
@@ -416,21 +436,44 @@ def _plan_for_control(sessions: list[TargetSession], control: str) -> tuple[str,
                 raise AwsError("demo Security Group is attached")
             provider_ok = not has_unrestricted_ssh(group.get("IpPermissions", []))
             resource_id = sg_id
+            resource_names = {sg_id, _sg_name(session.target)}
         else:
             raise ValueError("unsupported control")
-        if not provider_ok:
+
+        requested_here = [value for value in requested if value in resource_names]
+        if len(requested_here) > 1:
+            raise ValueError("multiple exclusion identifiers resolved to the same resource")
+        if requested_here:
+            matched.add(requested_here[0])
+            if provider_ok:
+                raise ValueError("excluded resource is not currently non-compliant")
+            excluded_aliases.append(session.target.alias)
+        elif not provider_ok:
             pending.append(session)
+
         ref = hashlib.sha256(f"{session.target.alias}:{resource_id}".encode()).hexdigest()[:16]
         refs.append((session.target.alias, ref))
         config_states[session.target.alias] = _config_state(
             session, control, resource_id, provider_compliant=provider_ok
         )
-    frozen = batch_id(control, refs)
-    return frozen, pending, config_states
+
+    if matched != set(requested):
+        raise ValueError("one or more exclusion resources did not resolve exactly")
+    if requested and not pending:
+        raise ValueError("exclusions removed every remediation target")
+
+    frozen = batch_id(control, refs, excluded_aliases)
+    return frozen, pending, config_states, excluded_aliases, requested
 
 
-def plan(sessions: list[TargetSession], control: str) -> dict[str, Any]:
-    frozen, pending, config_states = _plan_for_control(sessions, control)
+def plan(
+    sessions: list[TargetSession],
+    control: str,
+    exclude_resources: list[str] | None = None,
+) -> dict[str, Any]:
+    frozen, pending, config_states, excluded_aliases, exclusions = _plan_for_control(
+        sessions, control, exclude_resources
+    )
     decision = "PLAN" if pending else "ALREADY_COMPLIANT"
     return public_result(
         control=control,
@@ -438,13 +481,26 @@ def plan(sessions: list[TargetSession], control: str) -> dict[str, Any]:
         aliases=ALIASES,
         decision=decision,
         mutation_count=0,
-        provider_verified=not pending,
+        provider_verified=not pending and not excluded_aliases,
         config_states=config_states,
-    ) | {"pending_aliases": [s.target.alias for s in pending]}
+    ) | {
+        "pending_aliases": [s.target.alias for s in pending],
+        "excluded_aliases": excluded_aliases,
+        "excluded_count": len(excluded_aliases),
+        "exception_source": "one-time-user-exclusion" if exclusions else None,
+    }
 
 
-def execute(sessions: list[TargetSession], control: str, decision: str, expected_batch: str) -> dict[str, Any]:
-    frozen, pending, before_config = _plan_for_control(sessions, control)
+def execute(
+    sessions: list[TargetSession],
+    control: str,
+    decision: str,
+    expected_batch: str,
+    exclude_resources: list[str] | None = None,
+) -> dict[str, Any]:
+    frozen, pending, before_config, excluded_aliases, exclusions = _plan_for_control(
+        sessions, control, exclude_resources
+    )
     if frozen != expected_batch:
         raise ValueError("frozen batch id mismatch")
     if not pending:
@@ -454,11 +510,15 @@ def execute(sessions: list[TargetSession], control: str, decision: str, expected
             aliases=ALIASES,
             decision="ALREADY_COMPLIANT",
             mutation_count=0,
-            provider_verified=True,
+            provider_verified=not excluded_aliases,
             config_states=before_config,
-        )
-    if len(pending) != 4:
-        raise AwsError("Issue #82 execution requires exactly four non-compliant demo targets")
+        ) | {
+            "excluded_aliases": excluded_aliases,
+            "excluded_count": len(excluded_aliases),
+            "exception_source": "one-time-user-exclusion" if exclusions else None,
+        }
+    if len(pending) + len(excluded_aliases) != 4:
+        raise AwsError("Issue #82 execution scope is incomplete")
     if decision == "reject":
         return public_result(
             control=control,
@@ -468,11 +528,16 @@ def execute(sessions: list[TargetSession], control: str, decision: str, expected
             mutation_count=0,
             provider_verified=False,
             config_states=before_config,
-        )
+        ) | {
+            "excluded_aliases": excluded_aliases,
+            "excluded_count": len(excluded_aliases),
+            "exception_source": "one-time-user-exclusion" if exclusions else None,
+        }
     if decision != "approve":
         raise ValueError("decision must be approve or reject")
 
     mutation_count = 0
+    included_aliases = [session.target.alias for session in pending]
     for session in pending:
         if control == S3_CONTROL:
             bucket = session.bucket or _find_bucket(session)
@@ -497,9 +562,13 @@ def execute(sessions: list[TargetSession], control: str, decision: str, expected
             ], env=session.env)
             mutation_count += 1
 
-    _, after_pending, after_config = _plan_for_control(sessions, control)
+    _, after_pending, after_config, after_excluded_aliases, _ = _plan_for_control(
+        sessions, control, exclude_resources
+    )
     if after_pending:
-        raise AwsError("provider readback did not prove remediation")
+        raise AwsError("provider readback did not prove included remediation")
+    if after_excluded_aliases != excluded_aliases:
+        raise AwsError("excluded resource scope changed during execution")
     return public_result(
         control=control,
         batch=frozen,
@@ -508,7 +577,12 @@ def execute(sessions: list[TargetSession], control: str, decision: str, expected
         mutation_count=mutation_count,
         provider_verified=True,
         config_states=after_config,
-    )
+    ) | {
+        "included_aliases": included_aliases,
+        "excluded_aliases": excluded_aliases,
+        "excluded_count": len(excluded_aliases),
+        "exception_source": "one-time-user-exclusion" if exclusions else None,
+    }
 
 
 def main() -> int:
@@ -517,6 +591,7 @@ def main() -> int:
     parser.add_argument("--control", choices=CONTROLS)
     parser.add_argument("--decision", choices=("approve", "reject"))
     parser.add_argument("--batch-id")
+    parser.add_argument("--exclude-resource", action="append", default=[])
     args = parser.parse_args()
 
     raw = os.environ.get(TARGETS_ENV, "")
@@ -530,11 +605,11 @@ def main() -> int:
     elif args.mode == "plan":
         if not args.control:
             parser.error("--control is required for plan")
-        result = plan(sessions, args.control)
+        result = plan(sessions, args.control, args.exclude_resource)
     else:
         if not args.control or not args.decision or not args.batch_id:
             parser.error("--control, --decision and --batch-id are required for execute")
-        result = execute(sessions, args.control, args.decision, args.batch_id)
+        result = execute(sessions, args.control, args.decision, args.batch_id, args.exclude_resource)
 
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0
