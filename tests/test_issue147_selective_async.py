@@ -67,6 +67,9 @@ class Issue147SelectiveAsyncTests(unittest.TestCase):
         self.assertEqual(value["unselected_accounts"], ["lab-qa", "lab-sec"])
         self.assertEqual(value["pending_aliases"], ["lab-dev", "lab-poc"])
         self.assertFalse(value["mutation"])
+        saved = json.loads(service.execution_state.read_text())["plans"][SG_CONTROL]
+        self.assertEqual(saved["selected_accounts"], ["lab-dev", "lab-poc"])
+        self.assertEqual(saved["unselected_accounts"], ["lab-qa", "lab-sec"])
         self.assertEqual(run.call_args.kwargs["include_accounts"], ["lab-dev", "lab-poc"])
 
     def test_execute_returns_verification_pending_without_readback_requirement(self):
