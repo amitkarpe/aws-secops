@@ -60,6 +60,9 @@ class Issue151SingleNativeApprovalTests(unittest.TestCase):
         self.assertIn("A bare 'go' or 'yes' may continue only", agent_instructions)
         self.assertIn("Never use typed 'approve', 'reject', 'yes', or 'go' to start, continue, or authorize remediation.", agent_instructions)
         self.assertIn("OVERRIDES ALL GENERAL NEXT/CONFIRMATION RULES", agent_instructions)
+        self.assertIn("Use only the exact NEXT_EXECUTION_ARGS_JSON", agent_instructions)
+        self.assertIn("If an execute call returns DENY or BLOCKED", agent_instructions)
+        self.assertIn("do not call execute again in the same turn", agent_instructions)
 
 
 if __name__ == "__main__":
