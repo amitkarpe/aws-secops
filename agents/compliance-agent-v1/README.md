@@ -41,7 +41,7 @@ Exactly two controls:
 - `s3-bucket-level-public-access-prohibited`
 - `restricted-ssh`
 
-Verified capabilities:
+Implemented v1 scope:
 
 - current status;
 - finding explanation;
@@ -50,7 +50,7 @@ Verified capabilities:
 - preserved approval/security boundary;
 - automated backend/MCP/AgentCore Harness acceptance;
 - programmatic golden-prompt invocation against Harness;
-- minimal LibreChat browser smoke.
+- LibreChat v1 registration/integration.
 
 ## Implementation layout
 
