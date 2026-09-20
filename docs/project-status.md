@@ -1,24 +1,22 @@
 # Project status
 
-The [root PROJECT_STATUS.md](https://github.com/amitkarpe/aws-secops/blob/main/PROJECT_STATUS.md) is the public source of truth.
+The [root PROJECT_STATUS.md](https://github.com/amitkarpe/aws-secops/blob/main/PROJECT_STATUS.md) is the source of truth.
 
 Current baseline:
 
-- exactly four live LAB aliases: `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`;
-- exactly two supported controls: S3 Block Public Access and restricted SSH;
-- `ops.astromedicomp.org` shows live organization Config status for all four aliases;
-- `sec.astromedicomp.org` defaults generic status and planning to the four-account read-only scope;
-- four-account writes remain on the separate governed GitHub OIDC G/O path;
-- Reject = zero writes;
-- Approve = four exact provider-verified changes per supported control;
-- AWS Config converges independently to `COMPLIANT x4`;
-- rerun = `ALREADY_COMPLIANT` / zero writes;
-- the retained 100-S3 / 10-SG runtime remains only as a clearly labeled legacy single-account demo.
+- Compliance Agent v1 is live and E2E-verified;
+- exactly four LAB aliases and two supported controls;
+- dedicated AgentCore Harness with no tools;
+- exactly one v1 MCP tool;
+- authenticated LibreChat smoke passed;
+- v1 has no mutation capability;
+- governed four-account remediation remains a separate bounded approval/execution path;
+- Config Dashboard is the active management surface;
+- GitHub Release `compliance-agent-v1.0.0` is the remaining v1 closure step.
 
-For current details, continue with:
+Continue with:
 
-- [3-minute demo](operations/AGENTIC_DEMO_3_MIN.md)
-- [Management audit view](operations/MANAGEMENT_AUDIT_VIEW.md)
 - [Architecture](architecture.md)
-- [Operations Console](operator-console.md)
 - [Governance](governance.md)
+- [Learning path](learning-path.md)
+- [Management audit view](operations/MANAGEMENT_AUDIT_VIEW.md)
