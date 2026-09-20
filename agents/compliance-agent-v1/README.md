@@ -1,6 +1,6 @@
 # Compliance Agent v1
 
-Status: **PLANNED — not implemented or released**
+Status: **IMPLEMENTING — Issue #125**
 
 Owning Issue: #123
 
@@ -84,3 +84,38 @@ Compliance Agent v1 should start with a structured operational event ledger, not
 - AgentCore Memory is for conversation/session/episodic memory, not authoritative operational audit.
 - Bedrock Knowledge Bases/RAG should be added later for runbooks, SOPs, policies, architecture docs and incident narratives when semantic document retrieval becomes useful.
 - CloudTrail remains deeper AWS-native evidence, but the normal agent should be able to answer known agent-mediated change history from the structured ledger first.
+
+
+## v1 implementation architecture
+
+```text
+LibreChat: Compliance Agent v1
+   -> one read-only MCP tool: ask_compliance_agent_v1
+   -> strict loopback Config adapter (:1111)
+   -> authoritative 4-account evidence packet
+   -> dedicated AgentCore Harness: compliance_agent_v1
+   -> Nova 2 Lite reasoning, no tools
+   -> answer back to LibreChat
+```
+
+The Harness is deliberately **tool-free** in v1. Current AWS evidence is fetched
+deterministically by the local adapter before inference. This prevents the model
+from selecting a generic AWS/tool surface while still making AgentCore Harness
+the reasoning layer.
+
+The adapter fails closed unless all four registered aliases and both supported
+controls are present as exactly eight account/control checks.
+
+### Runtime dependencies
+
+- Python 3.12+
+- latest compatible boto3 with AgentCore `InvokeHarness`
+- MCP Python SDK
+- existing EC2 instance role with exact `bedrock-agentcore:InvokeHarness`
+  permission for the dedicated v1 Harness only
+
+### Live acceptance
+
+Run `compliance_agent_v1.acceptance` against the dedicated Harness ARN. It
+checks status, explanation, no-change planning, explicit-fix boundary, and
+identifier fidelity before LibreChat smoke testing.
