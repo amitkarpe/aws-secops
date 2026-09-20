@@ -43,11 +43,27 @@ module.exports = () => () => async (input) => {
       ? 'S3 Block Public Access'
       : 'restricted SSH';
     const action = args.control === 's3-bucket-level-public-access-prohibited'
-      ? 'enable all four bucket-level Block Public Access settings'
-      : 'remove only TCP/22 ingress from 0.0.0.0/0 on the exact unattached demo Security Group';
+      ? 'enable all four bucket-level Block Public Access settings on each included bucket'
+      : 'remove only TCP/22 ingress from 0.0.0.0/0 on each included exact unattached demo Security Group';
     const includedText = pending.join(', ');
+    const exception = preview?.exception ?? null;
+    const scopeHash = preview?.scope_hash;
+    if (excludedResources.length && (
+        !exception ||
+        typeof exception.reason !== 'string' ||
+        exception.reason.length < 3 ||
+        (exception.reference !== null && typeof exception.reference !== 'string') ||
+        (exception.expires_at !== null && typeof exception.expires_at !== 'string') ||
+        typeof scopeHash !== 'string' ||
+        !/^[a-f0-9]{24}$/.test(scopeHash)
+    )) {
+      return {decision: 'deny', reason: 'DENY — frozen exception metadata is invalid. Prepare a new plan; no dispatch.'};
+    }
+    const metadataText = excludedResources.length
+      ? ` Reason: ${exception.reason}.${exception.reference ? ` Reference: ${exception.reference}.` : ''}${exception.expires_at ? ` Expires: ${exception.expires_at}.` : ''}`
+      : '';
     const excludedText = excludedResources.length
-      ? ` Excluded by this one-time exception: ${excludedResources.join(', ')} (${excludedAliases.join(', ')}). These excluded findings remain non-compliant and are not reported as fixed.`
+      ? ` Excluded by this one-time exception: ${excludedResources.join(', ')} (${excludedAliases.join(', ')}).${metadataText} These excluded findings remain non-compliant and are not reported as fixed.`
       : '';
     return {
       decision: 'ask',
