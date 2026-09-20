@@ -22,25 +22,25 @@ Primary surfaces:
 - unified Config backend: **PASS**, exactly 4 aliases × 2 controls = 8 checks;
 - dedicated AgentCore Harness: **PASS**;
 - five golden prompts: **PASS 5/5**;
-- read-only / no-mutation boundary: **PASS**;
-- installed MCP bridge: **PASS**, exactly one tool;
+- Harness reasoning boundary: **PASS** — no Harness tools;
+- v1 shell remediation wiring: **IMPLEMENTING in Issue #138** — read + prepare + native-ASK execute;
 - LibreChat visibility and authenticated user smoke: **PASS**;
 - final direct MCP invocation: **PASS**;
 - release publication: **PENDING**.
 
 Architecture:
 
-`LibreChat -> compliance_agent_v1 MCP -> unified Config backend -> AgentCore Harness -> Nova 2 Lite -> answer`
+`LibreChat -> ask_compliance_agent_v1 -> Config backend -> AgentCore Harness -> answer`\n\nExplicit fix: `LibreChat -> prepare exact batch -> native Approve/Reject -> fixed CodeBuild/G/O executor -> provider readback -> Config convergence`
 
 AgentCore Memory is not authoritative audit storage. Structured operational history remains separate; RAG is deferred until unstructured knowledge justifies it.
 
-## Governed remediation — separate boundary
+## Governed remediation — v1 execution boundary
 
-The approved four-account remediation path remains separate from Compliance Agent v1:
+Compliance Agent v1 now adopts the already-approved four-account remediation path:
 
 `explicit fix -> frozen exact batch -> native Approve/Reject -> fixed CodeBuild/G/O path -> provider readback -> Config convergence`
 
-No generic AWS mutation tool is exposed to the model.
+No generic AWS mutation tool is exposed. Only the exact two-control prepare/executor contract is available, and execution remains human-approved.
 
 ## Current implementation priorities
 
