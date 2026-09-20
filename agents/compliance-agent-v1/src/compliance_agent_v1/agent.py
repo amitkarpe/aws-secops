@@ -29,8 +29,8 @@ def _present_answer(text: str) -> str:
         raise ValueError("Harness answer is invalid")
     value = text
     value = re.sub(
-        r"Compliance Agent v1 cannot execute changes(?: directly)?\.?",
-        "Remediation is available through the governed native approval path.",
+        r"Compliance Agent v1 cannot (?:execute|apply) changes(?: directly)?[.!]?",
+        "AWS changes are applied only through the governed native approval path.",
         value,
         flags=re.IGNORECASE,
     )
@@ -52,6 +52,7 @@ def _present_answer(text: str) -> str:
         value,
         flags=re.IGNORECASE,
     )
+    value = value.replace("path..", "path.")
     return value
 
 
