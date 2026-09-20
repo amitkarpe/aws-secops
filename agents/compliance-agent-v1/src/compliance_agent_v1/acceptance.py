@@ -44,6 +44,7 @@ def run(harness_arn: str, backend_url: str) -> dict:
             passed = passed and any(x in lower for x in ("approval", "separate governed", "governed native"))
             passed = passed and "compliance agent v1 cannot execute" not in lower
             passed = passed and "execution is not available in compliance agent v1" not in lower
+            passed = passed and "compliance agent v1 cannot apply changes" not in lower
         elif name == "identifiers" and not evidence["identifiers_available"]:
             passed = passed and any(x in lower for x in ("unavailable", "not available", "not provided", "does not contain"))
         passed = passed and "provider" not in lower
