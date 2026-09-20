@@ -94,6 +94,49 @@ class CodeBuildExecutionTests(unittest.TestCase):
         self.assertIn({"name": "SECOPS_MODE", "value": "prepare", "type": "PLAINTEXT"}, overrides)
         self.assertNotIn("SECOPS_BATCH_ID", json.dumps(overrides))
 
+    def test_run_passes_only_bounded_exclusion_environment(self):
+        result = {
+            "control": S3_CONTROL,
+            "batch_id": "c" * 20,
+            "decision": "PLAN",
+            "mutation_count": 0,
+            "provider_verified": False,
+            "pending_aliases": ["lab-poc", "lab-qa", "lab-sec"],
+            "excluded_aliases": ["lab-dev"],
+            "excluded_count": 1,
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+        }
+        encoded = base64.b64encode(json.dumps(result).encode()).decode()
+        calls = []
+
+        def fake_json(args):
+            calls.append(args)
+            if "start-build" in args:
+                return {"build": {"id": codebuild_execution.PROJECT + ":exclude"}}
+            return {
+                "builds": [{
+                    "buildStatus": "SUCCEEDED",
+                    "exportedEnvironmentVariables": [
+                        {"name": "SECOPS_RESULT_B64", "value": encoded},
+                    ],
+                }]
+            }
+
+        exclusion = "aws-secops-issue82-lab-dev-demo"
+        with patch.object(codebuild_execution, "_json", side_effect=fake_json):
+            value = codebuild_execution.run("plan", S3_CONTROL, exclusions=[exclusion], timeout=1)
+
+        self.assertEqual(value["excluded_count"], 1)
+        start = calls[0]
+        overrides = json.loads(start[start.index("--environment-variables-override") + 1])
+        self.assertIn(
+            {"name": "SECOPS_EXCLUDE_RESOURCES_JSON", "value": json.dumps([exclusion], separators=(",", ":")), "type": "PLAINTEXT"},
+            overrides,
+        )
+        with self.assertRaises(ValueError):
+            codebuild_execution._validate("plan", S3_CONTROL, None, ["*"])
+
     def test_source_contains_no_generic_model_selected_overrides(self):
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[1]

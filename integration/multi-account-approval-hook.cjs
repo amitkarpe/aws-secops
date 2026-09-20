@@ -19,11 +19,21 @@ module.exports = () => () => async (input) => {
     const response = await fetch(url, {signal: AbortSignal.timeout(5000)});
     if (!response.ok) throw Error('unavailable');
     const preview = await response.json();
+    const pending = preview?.pending_aliases;
+    const excludedAliases = preview?.excluded_aliases ?? [];
+    const excludedResources = preview?.excluded_resources ?? [];
+    const allAliases = [...(pending ?? []), ...excludedAliases].sort();
     if (preview?.version !== 1 ||
         preview?.scope !== 'four-account-live-config' ||
         preview?.control !== args.control ||
         preview?.batch_id !== args.batch_id ||
-        JSON.stringify(preview?.pending_aliases) !== JSON.stringify(['lab-dev','lab-poc','lab-qa','lab-sec']) ||
+        !Array.isArray(pending) ||
+        !Array.isArray(excludedAliases) ||
+        !Array.isArray(excludedResources) ||
+        excludedAliases.length !== excludedResources.length ||
+        JSON.stringify(allAliases) !== JSON.stringify(['lab-dev','lab-poc','lab-qa','lab-sec'].sort()) ||
+        new Set(allAliases).size !== 4 ||
+        pending.length < 1 ||
         typeof preview?.age_seconds !== 'number' ||
         preview.age_seconds < 0 ||
         preview.age_seconds > 900) {
@@ -33,11 +43,31 @@ module.exports = () => () => async (input) => {
       ? 'S3 Block Public Access'
       : 'restricted SSH';
     const action = args.control === 's3-bucket-level-public-access-prohibited'
-      ? 'enable all four bucket-level Block Public Access settings'
-      : 'remove only TCP/22 ingress from 0.0.0.0/0 on the exact unattached demo Security Group';
+      ? 'enable all four bucket-level Block Public Access settings on each included bucket'
+      : 'remove only TCP/22 ingress from 0.0.0.0/0 on each included exact unattached demo Security Group';
+    const includedText = pending.join(', ');
+    const exception = preview?.exception ?? null;
+    const scopeHash = preview?.scope_hash;
+    if (excludedResources.length && (
+        !exception ||
+        typeof exception.reason !== 'string' ||
+        exception.reason.length < 3 ||
+        (exception.reference !== null && typeof exception.reference !== 'string') ||
+        (exception.expires_at !== null && typeof exception.expires_at !== 'string') ||
+        typeof scopeHash !== 'string' ||
+        !/^[a-f0-9]{24}$/.test(scopeHash)
+    )) {
+      return {decision: 'deny', reason: 'DENY — frozen exception metadata is invalid. Prepare a new plan; no dispatch.'};
+    }
+    const metadataText = excludedResources.length
+      ? ` Reason: ${exception.reason}.${exception.reference ? ` Reference: ${exception.reference}.` : ''}${exception.expires_at ? ` Expires: ${exception.expires_at}.` : ''}`
+      : '';
+    const excludedText = excludedResources.length
+      ? ` Excluded by this one-time exception: ${excludedResources.join(', ')} (${excludedAliases.join(', ')}).${metadataText} These excluded findings remain non-compliant and are not reported as fixed.`
+      : '';
     return {
       decision: 'ask',
-      reason: `ASK — Approve ${title} remediation across exactly lab-dev, lab-poc, lab-qa and lab-sec. Action: ${action}. Reject + Submit = zero CodeBuild dispatch and zero remediation. Approve + Submit runs only this frozen batch through the fixed CodeBuild project and existing G/O controller role. Direct provider readback must prove success; AWS Config may converge later. This does not approve the other control or future batches.`
+      reason: `ASK — Approve ${title} remediation for the frozen included scope: ${includedText}. Action: ${action}.${excludedText} Reject + Submit = zero CodeBuild dispatch and zero remediation. Approve + Submit runs only the included frozen scope through the fixed CodeBuild project and existing G/O controller role. Direct provider readback must prove included-resource success; AWS Config may converge later. This does not approve excluded resources, the other control, or future batches.`
     };
   } catch {
     return {decision: 'deny', reason: 'BLOCKED — exact four-account execution preview unavailable. No dispatch.'};

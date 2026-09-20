@@ -7,6 +7,7 @@ normal remediation authorization remains in LibreChat native ASK + Gateway Polic
 from __future__ import annotations
 
 import argparse
+import hashlib
 from http.server import HTTPServer
 import json
 import os
@@ -198,24 +199,103 @@ class OperatorService(BulkService):
         os.chmod(temp, 0o600)
         os.replace(temp, self.execution_state)
 
-    def prepare_multi_account_execution(self, control: str) -> dict:
+    @staticmethod
+    def _normalize_exclusions(values: object) -> list[str]:
+        if values is None:
+            return []
+        if not isinstance(values, list) or len(values) > 3 or len(values) != len(set(values)):
+            raise ValueError("exact exclusions must be a unique list of up to three resources")
+        for value in values:
+            if (not isinstance(value, str) or not value or len(value) > 255
+                    or any(ch in value for ch in "*?[]")):
+                raise ValueError("invalid exact exclusion resource")
+        return values
+
+    @staticmethod
+    def _normalize_exception_metadata(
+        exclusions: list[str],
+        reason: object = None,
+        reference: object = None,
+        expires_at: object = None,
+    ) -> dict:
+        if not exclusions:
+            if any(value not in {None, ""} for value in (reason, reference, expires_at)):
+                raise ValueError("exception metadata requires at least one exclusion")
+            return {"reason": None, "reference": None, "expires_at": None}
+        if not isinstance(reason, str) or not 3 <= len(reason.strip()) <= 200:
+            raise ValueError("one-time exclusion reason is required")
+        reason = reason.strip()
+        if reference in {None, ""}:
+            reference = None
+        elif (not isinstance(reference, str) or len(reference) > 64
+              or not all(ch.isalnum() or ch in "._:/-" for ch in reference)):
+            raise ValueError("invalid exception reference")
+        if expires_at in {None, ""}:
+            expires_at = None
+        elif not isinstance(expires_at, str):
+            raise ValueError("invalid exception expiry")
+        else:
+            try:
+                time.strptime(expires_at, "%Y-%m-%d")
+            except ValueError as exc:
+                raise ValueError("exception expiry must be YYYY-MM-DD") from exc
+            if expires_at < time.strftime("%Y-%m-%d", time.gmtime()):
+                raise ValueError("exception expiry is already past")
+        return {"reason": reason, "reference": reference, "expires_at": expires_at}
+
+    def prepare_multi_account_execution(
+        self,
+        control: str,
+        exclude_resources: object = None,
+        exception_reason: object = None,
+        exception_reference: object = None,
+        exception_expires_at: object = None,
+    ) -> dict:
         if control not in {S3_CONTROL, SG_CONTROL}:
             raise ValueError("one exact supported control required")
+        exclusions = self._normalize_exclusions(exclude_resources)
+        exception = self._normalize_exception_metadata(
+            exclusions, exception_reason, exception_reference, exception_expires_at
+        )
         current = self.multi_account_status()
         rows = current.get("accounts", [])
         if len(rows) != 4 or any(row.get("controls", {}).get(control) != "NON_COMPLIANT" for row in rows):
             raise ValueError("four-account execution requires all four aliases NON_COMPLIANT")
-        result = run_four_account_build("plan", control)
-        if result.get("decision") != "PLAN" or result.get("pending_aliases") != ["lab-dev", "lab-poc", "lab-qa", "lab-sec"]:
-            raise ValueError("frozen plan is not exactly four pending aliases")
+        result = run_four_account_build("plan", control, exclusions=exclusions)
+        pending_aliases = result.get("pending_aliases")
+        excluded_aliases = result.get("excluded_aliases", [])
+        if result.get("decision") != "PLAN":
+            raise ValueError("frozen plan is not eligible")
+        if (not isinstance(pending_aliases, list) or not isinstance(excluded_aliases, list)
+                or len(pending_aliases) + len(excluded_aliases) != 4
+                or set(pending_aliases) & set(excluded_aliases)
+                or set(pending_aliases) | set(excluded_aliases) != {"lab-dev", "lab-poc", "lab-qa", "lab-sec"}):
+            raise ValueError("frozen plan scope is not exactly the four registered aliases")
+        if result.get("excluded_count") != len(exclusions):
+            raise ValueError("frozen plan exclusion count mismatch")
         batch_id = result.get("batch_id")
         if not isinstance(batch_id, str):
             raise RuntimeError("frozen batch id missing")
+        scope_payload = {
+            "control": control,
+            "batch_id": batch_id,
+            "pending_aliases": pending_aliases,
+            "excluded_aliases": excluded_aliases,
+            "exclude_resources": exclusions,
+            "exception": exception,
+        }
+        scope_hash = hashlib.sha256(
+            json.dumps(scope_payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()[:24]
         cache = self._execution_cache()
         cache["plans"][control] = {
             "control": control,
             "batch_id": batch_id,
-            "pending_aliases": result["pending_aliases"],
+            "pending_aliases": pending_aliases,
+            "excluded_aliases": excluded_aliases,
+            "exclude_resources": exclusions,
+            "exception": exception,
+            "scope_hash": scope_hash,
             "created_at": int(time.time()),
         }
         self._save_execution_cache(cache)
@@ -224,13 +304,21 @@ class OperatorService(BulkService):
             "scope": "four-account-live-config",
             "control": control,
             "batch_id": batch_id,
-            "pending_aliases": result["pending_aliases"],
+            "pending_aliases": pending_aliases,
+            "excluded_aliases": excluded_aliases,
+            "excluded_resources": exclusions,
+            "exception_source": "one-time-user-exclusion" if exclusions else None,
+            "exception": exception if exclusions else None,
+            "scope_hash": scope_hash,
             "native_ask_required": True,
             "next_execution": {
                 "tool": "execute_multi_account_remediation_mcp_aws_compliance_planner",
                 "arguments": {"control": control, "batch_id": batch_id},
             },
-            "message": "Exact four-account batch frozen. Invoke the native-ASK executor for the current explicit fix request.",
+            "message": (
+                f"Exact batch frozen: {len(pending_aliases)} included, {len(exclusions)} excluded. "
+                "Invoke the native-ASK executor for this exact scope."
+            ),
             "mutation": False,
             "account_ids": "hidden-by-default",
             "resource_identifiers": "hidden-by-default",
@@ -251,6 +339,11 @@ class OperatorService(BulkService):
             "control": control,
             "batch_id": plan.get("batch_id"),
             "pending_aliases": plan.get("pending_aliases"),
+            "excluded_aliases": plan.get("excluded_aliases", []),
+            "excluded_resources": plan.get("exclude_resources", []),
+            "exception_source": "one-time-user-exclusion" if plan.get("exclude_resources") else None,
+            "exception": plan.get("exception") if plan.get("exclude_resources") else None,
+            "scope_hash": plan.get("scope_hash"),
             "age_seconds": age,
             "account_ids": "hidden-by-default",
             "resource_identifiers": "hidden-by-default",
@@ -264,11 +357,17 @@ class OperatorService(BulkService):
         rows = current.get("accounts", [])
         if len(rows) != 4 or any(row.get("controls", {}).get(control) != "NON_COMPLIANT" for row in rows):
             raise ValueError("live Config scope changed; prepare a new exact batch")
-        result = run_four_account_build("execute", control, batch_id)
+        exclusions = self._normalize_exclusions(preview.get("excluded_resources"))
+        result = run_four_account_build("execute", control, batch_id, exclusions=exclusions)
         if result.get("decision") not in {"APPROVE", "ALREADY_COMPLIANT"}:
             raise RuntimeError("unexpected four-account execution result")
-        if result.get("decision") == "APPROVE" and (result.get("mutation_count") != 4 or result.get("provider_verified") is not True):
-            raise RuntimeError("provider verification did not prove exact four-account remediation")
+        expected_mutations = len(preview.get("pending_aliases") or [])
+        if result.get("decision") == "APPROVE" and (
+            result.get("mutation_count") != expected_mutations or result.get("provider_verified") is not True
+        ):
+            raise RuntimeError("provider verification did not prove exact included remediation")
+        if result.get("excluded_aliases", []) != preview.get("excluded_aliases", []):
+            raise RuntimeError("excluded scope changed during execution")
         cache = self._execution_cache()
         cache.get("plans", {}).pop(control, None)
         self._save_execution_cache(cache)
@@ -280,12 +379,23 @@ class OperatorService(BulkService):
             "decision": result.get("decision"),
             "mutation_count": result.get("mutation_count"),
             "provider_verified": result.get("provider_verified"),
-            "config_states": result.get("config_states"),
+            "included_aliases": result.get("included_aliases", preview.get("pending_aliases")),
+            "excluded_aliases": result.get("excluded_aliases", []),
+            "excluded_resources": exclusions,
+            "exception_source": "one-time-user-exclusion" if exclusions else None,
+            "exception": preview.get("exception") if exclusions else None,
+            "scope_hash": preview.get("scope_hash"),
+            "config_states": result.get("config"),
             "execution_backend": result.get("execution_backend"),
             "account_ids": "hidden-by-default",
             "resource_identifiers": "hidden-by-default",
-            "message": "Provider readback completed. AWS Config convergence is independent and may still be pending.",
+            "message": (
+                f"Provider readback completed for {expected_mutations} included target(s); "
+                f"{len(exclusions)} excluded target(s) were left unchanged. "
+                "AWS Config convergence is independent and may still be pending."
+            ),
         }
+
 
     def status(self) -> dict:
         degraded = []
@@ -549,8 +659,19 @@ class OperatorHandler(BulkHandler):
                 result = self.service.prepare_demo(data["family"], data["confirmation_token"])
             elif self.path == "/api/operator/prepare-batch" and set(data) == {"control"}:
                 result = self.service.prepare_batch(data["control"])
-            elif self.path == "/api/operator/multi-account-execution-plan" and set(data) == {"control"}:
-                result = self.service.prepare_multi_account_execution(data["control"])
+            elif (self.path == "/api/operator/multi-account-execution-plan"
+                  and set(data).issubset({
+                      "control", "exclude_resources", "exception_reason",
+                      "exception_reference", "exception_expires_at",
+                  })
+                  and "control" in data):
+                result = self.service.prepare_multi_account_execution(
+                    data["control"],
+                    data.get("exclude_resources"),
+                    data.get("exception_reason"),
+                    data.get("exception_reference"),
+                    data.get("exception_expires_at"),
+                )
             elif self.path == "/api/operator/multi-account-execute" and set(data) == {"control", "batch_id"}:
                 result = self.service.execute_multi_account(data["control"], data["batch_id"])
             else:

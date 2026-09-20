@@ -293,6 +293,16 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("execute_multi_account_remediation_mcp_aws_compliance_planner", installer)
         self.assertIn("multi-account-approval-hook.cjs", installer)
         self.assertIn("four-account v1 execution must not be statically allowed", installer)
+        self.assertIn("exclude_resources", instructions)
+        self.assertIn("exact bucket names", instructions)
+        self.assertIn("Never infer criticality", instructions)
+        self.assertIn("never pass a new/changed exclusion at execution time", instructions)
+        hook = (ROOT / "integration" / "multi-account-approval-hook.cjs").read_text()
+        self.assertIn("excluded_resources", hook)
+        self.assertIn("These excluded findings remain non-compliant", hook)
+        operator_mcp = (ROOT / "pilot_v1" / "operator_mcp.py").read_text()
+        self.assertIn("exclude_resources: list[str] | None = None", operator_mcp)
+        self.assertIn("execute exclusions are frozen server-side during prepare", operator_mcp)
 
     def test_agent_updater_preserves_identity_and_exact_tools(self):
         updater = (ROOT / "integration" / "update-compliance-v1-agent.cjs").read_text()

@@ -19,6 +19,7 @@ CONTROLLER_ENV = "SECOPS_CONTROLLER_ROLE_ARN"
 TARGETS_ENV = "SECOPS_ISSUE82_TARGETS_JSON"
 CONTROLS = {S3_CONTROL, SG_CONTROL}
 BATCH_RE = re.compile(r"^[a-f0-9]{20}$")
+EXCLUSIONS_ENV = "SECOPS_EXCLUDE_RESOURCES_JSON"
 
 
 def fail(message: str) -> None:
@@ -72,6 +73,7 @@ def main() -> int:
     mode = os.environ.get("SECOPS_MODE", "")
     control = os.environ.get("SECOPS_CONTROL", "")
     batch_id = os.environ.get("SECOPS_BATCH_ID")
+    raw_exclusions = os.environ.get(EXCLUSIONS_ENV, "[]")
 
     if mode not in {"prepare", "plan", "execute"} or control not in CONTROLS:
         fail("unsupported request")
@@ -80,6 +82,14 @@ def main() -> int:
             fail(mode + " must not include batch id")
     elif not isinstance(batch_id, str) or not BATCH_RE.fullmatch(batch_id):
         fail("execute requires exact batch id")
+
+    try:
+        exclusions = json.loads(raw_exclusions)
+    except json.JSONDecodeError:
+        fail("exclusion mapping invalid")
+    if (not isinstance(exclusions, list) or len(exclusions) > 3 or len(exclusions) != len(set(exclusions))
+            or any(not isinstance(x, str) or not x or len(x) > 255 or any(ch in x for ch in "*?[]") for x in exclusions)):
+        fail("exact exclusion mapping invalid")
 
     raw_targets = os.environ.get(TARGETS_ENV, "")
     try:
@@ -95,6 +105,8 @@ def main() -> int:
         sys.executable, "scripts/issue82_campaign.py", mode,
         "--control", control,
     ]
+    for resource in exclusions:
+        command += ["--exclude-resource", resource]
     if mode == "execute":
         command += ["--decision", "approve", "--batch-id", batch_id or ""]
 
@@ -105,6 +117,8 @@ def main() -> int:
         fail("campaign result violated public-safe boundary")
     if mode == "plan" and result.get("mutation_count") != 0:
         fail("plan unexpectedly mutated")
+    if mode in {"plan", "execute"} and result.get("excluded_count") != len(exclusions):
+        fail("campaign exclusion scope mismatch")
     if mode == "prepare":
         if result.get("decision") != "PREPARE" or result.get("provider_verified") is not True:
             fail("unexpected prepare result")
