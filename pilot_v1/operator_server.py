@@ -311,8 +311,6 @@ class OperatorService(BulkService):
             "batch_id": batch_id,
             "selected_accounts": selected_accounts,
             "unselected_accounts": unselected_accounts,
-            "selected_accounts": selected_accounts,
-            "unselected_accounts": unselected_accounts,
             "pending_aliases": pending_aliases,
             "excluded_aliases": excluded_aliases,
             "exclude_resources": exclusions,
@@ -325,6 +323,8 @@ class OperatorService(BulkService):
         cache["plans"][control] = {
             "control": control,
             "batch_id": batch_id,
+            "selected_accounts": selected_accounts,
+            "unselected_accounts": unselected_accounts,
             "pending_aliases": pending_aliases,
             "excluded_aliases": excluded_aliases,
             "exclude_resources": exclusions,
