@@ -1,0 +1,62 @@
+name: Publish Compliance Agent v1.0.0
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: contains(github.event.head_commit.message, '[release compliance-agent-v1.0.0]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish immutable v1.0.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/release-notes.md <<'EOF'
+          ## Compliance Agent v1.0.0
+
+          First clean Compliance Agent baseline built on Amazon Bedrock AgentCore Harness.
+
+          ### Highlights
+          - Dedicated tool-free AgentCore Harness `compliance_agent_v1`
+          - Unified four-account Config evidence: `lab-dev`, `lab-poc`, `lab-qa`, `lab-sec`
+          - Two supported controls: S3 Block Public Access and restricted SSH
+          - Read-only v1 agent boundary with no mutation capability
+          - LibreChat presentation shell with exactly one MCP tool: `ask_compliance_agent_v1`
+          - GitHub Releases are the canonical user-facing release history
+
+          ### Acceptance evidence
+          - Config backend: PASS — 4 aliases × 2 controls = 8 checks
+          - AgentCore Harness golden prompts: PASS 5/5
+          - Identifier fidelity: PASS
+          - Approval/execution boundary: PASS
+          - Installed MCP bridge: PASS
+          - Authenticated LibreChat UI smoke: PASS
+          - Final direct MCP invocation: PASS, `mutation=false`
+          - Regression CI: PASS
+          - Live proof date: 2026-09-20
+
+          ### Architecture
+          `LibreChat -> compliance_agent_v1 MCP -> unified Config backend -> AgentCore Harness -> Nova 2 Lite -> response`
+
+          AgentCore Memory is intentionally not authoritative operational audit storage. Structured operational event history remains the first audit/history mechanism; RAG is deferred until unstructured knowledge justifies it.
+
+          ### Known limitations
+          - v1 supports only the four registered LAB aliases and the two controls above.
+          - v1 does not execute remediation.
+          - Account/resource identifiers are returned only when present in authorized evidence.
+          - No generic AWS administration capability is exposed.
+
+          ### Exact release commit
+          `d2c4125b712ccddd675c3c34a1284aaa7d503afc`
+
+          ### Rollback/reference
+          Previous verified runtime baseline: `8779cf9bd771be296b7983bf20e3881de3e10e48`
+          EOF
+
+          gh release create compliance-agent-v1.0.0             --repo "$GITHUB_REPOSITORY"             --target d2c4125b712ccddd675c3c34a1284aaa7d503afc             --title "Compliance Agent v1.0.0"             --notes-file /tmp/release-notes.md
