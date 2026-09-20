@@ -29,10 +29,14 @@ const sourceName = ${JSON.stringify(sourceName)};
 const targetName = ${JSON.stringify(targetName)};
 const viewerEmail = ${JSON.stringify(viewerEmail)};
 
+if (db.agents.countDocuments({name: sourceName}) !== 1 ||
+    db.agents.countDocuments({name: targetName}) !== 1 ||
+    db.users.countDocuments({email: viewerEmail}) !== 1) {
+  throw new Error('LibreChat source, target, or user identity is missing or ambiguous');
+}
 const source = db.agents.findOne({name: sourceName});
 const target = db.agents.findOne({name: targetName});
 const viewer = db.users.findOne({email: viewerEmail});
-if (!source || !target || !viewer) throw new Error('required LibreChat record missing');
 if (String(source.author) !== String(target.author)) {
   throw new Error('source/target agent authors differ; manual review required');
 }
