@@ -7,11 +7,9 @@ Management view: [Management audit view](MANAGEMENT_AUDIT_VIEW.md)
 
 ## Message
 
-The demo story is:
+The demo story is:\n\n`Config finding -> Compliance Agent v1 explanation -> explicit fix intent -> frozen plan -> human decision -> exact CodeBuild/G/O execution -> provider readback -> Config convergence`
 
-`Config finding -> bounded investigation -> frozen plan -> human decision -> exact OIDC execution -> provider readback -> Config convergence`
-
-The live Harness remains read-only. **O = GitHub OIDC** is the governed mutation path.
+The AgentCore Harness remains tool-free. **Compliance Agent v1** can invoke only the exact four-account prepare/executor pair; native Approve/Reject authorizes execution.
 
 ## 3-minute flow
 
@@ -148,3 +146,17 @@ Completed through the G/O path across all four aliases:
 ## One-line close
 
 > The agent can investigate across accounts, but changes happen only through an explicit control-specific approval, an exact OIDC session, provider verification, and independent Config evidence.
+
+
+## Recommended screen-recording flow for Compliance Agent v1.0.0
+
+1. Open Config Dashboard and show the four LAB aliases plus both controls.
+2. Open LibreChat and select **Compliance Agent v1**.
+3. Ask: `Show the current compliance status for all four accounts and both controls.`
+4. Ask: `Explain the S3 Block Public Access finding and recommend the fix.`
+5. Ask: `Fix S3 Block Public Access across the affected LAB accounts.`
+6. Show the native approval card. First choose **Reject** and submit; verify zero dispatch.
+7. Ask the S3 fix again. Choose **Approve** and submit; show direct provider verification.
+8. Ask: `Fix restricted SSH across the affected LAB accounts.` Approve separately; show provider verification.
+9. Ask: `Show the final compliance status for all four accounts and both controls.`
+10. Close with: **The agent detects, explains and prepares the fix. The human approves the exact batch, the bounded executor applies it, and provider evidence verifies the result.**
