@@ -298,7 +298,7 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("➡️ Next:", spec["instructions"])
         self.assertIn("AWS service verification", spec["instructions"])
         self.assertIn("AWS Config evaluation", spec["instructions"])
-        self.assertIn("NATIVE APPROVAL HANDOFF (MANDATORY)", spec["instructions"])
+        self.assertIn("NATIVE APPROVAL HANDOFF (MANDATORY, OVERRIDES", spec["instructions"])
         self.assertIn("do not emit assistant text", spec["instructions"])
         self.assertIn("native Approve/Reject + Submit card", spec["instructions"])
         self.assertIn("RICH RESULTS", spec["instructions"])
