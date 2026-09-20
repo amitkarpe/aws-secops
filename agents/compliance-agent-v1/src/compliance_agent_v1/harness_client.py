@@ -45,25 +45,32 @@ def invoke(prompt: str, harness_arn: str, *, region: str = "ap-southeast-1", cli
     except Exception as exc:
         raise HarnessError("AgentCore Harness invocation failed") from exc
 
+    if not isinstance(response, dict):
+        raise HarnessError("AgentCore Harness returned an invalid response")
     stream = response.get("stream")
     if stream is None:
         raise HarnessError("AgentCore Harness returned no stream")
     parts: list[str] = []
     event_count = 0
-    for event in stream:
-        event_count += 1
-        if not isinstance(event, dict):
-            continue
-        if "runtimeClientError" in event:
-            raise HarnessError("AgentCore Harness returned a runtime error")
-        # v1 has no configured tools. Reject any unexpected tool event rather than
-        # trusting model-generated or future service-side tool access.
-        if "tooluse" in json.dumps(event, default=str).lower():
-            raise HarnessError("Compliance Agent v1 attempted an unexpected tool call")
-        delta = event.get("contentBlockDelta", {}).get("delta", {})
-        text = delta.get("text") if isinstance(delta, dict) else None
-        if isinstance(text, str):
-            parts.append(text)
+    try:
+        for event in stream:
+            event_count += 1
+            if not isinstance(event, dict):
+                continue
+            if "runtimeClientError" in event:
+                raise HarnessError("AgentCore Harness returned a runtime error")
+            # v1 has no configured tools. Reject any unexpected tool event rather than
+            # trusting model-generated or future service-side tool access.
+            if "tooluse" in json.dumps(event, default=str).lower():
+                raise HarnessError("Compliance Agent v1 attempted an unexpected tool call")
+            delta = event.get("contentBlockDelta", {}).get("delta", {})
+            text = delta.get("text") if isinstance(delta, dict) else None
+            if isinstance(text, str):
+                parts.append(text)
+    except HarnessError:
+        raise
+    except Exception as exc:
+        raise HarnessError("AgentCore Harness stream failed") from exc
     answer = "".join(parts).strip()
     if not answer:
         raise HarnessError("AgentCore Harness returned no text")
