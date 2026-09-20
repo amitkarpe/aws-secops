@@ -459,9 +459,11 @@ def _plan_for_control(
 
     if matched != set(requested):
         raise ValueError("one or more exclusion resources did not resolve exactly")
-    if requested and not pending:
-        raise ValueError("exclusions removed every remediation target")
 
+    # A read-only plan may legitimately find that every non-excluded target is
+    # already provider-compliant while exact excluded targets remain unchanged.
+    # Preparation still requires decision=PLAN, so this cannot authorize a new
+    # mutation. It is required for idempotent timeout reconciliation.
     frozen = batch_id(control, refs, excluded_aliases)
     return frozen, pending, config_states, excluded_aliases, requested
 
