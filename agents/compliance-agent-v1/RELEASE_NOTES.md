@@ -8,13 +8,21 @@ This file is the in-repo source/history for the clean Compliance Agent line.
 
 Tag: `compliance-agent-v1.0.0`
 
-Status: **Not released**
+Status: **IMPLEMENTING — not released**
 
 Owning Issue: #123
 
 ### Goal
 
 Replace the broken legacy status path with a clean isolated Compliance Agent that reads the unified four-account Config backend and can be tested automatically without Amit manually exercising LibreChat.
+
+### Implementing architecture
+
+- dedicated AgentCore Harness `compliance_agent_v1`;
+- Nova 2 Lite, Memory disabled, no Harness tools;
+- strict local adapter reads only the unified Config backend;
+- one new LibreChat MCP bridge and one new named `Compliance Agent v1` shell;
+- no dependency on retired port 4444 or legacy `pilot_v1.compliance_mcp`.
 
 ### Planned user-visible capabilities
 
