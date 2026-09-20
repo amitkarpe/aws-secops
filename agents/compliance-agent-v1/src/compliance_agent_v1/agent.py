@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any, Callable
 
 from .config_backend import current_evidence
@@ -18,8 +19,40 @@ def _normalize_request(user_request: str) -> str:
 def build_prompt(user_request: str, evidence: dict[str, Any]) -> str:
     request = _normalize_request(user_request)
     packet = json.dumps(evidence, separators=(",", ":"), sort_keys=True)
-    return f"""USER_REQUEST:\n{request}\n\nAUTHORITATIVE_EVIDENCE_JSON:\n{packet}\n\nADAPTER_RULES:\n- Answer only from AUTHORITATIVE_EVIDENCE_JSON.\n- This Harness/read adapter is read-only and exposes no execution tool. The outer Compliance Agent shell may offer governed remediation through a separate native human-approval path.\n- For a fix/apply/execute request, state that remediation is available only through the separate governed native approval/execution path. Do not claim that the overall Compliance Agent cannot remediate.\n- Account/resource identifiers may be returned only when the evidence packet actually contains them. If they are absent, say they are unavailable from the current evidence. Never invent them.
+    return f"""USER_REQUEST:\n{request}\n\nAUTHORITATIVE_EVIDENCE_JSON:\n{packet}\n\nADAPTER_RULES:\n- Answer only from AUTHORITATIVE_EVIDENCE_JSON.\n- This Harness/read adapter is read-only and exposes no execution tool. The outer Compliance Agent shell may offer governed remediation through a separate native human-approval path.\n- For a fix/apply/execute request, state that remediation is available only through the separate governed native approval/execution path. Do not claim that the overall Compliance Agent cannot remediate.\n- In user-facing prose never use the term "provider" or "provider-level". Say "AWS service verification" or "AWS service readback".\n- Account/resource identifiers may be returned only when the evidence packet actually contains them. If they are absent, say they are unavailable from the current evidence. Never invent them.
 - If a check has resource_ids_truncated=true, say that only a bounded subset of resource identifiers was supplied when the user asks for all identifiers.\n- For status answers, name all four aliases and both supported controls.\n- AWS Config is asynchronous evidence; do not claim AWS service remediation from Config status alone.\n- For S3 NON_COMPLIANT, state only that the supported S3 control is non-compliant and report the supplied affected-resource count. Do not infer exposure, data sensitivity, provider state, or any other fact.\n- For restricted-ssh NON_COMPLIANT, state only that the supported restricted-SSH control is non-compliant and report the supplied affected-resource count. Do not infer resource relationships, authentication behavior, other network/security controls, exploitability, activity, or any other fact.\n- A no-change remediation plan may state only these exact control-level actions: S3: bring bucket-level Block Public Access into the compliant configuration. Restricted SSH: remove unrestricted SSH ingress and, only if access is still required, replace it with an approved source.\n- Do not mention any AWS service, resource relationship, authentication mechanism, network control, address range, security policy, or hardening/configuration mechanism that is absent from AUTHORITATIVE_EVIDENCE_JSON, even as an example or disclaimer.\n- Do not enumerate or guess how many S3 Block Public Access settings/options exist; say only "bring bucket-level Block Public Access into the compliant configuration".\n- Do not tell the user to re-run AWS Config. State only that Config is asynchronous evidence and AWS service verification is a separate execution-path responsibility.\n- Do not invent resource IDs or unrelated hardening work.\n"""
+
+
+def _present_answer(text: str) -> str:
+    """Normalize legacy read-only terminology without changing evidence claims."""
+    if not isinstance(text, str):
+        raise ValueError("Harness answer is invalid")
+    value = text
+    value = re.sub(
+        r"Compliance Agent v1 cannot execute changes(?: directly)?\.?",
+        "Remediation is available through the governed native approval path.",
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"execution is not available in Compliance Agent v1",
+        "remediation is available only through the governed native approval path",
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"provider(?:-level)? verification",
+        "AWS service verification",
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"provider(?:-level)? readback",
+        "AWS service readback",
+        value,
+        flags=re.IGNORECASE,
+    )
+    return value
 
 
 def answer(
@@ -39,7 +72,7 @@ def answer(
         "version": 1,
         "agent": "Compliance Agent v1",
         "runtime": "Amazon Bedrock AgentCore Harness",
-        "answer": result["answer"],
+        "answer": _present_answer(result["answer"]),
         "evidence": {
             "source": evidence["source"],
             "fetched_at": evidence["fetched_at"],
