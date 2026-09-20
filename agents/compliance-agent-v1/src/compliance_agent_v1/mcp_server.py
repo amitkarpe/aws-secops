@@ -8,7 +8,7 @@ from mcp.types import CallToolResult, EmbeddedResource, TextContent, TextResourc
 from pydantic import ConfigDict
 
 from .agent import answer
-from .ui_cards import render_fleet_card
+from .ui_cards import ALIASES, S3, SSH, render_fleet_card
 
 mcp = FastMCP(
     "Compliance Agent v1",
@@ -20,14 +20,50 @@ mcp = FastMCP(
 )
 
 
+def _rich_status_model_text(request: str, value: dict) -> str | None:
+    """Keep the model from duplicating the rich status card as Markdown."""
+    lower = request.strip().lower()
+    is_status = "status" in lower and not any(
+        token in lower for token in ("explain", "why", "plan", "identifier", "recommend")
+    )
+    if not is_status:
+        return None
+
+    checks = value.get("evidence", {}).get("checks", [])
+    s3_bad = any(
+        item.get("account_alias") in ALIASES
+        and item.get("control") == S3
+        and item.get("status") == "NON_COMPLIANT"
+        for item in checks
+        if isinstance(item, dict)
+    )
+    ssh_bad = any(
+        item.get("account_alias") in ALIASES
+        and item.get("control") == SSH
+        and item.get("status") == "NON_COMPLIANT"
+        for item in checks
+        if isinstance(item, dict)
+    )
+    next_action = "Fix S3" if s3_bad else ("Fix SSH" if ssh_bad else "No remediation needed")
+    return (
+        "Current fleet status is rendered in the attached native Ops card. "
+        "Render the UI Resource Marker exactly once and do not repeat the status as Markdown, "
+        f"a second table, or a list. Output only one concise next line: ➡️ Next: {next_action}"
+    )
+
+
 @mcp.tool()
 def ask_compliance_agent_v1(request: str) -> CallToolResult:
     """Answer one AWS compliance request using live four-account Config evidence and AgentCore Harness reasoning."""
     value = answer(request)
-    content = [
-        TextContent(type="text", text=json.dumps(value, separators=(",", ":"), sort_keys=True)),
-    ]
     lower = request.lower()
+    rich_model_text = _rich_status_model_text(request, value)
+    content = [
+        TextContent(
+            type="text",
+            text=rich_model_text or json.dumps(value, separators=(",", ":"), sort_keys=True),
+        ),
+    ]
     if not any(token in lower for token in ("fix ", "apply ", "execute ", "remediate ")):
         content.append(
             EmbeddedResource(
