@@ -18,7 +18,7 @@ Exactly two supported controls:
 1. S3 bucket-level Block Public Access
 2. Security Group restricted SSH
 
-Current clean read path:
+Current Compliance Agent v1 path:
 
 ```text
 Organization AWS Config
@@ -33,22 +33,32 @@ dedicated Amazon Bedrock AgentCore Harness
         ↓
 Nova 2 Lite reasoning, no Harness tools
         ↓
-read-only answer in LibreChat
+read / explain / recommend in LibreChat
+
+Explicit fix intent
+        ↓
+exact four-account batch preparation
+        ↓
+native Approve / Reject
+        ↓
+fixed CodeBuild + G/O controller
+        ↓
+provider readback + Config convergence
 ```
 
 The core security principle remains:
 
-> **The AI can investigate and recommend; it does not authorize an AWS change.**
+> **The agent can detect, explain and prepare a supported fix; the human authorizes the exact batch, then the bounded executor applies and verifies it.**
 
 ## What is live-proven
 
 | Capability | Current evidence |
 |---|---|
 | Four-account Config status | **LIVE** — exactly 4 aliases × 2 controls |
-| Compliance Agent v1 | **LIVE** — AgentCore Harness-backed, read-only |
+| Compliance Agent v1 | **LIVE** — Harness-backed reasoning + governed remediation integration |
 | v1 golden prompts | **PASS 5/5** — status, explain, plan, fix guard, identifiers |
 | v1 LibreChat smoke | **PASS** — selectable agent, expected MCP tool, four-account response |
-| v1 MCP boundary | **PASS** — exactly one tool, no mutation capability |
+| v1 MCP boundary | **PASS** — clean read tool plus exact prepare/executor integration; execution remains native-ASK gated |
 | Four-account governed remediation proof | **PASS** — separate bounded approval/execution path with provider readback |
 | S3/SSH Reject | **PASS** — 0 writes for the rejected exact batch |
 | S3/SSH Approve | **PASS** — exact provider-verified changes |
@@ -58,17 +68,18 @@ Latest clean v1 live acceptance: **2026-09-20**.
 
 ## Two agent paths
 
-### Compliance Agent v1 — current clean specialist
+### Compliance Agent v1 — current specialist
 
-- AgentCore Harness is the reasoning layer.
+- AgentCore Harness is the reasoning layer for evidence-grounded status/explanation/planning.
 - Current evidence comes only from the unified Config backend.
-- v1 exposes one read-only MCP tool: `ask_compliance_agent_v1`.
-- v1 does **not** execute remediation.
-- Operational identifiers may be returned only when the authorized evidence actually contains them.
+- The same v1 LibreChat agent exposes the exact four-account prepare/executor tools for explicit fix intent.
+- The Harness itself remains tool-free; mutation authority is outside the Harness.
+- Native Approve/Reject is required before execution.
+- Operational identifiers may be returned only when authorized evidence actually contains them.
 
-### Governed remediation path — separate bounded capability
+### Governed remediation path
 
-The existing AWS Compliance Agent / Issue #100 path preserves the approved mutation contract:
+Compliance Agent v1 reuses the existing Issue #100 mutation contract rather than inventing a new executor:
 
 ```text
 explicit fix intent
@@ -86,7 +97,7 @@ provider readback
 independent Config convergence
 ```
 
-This is not a generic AWS administration path and is not inherited by Compliance Agent v1.
+This is not a generic AWS administration path; it is the only remediation path inherited by Compliance Agent v1.
 
 ## Current web surfaces
 
@@ -125,8 +136,8 @@ Key milestones:
 
 - Personal LAB only; no Synapxe/work/office authority.
 - Exactly four registered aliases and two supported controls for v1.
-- Compliance Agent v1 is read-only and has no execution tool.
-- Governed mutation remains a separate exact approval/execution path.
+- Compliance Agent v1 may prepare and invoke only the exact four-account executor for the two supported controls.
+- Governed mutation remains a separate authorization/execution boundary behind native human approval.
 - Reject means zero writes for that exact batch.
 - Provider readback proves remediation completion.
 - AWS Config is independent asynchronous evidence.
