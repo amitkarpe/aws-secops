@@ -106,6 +106,13 @@ class AgentTests(unittest.TestCase):
         self.assertFalse(value["mutation"])
 
 
+class McpServerRegressionTests(unittest.TestCase):
+    def test_mcp_server_has_no_runtime_model_config_mutation(self):
+        source = (SRC / "compliance_agent_v1" / "mcp_server.py").read_text()
+        self.assertNotIn("model_config =", source)
+        self.assertNotIn("ConfigDict", source)
+
+
 class RepoIsolationTests(unittest.TestCase):
     def test_v1_integration_is_isolated_from_legacy(self):
         installer = (ROOT / "integration" / "install-compliance-v1.cjs").read_text()
