@@ -117,7 +117,7 @@ def main() -> int:
         fail("campaign result violated public-safe boundary")
     if mode == "plan" and result.get("mutation_count") != 0:
         fail("plan unexpectedly mutated")
-    if result.get("excluded_count") != len(exclusions):
+    if mode in {"plan", "execute"} and result.get("excluded_count") != len(exclusions):
         fail("campaign exclusion scope mismatch")
     if mode == "prepare":
         if result.get("decision") != "PREPARE" or result.get("provider_verified") is not True:
