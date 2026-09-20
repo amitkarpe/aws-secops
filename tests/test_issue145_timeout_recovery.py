@@ -13,7 +13,7 @@ from pilot_v1.operator_server import OperatorService
 
 
 class Issue145TimeoutRecoveryTests(unittest.TestCase):
-    def make_service(self, *, state: str = "EXECUTING") -> tuple[OperatorService, Path]:
+    def make_service(self, *, state: str = "EXECUTING", age_seconds: int = 0) -> tuple[OperatorService, Path]:
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         path = Path(tmp.name) / "four-account-execution-plan.json"
@@ -33,7 +33,7 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
                         "requested_at": "2026-09-20T13:56:08Z",
                     },
                     "scope_hash": "b" * 24,
-                    "created_at": int(time.time()),
+                    "created_at": int(time.time()) - age_seconds,
                     "execution_state": state,
                 }
             },
@@ -89,6 +89,37 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
         self.assertTrue(result["excluded_resources_unchanged"])
         self.assertTrue(result["recovered_after_timeout"])
         self.assertNotIn(SG_CONTROL, json.loads(path.read_text())["plans"])
+
+    def test_expired_batch_can_only_reconcile_verified_completion(self):
+        service, path = self.make_service(state="PENDING_APPROVAL", age_seconds=1800)
+
+        with patch(
+            "pilot_v1.operator_server.run_four_account_build",
+            side_effect=self.recovered_plan,
+        ) as run:
+            result = service.execute_multi_account(SG_CONTROL, "a" * 20, "b" * 24)
+
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0], "plan")
+        self.assertEqual(result["decision"], "RECOVERED_VERIFIED")
+        self.assertNotIn(SG_CONTROL, json.loads(path.read_text())["plans"])
+
+    def test_expired_unresolved_batch_never_dispatches(self):
+        service, path = self.make_service(state="PENDING_APPROVAL", age_seconds=1800)
+
+        def fake_run(mode, *args, **kwargs):
+            self.assertEqual(mode, "plan")
+            return {
+                **self.recovered_plan(),
+                "decision": "PLAN",
+                "pending_aliases": ["lab-poc", "lab-qa", "lab-sec"],
+            }
+
+        with patch("pilot_v1.operator_server.run_four_account_build", side_effect=fake_run):
+            with self.assertRaisesRegex(RuntimeError, "expired frozen batch"):
+                service.execute_multi_account(SG_CONTROL, "a" * 20, "b" * 24)
+
+        self.assertIn(SG_CONTROL, json.loads(path.read_text())["plans"])
 
     def test_retry_does_not_redispatch_while_provider_state_is_unchanged(self):
         service, path = self.make_service()
