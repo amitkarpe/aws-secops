@@ -298,7 +298,7 @@ server = FastMCP(
         "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS resource change and does not approve execution. "
-        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, include_accounts, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. The selected account list is frozen during prepare and never supplied again at execute. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
+        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, include_accounts, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. A successful prepare is not a completed response: emit no assistant text and never ask the user to type Approve, Reject, go, or yes before invoking execute. The native Approve/Reject + Submit card is the only authorization UI. The selected account list is frozen during prepare and never supplied again at execute. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
         "Reject means no executor call. S3 and SG approvals remain separate. prepare_remediation(control) is legacy retained single-account behavior only."
     ),
 )
@@ -335,6 +335,10 @@ def prepare_multi_account_remediation(
 ) -> dict:
     """Prepare one exact frozen batch for 1-4 exact registered LAB accounts.
 
+    On success, immediately invoke the returned next_execution in the same assistant
+    turn so LibreChat displays its native Approve/Reject + Submit card. Never ask
+    the user to type Approve/Reject/go/yes between prepare and that native card.
+
     Omit include_accounts for all four. Accounts not selected are outside scope,
     not exceptions. S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
     exact Security Group IDs or exact deterministic demo group names. Wildcards,
@@ -342,7 +346,7 @@ def prepare_multi_account_remediation(
     A reason is required for any exclusion; reference and YYYY-MM-DD expiry are
     optional one-time risk-acceptance metadata. Preparation makes no AWS mutation.
     """
-    return multi_account_call(
+    result = multi_account_call(
         "prepare",
         control,
         include_accounts=include_accounts,
@@ -351,6 +355,16 @@ def prepare_multi_account_remediation(
         exception_reference=exception_reference,
         exception_expires_at=exception_expires_at,
     )
+    result = dict(result)
+    result["assistant_transition"] = {
+        "mode": "IMMEDIATE_NATIVE_ASK",
+        "instruction": (
+            "Do not emit assistant text and do not ask the user to type Approve, Reject, go, or yes. "
+            "Immediately invoke next_execution with its exact frozen arguments in this same assistant turn. "
+            "The LibreChat native Approve/Reject + Submit card is the only mutation authorization UI."
+        ),
+    }
+    return result
 
 
 @server.tool()
