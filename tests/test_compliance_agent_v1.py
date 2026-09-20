@@ -280,7 +280,7 @@ class RepoIsolationTests(unittest.TestCase):
         instructions = spec["instructions"]
         self.assertIn("READ / EXPLAIN / PLAN", instructions)
         self.assertIn("EXPLICIT FIX", instructions)
-        self.assertIn("Reject/cancel means zero CodeBuild dispatch", instructions)
+        self.assertIn("zero remediation execution dispatch and zero AWS resource writes", instructions)
         self.assertIn("two separate native approval decisions", instructions)
         self.assertIn("never combine them into Approve All", instructions)
         self.assertIn("Harness remains tool-free", instructions)
@@ -296,6 +296,7 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("exclude_resources", instructions)
         self.assertIn("exact bucket names", instructions)
         self.assertIn("Never infer criticality", instructions)
+        self.assertIn("scope_hash", instructions)
         self.assertIn("never pass a new/changed exclusion at execution time", instructions)
         hook = (ROOT / "integration" / "multi-account-approval-hook.cjs").read_text()
         self.assertIn("excluded_resources", hook)
