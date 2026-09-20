@@ -207,10 +207,13 @@ class AgentTests(unittest.TestCase):
     def test_present_answer_normalizes_legacy_read_only_wording(self):
         text = (
             "Compliance Agent v1 cannot execute changes directly. "
+            "No execution capability. Compliance Agent v1 can only report status. "
             "Provider-level verification belongs to the provider readback path."
         )
         value = agent._present_answer(text)
         self.assertNotIn("cannot execute changes", value.lower())
+        self.assertNotIn("no execution capability", value.lower())
+        self.assertNotIn("can only report status", value.lower())
         self.assertNotIn("provider", value.lower())
         self.assertIn("governed native approval path", value)
         self.assertIn("AWS service verification", value)
@@ -332,6 +335,9 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("never pass a new/changed exclusion at execution time", instructions)
         self.assertIn("RECOVERED_VERIFIED", instructions)
         self.assertIn("do not retry mutation", instructions)
+        self.assertIn("EXPLICIT FIX (HIGHEST PRECEDENCE)", instructions)
+        self.assertIn("never omit include_accounts for a generic Fix S3/Fix SSH request", instructions)
+        self.assertIn("OVERRIDES ALL GENERAL NEXT/CONFIRMATION RULES", instructions)
         hook = (ROOT / "integration" / "multi-account-approval-hook.cjs").read_text()
         self.assertIn("excluded_resources", hook)
         self.assertIn("These excluded findings remain non-compliant", hook)
@@ -377,6 +383,9 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("Tools: []", template)
         self.assertIn("bedrock-agentcore:InvokeGateway", template)
         self.assertIn("Effect: Deny", template)
+        self.assertIn("read-only reasoning component behind Compliance Agent v1", template)
+        self.assertIn("outer Compliance Agent may offer remediation", template)
+        self.assertNotIn("say Compliance Agent v1 cannot execute changes", template)
         self.assertNotIn("4444", template)
 
 
