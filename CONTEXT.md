@@ -25,14 +25,21 @@ LibreChat
   -> exact 4-account × 2-control evidence
   -> dedicated AgentCore Harness compliance_agent_v1
   -> Nova 2 Lite, no Harness tools
-  -> read-only answer
+  -> grounded answer
+
+Explicit fix
+  -> prepare_multi_account_remediation
+  -> native Approve / Reject
+  -> execute_multi_account_remediation
+  -> fixed CodeBuild/G/O path
+  -> provider readback + Config convergence
 ```
 
 Verified 2026-09-20:
 
 - Config evidence: PASS 4 aliases × 2 controls = 8 checks;
 - Harness golden prompts: PASS 5/5;
-- installed MCP: PASS, exactly one tool;
+- installed read MCP: PASS; v1 remediation wiring is Issue #138;
 - LibreChat agent visible/selectable for Amit: PASS;
 - authenticated LibreChat status prompt: PASS;
 - final direct MCP invocation: PASS, `mutation=false`.
@@ -45,11 +52,11 @@ The separate Issue #100 path remains the bounded mutation boundary:
 
 `explicit fix -> frozen exact batch -> native decision -> fixed CodeBuild/G/O path -> exact target sessions -> provider readback -> Config convergence`
 
-Compliance Agent v1 does not inherit this execution authority.
+Issue #138 makes this exact execution authority available through the same Compliance Agent v1 shell; the Harness itself remains tool-free.
 
 ## Current Engineering Work
 
-Issue #133 hardens the verified v1 baseline:
+Issue #138 adds governed remediation to v1.0.0 by reusing the accepted Issue #100 executor.\n\nCompleted hardening from Issue #133:
 
 1. reproducible fail-closed LibreChat ACL helper;
 2. real stdio MCP startup/list-tools regression;
