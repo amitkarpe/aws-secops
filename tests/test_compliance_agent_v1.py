@@ -285,6 +285,7 @@ class RepoIsolationTests(unittest.TestCase):
             "ask_compliance_agent_v1_mcp_compliance_agent_v1",
             "prepare_multi_account_remediation_mcp_aws_compliance_planner",
             "execute_multi_account_remediation_mcp_aws_compliance_planner",
+            "verify_multi_account_remediation_mcp_aws_compliance_planner",
         ])
         instructions = spec["instructions"]
         self.assertIn("READ / EXPLAIN / PLAN", instructions)
@@ -300,6 +301,7 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'", installer)
         self.assertIn("prepare_multi_account_remediation_mcp_aws_compliance_planner", installer)
         self.assertIn("execute_multi_account_remediation_mcp_aws_compliance_planner", installer)
+        self.assertIn("verify_multi_account_remediation_mcp_aws_compliance_planner", installer)
         self.assertIn("multi-account-approval-hook.cjs", installer)
         self.assertIn("timeout:300000", installer)
         self.assertIn("four-account v1 execution must not be statically allowed", installer)
@@ -316,13 +318,15 @@ class RepoIsolationTests(unittest.TestCase):
         operator_mcp = (ROOT / "pilot_v1" / "operator_mcp.py").read_text()
         self.assertIn("exclude_resources: list[str] | None = None", operator_mcp)
         self.assertIn("execute exclusions are frozen server-side during prepare", operator_mcp)
+        self.assertIn("include_accounts: list[str] | None = None", operator_mcp)
+        self.assertIn("verify_multi_account_remediation", operator_mcp)
 
     def test_agent_updater_preserves_identity_and_exact_tools(self):
         updater = (ROOT / "integration" / "update-compliance-v1-agent.cjs").read_text()
         self.assertIn("expected exactly one existing Compliance Agent v1", updater)
         self.assertIn("after.id !== before.id", updater)
         self.assertIn("String(after.author) !== String(before.author)", updater)
-        self.assertIn("toolCount !== 3", updater)
+        self.assertIn("toolCount !== 4", updater)
         self.assertIn("starterCount !== 4", updater)
         self.assertIn("conversation_starters: spec.conversation_starters", updater)
         self.assertNotIn("insertOne", updater)
