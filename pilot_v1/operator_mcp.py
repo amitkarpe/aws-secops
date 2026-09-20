@@ -9,6 +9,7 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import CallToolResult, TextContent
 from pydantic import ConfigDict
 
 from .agentic_evidence import build_decision_timeline, build_s3_investigation
