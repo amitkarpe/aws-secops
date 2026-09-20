@@ -9,6 +9,7 @@ from pilot_v1.multi_account_campaign import (
     batch_id,
     has_unrestricted_ssh,
     normalize_config_state,
+    normalize_selected_aliases,
     parse_targets,
     public_result,
     public_timeline,
@@ -87,6 +88,15 @@ class Issue82CampaignContractTests(unittest.TestCase):
             batch_id(S3_CONTROL, refs, ["lab-poc", "lab-dev"])
         with self.assertRaises(ValueError):
             batch_id(S3_CONTROL, refs, ["lab-dev", "lab-dev"])
+        selected = ["lab-dev", "lab-poc"]
+        selected_refs = refs[:2]
+        partial = batch_id(S3_CONTROL, selected_refs, selected_aliases=selected)
+        self.assertNotEqual(partial, s3)
+        self.assertEqual(normalize_selected_aliases(selected), tuple(selected))
+        with self.assertRaises(ValueError):
+            normalize_selected_aliases(["lab-poc", "lab-dev"])
+        with self.assertRaises(ValueError):
+            normalize_selected_aliases(["lab-dev", "unknown"])
 
     def test_public_result_hides_identifiers_and_caps_mutations(self):
         states = {alias: "PENDING" for alias in ALIASES}
@@ -146,7 +156,9 @@ class Issue82CampaignContractTests(unittest.TestCase):
         self.assertIn("required for idempotent timeout reconciliation", text)
         self.assertNotIn("exclusions removed every remediation target", text)
         self.assertIn("resource_names = {sg_id, _sg_name(session.target)}", text)
-        self.assertIn("batch_id(control, refs, excluded_aliases)", text)
+        self.assertIn("batch_id(control, refs, excluded_aliases, selected_aliases)", text)
+        self.assertIn("--include-account", text)
+        self.assertIn("aws_service_verification", text)
         self.assertIn("SourceIdentifier", text)
         self.assertIn("S3_BUCKET_LEVEL_PUBLIC_ACCESS_PROHIBITED", text)
         self.assertIn("INCOMING_SSH_DISABLED", text)
