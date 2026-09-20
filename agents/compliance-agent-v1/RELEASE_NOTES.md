@@ -8,7 +8,7 @@ This file is the in-repo source/history for the clean Compliance Agent line.
 
 Tag: `compliance-agent-v1.0.0`
 
-Status: **VERIFIED — GitHub Release not yet published**
+Status: **IMPLEMENTING REMEDIATION — GitHub Release not yet published**
 
 Owning Issue: #123
 
@@ -21,8 +21,7 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - dedicated AgentCore Harness `compliance_agent_v1`;
 - Nova 2 Lite, Memory disabled, no Harness tools;
 - strict local adapter reads only the unified Config backend;
-- one new LibreChat MCP bridge and one new named `Compliance Agent v1` shell;
-- no dependency on retired port 4444 or legacy `pilot_v1.compliance_mcp`.
+- one clean Harness-backed read MCP bridge and one named `Compliance Agent v1` shell;\n- explicit fix intent reuses the accepted four-account planner/executor from Issue #100;\n- native Approve/Reject remains mandatory before the exact CodeBuild/G/O execution;\n- no dependency on legacy `pilot_v1.compliance_mcp` for the v1 read path.
 
 ### Verified user-visible capabilities
 
@@ -31,7 +30,7 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - explain findings;
 - produce a no-change remediation plan;
 - return operational identifiers when authorized backend/tool responses provide them;
-- refuse to bypass the approved mutation boundary.
+- fix one supported control after exact native human approval;\n- fix both supported controls only as two independent approval decisions;\n- reject/cancel with zero CodeBuild dispatch.
 
 ### Verified acceptance
 
@@ -39,18 +38,16 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - dedicated AgentCore Harness invocation: PASS;
 - five golden prompts: PASS 5/5;
 - identifier fidelity: PASS — unavailable identifiers were not fabricated;
-- approval/execution boundary: PASS — v1 remained read-only;
+- Harness reasoning boundary: PASS — no Harness tools;\n- governed execution contract: wiring under Issue #138 using the already accepted Issue #100 four-account executor;
 - installed MCP bridge: PASS — one tool only, `ask_compliance_agent_v1`;
 - LibreChat registration and ACL visibility: PASS — `Compliance Agent v1` is selectable by the authorized user;
 - authenticated LibreChat UI smoke: PASS — the expected v1 MCP tool ran and returned four-account evidence;
-- direct installed MCP invocation: PASS — exactly one tool and `mutation=false`;
+- direct installed read-MCP invocation: PASS — `mutation=false`;\n- release remediation tools: exact prepare + native-ASK execute, no generic AWS administration;
 - live proof date: 2026-09-20;
 - pre-hardening verified baseline: `d2c4125b712ccddd675c3c34a1284aaa7d503afc`;
 - release hardening candidate: Issue #133 / PR #134.
 
-Remaining before RELEASED:
-- merge the release-hardening candidate;
-- publish and verify GitHub Release `compliance-agent-v1.0.0` from that final merge commit.
+Remaining before RELEASED:\n- complete Issue #138 live Reject + Approve acceptance for S3 and restricted SSH through Compliance Agent v1;\n- publish and verify GitHub Release `compliance-agent-v1.0.0` from the final remediation-tested commit.
 
 ### Known legacy defect being replaced
 
