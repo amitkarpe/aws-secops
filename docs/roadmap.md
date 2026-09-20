@@ -1,18 +1,22 @@
 # Roadmap
 
-The root `ROADMAP.md` is the source of truth.
-
-## Completed
-
-- Demo v1 validation.
-- MkDocs Material learning portal publication.
+The root [ROADMAP.md](https://github.com/amitkarpe/aws-secops/blob/main/ROADMAP.md) is the source of truth.
 
 ## Now
 
-Issue #32: bounded code/docs hardening and offline validation. The two-family AWS scope is unchanged; deployment needs separate approval.
+- harden Compliance Agent v1 deployment reproducibility and MCP startup regression;
+- publish/verify `compliance-agent-v1.0.0`;
+- close the v1 milestone.
 
 ## Next
 
-Concise operator-summary output, bounded reliability hardening, publication assurance and reviewer-driven milestones.
+Evaluate Issue #130 as a read-only AWS MCP evidence source.
 
-For the complete roadmap, open the repository root `ROADMAP.md`.
+Do not widen mutation authority merely to accelerate the experiment.
+
+## Later
+
+- structured operational event ledger;
+- AgentCore Memory for conversation/episodic continuity;
+- Knowledge Bases/RAG when unstructured knowledge justifies it;
+- broader AWS Ops Agent only after specialist contracts are stable.
