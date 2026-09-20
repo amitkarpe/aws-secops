@@ -2,88 +2,52 @@
 
 ## Completed
 
-- Demo v1 frozen and validated.
-- 100 retained S3 buckets exercised with exact Block Public Access remediation.
-- 10 retained unattached Security Groups exercised with exact restricted-SSH remediation.
-- Read-only agent behavior, off-topic scope guardrail, separate native approvals, Gateway/Policy enforcement and direct provider verification recorded.
-- Repeatable Operator demo flow and AWS Config integration recorded.
-- MkDocs Material learning portal published through GitHub Pages.
-- Read-only `aws_secops_operator` AgentCore Harness deployed and independently verified for the two existing AWS Config controls.
-- Harness operator-summary polish from Issue #58 / PR #59 completed.
-- Issue #60 Milestone 1 — bounded S3 contextual investigation — live-deployed and healthy-path accepted.
-- Issue #60 Milestone 2 — factual nine-stage Agent Decision Timeline — live-deployed and healthy-path accepted.
-- Unhealthy Config evidence verified to fail closed as `UNVERIFIED/BLOCKED`.
-- Healthy zero-finding Config path hardened so `CLEAR` cannot be misrepresented as provider verification or absence of exposure/risk.
-- Issue #60 Milestone 4 — 3-minute demo + public documentation consolidation — merged, Pages-deployed and regression-verified.
-- Issue #60 parent phase completed with blocked Milestone 3 replaced by standalone Issue #68.
-- Issue #70 — bounded S3 recent-change attribution using CloudTrail Event History — implemented, regression-verified, live-deployed and independently accepted.
-  - no new Harness tool or arbitrary resource selector;
-  - only Region-bound `cloudtrail:LookupEvents` added to the existing read Lambda role;
-  - relevant S3 management-event allowlist, max-five output, action/time only, identity suppressed by default;
-  - Config-only CLEAR leaves provider state `NOT_READ`, recent changes `NOT_EVALUATED`, and exposure/risk `NOT_ASSESSED`;
-  - live negative-fix test used only read tools;
-  - final CloudTrail audit showed zero S3/SG/SSM mutation events.
+- Demo v1 retained-resource S3/SSH governance and provider-verification proof.
+- Four-account provider E2E and organization AWS Config evidence.
+- Four-account bounded remediation path with separate approval, fixed execution path, provider readback and independent Config convergence.
+- Unified Config Dashboard and four-account demo re-arm.
+- Legacy 100-S3 / 10-SG Operator path retired from the active product surface.
+- Read-only `aws_secops_operator` AgentCore Harness experiments and contextual investigation milestones.
+- Issue #68 is closed; its original two-account prerequisite is no longer the current roadmap gate.
+- Compliance Agent v1 implemented as a clean isolated AgentCore Harness-backed specialist.
+- Compliance Agent v1 live E2E: Config 4×2 checks, five golden prompts, one-tool MCP, LibreChat authenticated smoke, zero mutation.
 
-## Blocked / deferred
+## Current
 
-### Issue #68 — two-account read-only SecOps proof
+### Compliance Agent v1 release closure
 
-This is the former Issue #60 Milestone 3. It remains valid but is blocked on an external prerequisite: a second explicitly authorized owned AWS read scope.
+- make LibreChat access reproducible rather than relying on one-off ACL repair;
+- keep a real stdio MCP initialization regression in CI;
+- publish immutable GitHub Release `compliance-agent-v1.0.0`;
+- close Issues #123/#125 after release evidence is verified.
 
-Current verified blocker:
+### Read-only AWS MCP evidence source — Issue #130
 
-- no AWS Organizations membership/path;
-- no recent reusable cross-account `AssumeRole` activity;
-- no suitable existing second-account SecOps read role;
-- no second-account/session selector in the current AWS Core connection.
+Evaluate the already-proven persistent read-only AWS MCP for investigation/evidence only:
 
-Do not create a broad cross-account administration role merely to complete the proof.
+- Config;
+- S3 posture;
+- Security Group posture;
+- Inspector;
+- CloudTrail Event History;
+- IAM/resource inventory.
 
-When the prerequisite exists, prove only:
-
-- exactly two explicit owned account scopes;
-- account-distinguished read evidence;
-- minimum identity + existing supported compliance reads;
-- zero cross-account mutation authority;
-- unchanged single-account governed mutation path.
-
-Any cross-account remediation is a separate later security decision.
-
-## Next
-
-### Reviewer-driven follow-ons
-
-Choose a new standalone Issue only when there is a concrete operator/reviewer need. Candidates:
-
-- one bounded cross-account remediation path, only after Issue #68 succeeds;
-- a third security/compliance use case justified by real operator value;
-- Security Hub / GuardDuty / CloudSCAPE / VAPT ingestion and investigation;
-- formal approval/audit reporting;
-- deeper AgentCore/Harness portability or runtime work.
-
-### Publication assurance
-
-Before broad promotion:
-
-- complete reachable-history/publication review for accidental sensitive material;
-- decide and document repository licensing/reuse intent;
-- improve repository About metadata.
+It must not bypass the existing governed mutation path.
 
 ## Later
 
-### Operations Console
+- structured operational event ledger for exact agent-mediated change history;
+- AgentCore Memory for conversational/episodic continuity, not authoritative audit;
+- Bedrock Knowledge Bases/RAG when unstructured runbooks, SOPs, policies and incident narratives justify semantic retrieval;
+- broader AWS Ops Agent only after stable specialist contracts are proven;
+- additional controls only when justified by operator value and reviewed as separate milestones.
 
-Evolve the operator experience into a long-term support console for:
+## Publication assurance
 
-- service/agent health;
-- investigation and remediation history;
-- Decision Timeline evidence;
-- failure reconciliation;
-- approval/Policy correlation;
-- provider verification;
-- links to authoritative AWS evidence;
-- version/deployment metadata.
+Before broader promotion:
 
-The console should aggregate AWS sources of truth, not replace them, and must never become a generic arbitrary-AWS mutation panel.
+- review reachable history for accidental sensitive material;
+- decide/document repository licensing and reuse intent;
+- improve repository About metadata.
 
 No 1,000-live-resource milestone is planned for Demo v1.
