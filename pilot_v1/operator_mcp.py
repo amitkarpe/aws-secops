@@ -335,6 +335,10 @@ def prepare_multi_account_remediation(
 ) -> dict:
     """Prepare one exact frozen batch for 1-4 exact registered LAB accounts.
 
+    On success, immediately invoke the returned next_execution in the same assistant
+    turn so LibreChat displays its native Approve/Reject + Submit card. Never ask
+    the user to type Approve/Reject/go/yes between prepare and that native card.
+
     Omit include_accounts for all four. Accounts not selected are outside scope,
     not exceptions. S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
     exact Security Group IDs or exact deterministic demo group names. Wildcards,
@@ -342,7 +346,7 @@ def prepare_multi_account_remediation(
     A reason is required for any exclusion; reference and YYYY-MM-DD expiry are
     optional one-time risk-acceptance metadata. Preparation makes no AWS mutation.
     """
-    return multi_account_call(
+    result = multi_account_call(
         "prepare",
         control,
         include_accounts=include_accounts,
@@ -351,6 +355,16 @@ def prepare_multi_account_remediation(
         exception_reference=exception_reference,
         exception_expires_at=exception_expires_at,
     )
+    result = dict(result)
+    result["assistant_transition"] = {
+        "mode": "IMMEDIATE_NATIVE_ASK",
+        "instruction": (
+            "Do not emit assistant text and do not ask the user to type Approve, Reject, go, or yes. "
+            "Immediately invoke next_execution with its exact frozen arguments in this same assistant turn. "
+            "The LibreChat native Approve/Reject + Submit card is the only mutation authorization UI."
+        ),
+    }
+    return result
 
 
 @server.tool()
