@@ -281,6 +281,9 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("native LibreChat Approve/Reject remains mandatory", spec["instructions"])
         self.assertIn("AWS service verification", spec["instructions"])
         self.assertIn("AWS Config evaluation", spec["instructions"])
+        self.assertIn("NATIVE APPROVAL HANDOFF (MANDATORY)", spec["instructions"])
+        self.assertIn("do not emit assistant text", spec["instructions"])
+        self.assertIn("native Approve/Reject + Submit card", spec["instructions"])
         self.assertEqual(spec["tools"], [
             "ask_compliance_agent_v1_mcp_compliance_agent_v1",
             "prepare_multi_account_remediation_mcp_aws_compliance_planner",
@@ -320,6 +323,8 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("execute exclusions are frozen server-side during prepare", operator_mcp)
         self.assertIn("include_accounts: list[str] | None = None", operator_mcp)
         self.assertIn("verify_multi_account_remediation", operator_mcp)
+        self.assertIn('"mode": "IMMEDIATE_NATIVE_ASK"', operator_mcp)
+        self.assertIn("Do not emit assistant text", operator_mcp)
 
     def test_agent_updater_preserves_identity_and_exact_tools(self):
         updater = (ROOT / "integration" / "update-compliance-v1-agent.cjs").read_text()
