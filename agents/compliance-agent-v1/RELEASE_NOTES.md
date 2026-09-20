@@ -20,7 +20,7 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - current restricted SSH status across four LAB aliases;
 - explain findings;
 - produce a no-change remediation plan;
-- preserve privacy-safe alias-only output;
+- return operational identifiers when authorized backend/tool responses provide them;
 - refuse to bypass the approved mutation boundary.
 
 ### Planned acceptance
@@ -28,7 +28,7 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - Config/backend contract test;
 - four-account MCP/tool test;
 - five golden agent prompts;
-- privacy/adversarial check;
+- identifier-fidelity check;
 - approval-boundary check;
 - minimal LibreChat browser smoke;
 - one final `DEMO READY / NOT READY` report.
@@ -55,3 +55,7 @@ For every later version append a new section and create a durable snapshot under
 `docs/releases/<product>-vX.Y.Z.md`
 
 Do not rewrite prior released notes.
+
+### Identifier policy clarification
+
+v1 does not require alias-only masking. Account/resource identifiers may be returned when they are present in authorized tool/backend responses. The agent must not fabricate missing identifiers and must never expose credentials, secrets, tokens or auth/session material.
