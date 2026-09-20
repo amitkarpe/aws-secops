@@ -55,7 +55,13 @@ def _json(args: list[str]) -> dict[str, Any]:
     return value
 
 
-def _validate(mode: str, control: str, batch_id: str | None, exclusions: list[str]) -> None:
+def _validate(
+    mode: str,
+    control: str,
+    batch_id: str | None,
+    exclusions: list[str] | None = None,
+) -> None:
+    exclusions = list(exclusions or [])
     if mode not in {"prepare", "plan", "execute"}:
         raise ValueError("unsupported execution mode")
     if control not in CONTROLS:
