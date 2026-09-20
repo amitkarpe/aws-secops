@@ -55,7 +55,7 @@ def _json(args: list[str]) -> dict[str, Any]:
     return value
 
 
-def _validate(mode: str, control: str, batch_id: str | None) -> None:
+def _validate(mode: str, control: str, batch_id: str | None, exclusions: list[str]) -> None:
     if mode not in {"prepare", "plan", "execute"}:
         raise ValueError("unsupported execution mode")
     if control not in CONTROLS:
@@ -66,16 +66,34 @@ def _validate(mode: str, control: str, batch_id: str | None) -> None:
     else:
         if not isinstance(batch_id, str) or not BATCH_RE.fullmatch(batch_id):
             raise ValueError("exact frozen batch id required")
+    if len(exclusions) > 3 or len(exclusions) != len(set(exclusions)):
+        raise ValueError("invalid exact one-time exclusions")
+    if any(not isinstance(value, str) or not value or len(value) > 255 or any(ch in value for ch in "*?[]") for value in exclusions):
+        raise ValueError("invalid exact one-time exclusion")
 
 
-def run(mode: str, control: str, batch_id: str | None = None, *, timeout: int = 150) -> dict[str, Any]:
-    _validate(mode, control, batch_id)
+def run(
+    mode: str,
+    control: str,
+    batch_id: str | None = None,
+    *,
+    exclusions: list[str] | None = None,
+    timeout: int = 150,
+) -> dict[str, Any]:
+    exclusions = list(exclusions or [])
+    _validate(mode, control, batch_id, exclusions)
     overrides = [
         {"name": "SECOPS_MODE", "value": mode, "type": "PLAINTEXT"},
         {"name": "SECOPS_CONTROL", "value": control, "type": "PLAINTEXT"},
     ]
     if batch_id is not None:
         overrides.append({"name": "SECOPS_BATCH_ID", "value": batch_id, "type": "PLAINTEXT"})
+    if exclusions:
+        overrides.append({
+            "name": "SECOPS_EXCLUDE_RESOURCES_JSON",
+            "value": json.dumps(exclusions, separators=(",", ":")),
+            "type": "PLAINTEXT",
+        })
 
     started = _json([
         "codebuild", "start-build",
