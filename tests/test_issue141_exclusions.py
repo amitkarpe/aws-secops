@@ -54,6 +54,7 @@ class Issue141ExceptionContractTests(unittest.TestCase):
         execute = tools["execute_multi_account_remediation"].parameters
 
         prepare_props = prepare.get("properties", {})
+        self.assertIn("include_accounts", prepare_props)
         self.assertIn("exclude_resources", prepare_props)
         self.assertIn("exception_reason", prepare_props)
         self.assertIn("exception_reference", prepare_props)
