@@ -43,7 +43,7 @@ class ComplianceAgentSpecTests(unittest.TestCase):
         self.assertIn("multi-account-approval-hook.cjs", installer)
         self.assertIn("const legacyPlanner =", installer)
         self.assertIn("timeout:95000", installer)
-        self.assertIn("timeout:190000", installer)
+        self.assertIn("timeout:300000", installer)
         self.assertIn("'prepare_remediation_mcp_aws_compliance_planner'", installer)
         self.assertIn("retiredPlannerTools", installer)
         self.assertNotIn("WAF exact remediation", instructions)

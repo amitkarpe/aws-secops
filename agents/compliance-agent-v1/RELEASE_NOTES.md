@@ -30,7 +30,7 @@ Replace the broken legacy status path with a clean isolated Compliance Agent tha
 - explain findings;
 - produce a no-change remediation plan;
 - return operational identifiers when authorized backend/tool responses provide them;
-- fix one supported control after exact native human approval;\n- fix both supported controls only as two independent approval decisions;\n- reject/cancel with zero CodeBuild dispatch.
+- fix one supported control after exact native human approval;\n- fix both supported controls only as two independent approval decisions;\n- reject/cancel with zero remediation-execution dispatch and zero AWS resource writes (read-only planning may already have run).
 
 ### Verified acceptance
 
@@ -77,3 +77,13 @@ Do not rewrite prior published release notes.
 ### Identifier policy clarification
 
 v1 does not require alias-only masking. Account/resource identifiers may be returned when they are present in authorized tool/backend responses. The agent must not fabricate missing identifiers and must never expose credentials, secrets, tokens or auth/session material.
+
+
+### Timeout reconciliation hardening
+
+- an approved execution is marked `EXECUTING` before the mutation build is dispatched;
+- a client/MCP timeout never causes a blind second remediation dispatch;
+- retries reconcile provider state through a read-only plan;
+- included targets already fixed while excluded targets remain unchanged return `RECOVERED_VERIFIED`;
+- partial or changed provider scope fails closed for operator review;
+- recovered success does not claim an exact mutation count unless durable execution evidence supplies it.

@@ -34,15 +34,13 @@ updated.mcpServers.aws_compliance = compliance;
 const planner = {
   type:'stdio', command:'/opt/aws-secops/.venv-mcp/bin/python', args:['-m','pilot_v1.operator_mcp'],
   env:{PYTHONPATH:'/opt/aws-secops',SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'},
-  timeout:190000,initTimeout:15000,chatMenu:false,serverInstructions:true,
+  timeout:300000,initTimeout:15000,chatMenu:false,serverInstructions:true,
 };
-const legacyPlanner = {
-  type:'stdio', command:'/opt/aws-secops/.venv-mcp/bin/python', args:['-m','pilot_v1.operator_mcp'],
-  env:{PYTHONPATH:'/opt/aws-secops',SECOPS_OPERATOR_BACKEND_URL:'http://localhost:4444'},
-  timeout:95000,initTimeout:15000,chatMenu:false,serverInstructions:true,
-};
+const previousPlanner = {...planner,timeout:190000};
+const legacyPlanner = {...planner,timeout:95000};
 if (updated.mcpServers.aws_compliance_planner
     && !isDeepStrictEqual(updated.mcpServers.aws_compliance_planner,planner)
+    && !isDeepStrictEqual(updated.mcpServers.aws_compliance_planner,previousPlanner)
     && !isDeepStrictEqual(updated.mcpServers.aws_compliance_planner,legacyPlanner))
   throw Error('existing aws_compliance_planner MCP differs; review before replacing');
 updated.mcpServers.aws_compliance_planner = planner;

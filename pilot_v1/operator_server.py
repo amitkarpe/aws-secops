@@ -24,7 +24,7 @@ from .control_catalog import get_control, public_catalog
 from .demo_prepare import S3_NONCOMPLIANT, count_s3, require_resettable, reset_s3
 from .operator_protocol import ConfirmationGate
 from .org_config_overview import read_status as read_four_account_status, remediation_plan as four_account_plan
-from .codebuild_execution import run as run_four_account_build
+from .codebuild_execution import BuildError, run as run_four_account_build
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
@@ -303,6 +303,7 @@ class OperatorService(BulkService):
             "exception": exception,
             "scope_hash": scope_hash,
             "created_at": int(time.time()),
+            "execution_state": "PENDING_APPROVAL",
         }
         self._save_execution_cache(cache)
         return {
@@ -350,13 +351,111 @@ class OperatorService(BulkService):
             "exception_source": "one-time-user-exclusion" if plan.get("exclude_resources") else None,
             "exception": plan.get("exception") if plan.get("exclude_resources") else None,
             "scope_hash": plan.get("scope_hash"),
+            "execution_state": plan.get("execution_state", "PENDING_APPROVAL"),
             "age_seconds": age,
             "account_ids": "hidden-by-default",
             "resource_identifiers": "hidden-by-default",
         }
 
+    def _clear_multi_account_execution(self, control: str) -> None:
+        cache = self._execution_cache()
+        cache.get("plans", {}).pop(control, None)
+        self._save_execution_cache(cache)
+
+    def _mark_multi_account_execution(self, control: str, state: str) -> None:
+        cache = self._execution_cache()
+        plan = cache.get("plans", {}).get(control)
+        if not isinstance(plan, dict):
+            raise ValueError("no prepared four-account execution")
+        plan["execution_state"] = state
+        plan["execution_updated_at"] = int(time.time())
+        self._save_execution_cache(cache)
+
+    def _reconcile_multi_account_execution(self, preview: dict, exclusions: list[str]) -> dict:
+        control = preview["control"]
+        batch_id = preview["batch_id"]
+        expected_included = list(preview.get("pending_aliases") or [])
+        expected_excluded = list(preview.get("excluded_aliases") or [])
+        result = run_four_account_build("plan", control, exclusions=exclusions, timeout=180)
+        if result.get("batch_id") != batch_id:
+            raise RuntimeError("provider reconciliation batch scope changed")
+        if result.get("excluded_aliases", []) != expected_excluded:
+            raise RuntimeError("excluded resource changed; operator review required")
+        pending = result.get("pending_aliases")
+        if not isinstance(pending, list):
+            raise RuntimeError("provider reconciliation returned invalid included scope")
+        if pending == expected_included:
+            return {"state": "NOT_STARTED", "result": result}
+        if not pending:
+            return {"state": "RECOVERED_VERIFIED", "result": result}
+        raise RuntimeError("partial provider state after execution; no automatic retry")
+
+    def _multi_account_execution_response(
+        self,
+        preview: dict,
+        exclusions: list[str],
+        result: dict,
+        *,
+        recovered: bool,
+    ) -> dict:
+        expected_included = list(preview.get("pending_aliases") or [])
+        decision = "RECOVERED_VERIFIED" if recovered else result.get("decision")
+        mutation_count = None if recovered else result.get("mutation_count")
+        verified_count = len(expected_included)
+        return {
+            "version": 1,
+            "scope": "four-account-live-config",
+            "control": preview.get("control"),
+            "batch_id": preview.get("batch_id"),
+            "decision": decision,
+            "mutation_count": mutation_count,
+            "verified_included_count": verified_count,
+            "provider_verified": True,
+            "recovered_after_timeout": recovered,
+            "included_aliases": expected_included,
+            "excluded_aliases": preview.get("excluded_aliases", []),
+            "excluded_resources": exclusions,
+            "excluded_resources_unchanged": True,
+            "exception_source": "one-time-user-exclusion" if exclusions else None,
+            "exception": preview.get("exception") if exclusions else None,
+            "scope_hash": preview.get("scope_hash"),
+            "config_states": result.get("config"),
+            "execution_backend": (
+                "Provider reconciliation via AWS CodeBuild read-only plan"
+                if recovered else result.get("execution_backend")
+            ),
+            "account_ids": "hidden-by-default",
+            "resource_identifiers": "hidden-by-default",
+            "message": (
+                f"{'Recovered verified completion' if recovered else 'Provider readback completed'} "
+                f"for {verified_count} included target(s); {len(exclusions)} excluded target(s) "
+                "were verified unchanged. AWS Config convergence is independent and may still be pending."
+            ),
+        }
+
     def execute_multi_account(self, control: str, batch_id: str, scope_hash: str) -> dict:
-        preview = self.multi_account_execution_preview(control)
+        if control not in {S3_CONTROL, SG_CONTROL}:
+            raise ValueError("one exact supported control required")
+        plan = self._execution_cache().get("plans", {}).get(control)
+        if not isinstance(plan, dict):
+            raise ValueError("no prepared four-account execution")
+        age = int(time.time()) - int(plan.get("created_at", 0))
+        if age < 0:
+            raise ValueError("prepared four-account execution has invalid age")
+        expired = age > 900
+        preview = {
+            "version": 1,
+            "scope": "four-account-live-config",
+            "control": control,
+            "batch_id": plan.get("batch_id"),
+            "pending_aliases": plan.get("pending_aliases"),
+            "excluded_aliases": plan.get("excluded_aliases", []),
+            "excluded_resources": plan.get("exclude_resources", []),
+            "exception": plan.get("exception") if plan.get("exclude_resources") else None,
+            "scope_hash": plan.get("scope_hash"),
+            "execution_state": plan.get("execution_state", "PENDING_APPROVAL"),
+            "age_seconds": age,
+        }
         if (
             preview.get("batch_id") != batch_id
             or not isinstance(scope_hash, str)
@@ -364,12 +463,48 @@ class OperatorService(BulkService):
             or preview.get("scope_hash") != scope_hash
         ):
             raise ValueError("submitted batch does not match frozen plan")
+
+        exclusions = self._normalize_exclusions(preview.get("excluded_resources"))
+        execution_state = preview.get("execution_state", "PENDING_APPROVAL")
+
         current = self.multi_account_status()
         rows = current.get("accounts", [])
-        if len(rows) != 4 or any(row.get("controls", {}).get(control) != "NON_COMPLIANT" for row in rows):
+        all_noncompliant = (
+            len(rows) == 4
+            and all(row.get("controls", {}).get(control) == "NON_COMPLIANT" for row in rows)
+        )
+
+        # Any retry after dispatch, or any changed Config scope from an older
+        # pre-state-tracking batch, reconciles provider state before deciding
+        # whether another write is safe.
+        if expired or execution_state == "EXECUTING" or not all_noncompliant:
+            reconciliation = self._reconcile_multi_account_execution(preview, exclusions)
+            if reconciliation["state"] == "RECOVERED_VERIFIED":
+                response = self._multi_account_execution_response(
+                    preview, exclusions, reconciliation["result"], recovered=True
+                )
+                self._clear_multi_account_execution(control)
+                return response
+            if expired:
+                raise RuntimeError(
+                    "expired frozen batch did not reconcile to verified completion; no execution was dispatched"
+                )
+            if execution_state == "EXECUTING":
+                raise RuntimeError(
+                    "previous remediation outcome is still unresolved; no second execution was dispatched"
+                )
             raise ValueError("live Config scope changed; prepare a new exact batch")
-        exclusions = self._normalize_exclusions(preview.get("excluded_resources"))
-        result = run_four_account_build("execute", control, batch_id, exclusions=exclusions)
+
+        self._mark_multi_account_execution(control, "EXECUTING")
+        try:
+            result = run_four_account_build(
+                "execute", control, batch_id, exclusions=exclusions, timeout=240
+            )
+        except BuildError:
+            # Keep EXECUTING. A later call must reconcile provider state and
+            # must never blindly dispatch a second mutation.
+            raise
+
         if result.get("decision") not in {"APPROVE", "ALREADY_COMPLIANT"}:
             raise RuntimeError("unexpected four-account execution result")
         expected_mutations = len(preview.get("pending_aliases") or [])
@@ -379,33 +514,12 @@ class OperatorService(BulkService):
             raise RuntimeError("provider verification did not prove exact included remediation")
         if result.get("excluded_aliases", []) != preview.get("excluded_aliases", []):
             raise RuntimeError("excluded scope changed during execution")
-        cache = self._execution_cache()
-        cache.get("plans", {}).pop(control, None)
-        self._save_execution_cache(cache)
-        return {
-            "version": 1,
-            "scope": "four-account-live-config",
-            "control": control,
-            "batch_id": result.get("batch_id"),
-            "decision": result.get("decision"),
-            "mutation_count": result.get("mutation_count"),
-            "provider_verified": result.get("provider_verified"),
-            "included_aliases": result.get("included_aliases", preview.get("pending_aliases")),
-            "excluded_aliases": result.get("excluded_aliases", []),
-            "excluded_resources": exclusions,
-            "exception_source": "one-time-user-exclusion" if exclusions else None,
-            "exception": preview.get("exception") if exclusions else None,
-            "scope_hash": preview.get("scope_hash"),
-            "config_states": result.get("config"),
-            "execution_backend": result.get("execution_backend"),
-            "account_ids": "hidden-by-default",
-            "resource_identifiers": "hidden-by-default",
-            "message": (
-                f"Provider readback completed for {expected_mutations} included target(s); "
-                f"{len(exclusions)} excluded target(s) were left unchanged. "
-                "AWS Config convergence is independent and may still be pending."
-            ),
-        }
+
+        response = self._multi_account_execution_response(
+            preview, exclusions, result, recovered=False
+        )
+        self._clear_multi_account_execution(control)
+        return response
 
 
     def status(self) -> dict:
