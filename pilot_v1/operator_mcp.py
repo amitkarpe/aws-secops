@@ -13,6 +13,12 @@ from pydantic import ConfigDict
 
 from .agentic_evidence import build_decision_timeline, build_s3_investigation
 from .queries import identity
+from .ui_cards import (
+    render_execution_result,
+    render_remediation_preview,
+    render_verification_result,
+    tool_result,
+)
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
@@ -332,7 +338,7 @@ def prepare_multi_account_remediation(
     exception_reason: str | None = None,
     exception_reference: str | None = None,
     exception_expires_at: str | None = None,
-) -> dict:
+):
     """Prepare one exact frozen batch for 1-4 exact registered LAB accounts.
 
     On success, immediately invoke the returned next_execution in the same assistant
@@ -364,7 +370,11 @@ def prepare_multi_account_remediation(
             "The LibreChat native Approve/Reject + Submit card is the only mutation authorization UI."
         ),
     }
-    return result
+    return tool_result(
+        result,
+        uri=f"ui://aws-secops/remediation-preview/{result['batch_id']}",
+        html=render_remediation_preview(result),
+    )
 
 
 @server.tool()
@@ -372,20 +382,25 @@ def execute_multi_account_remediation(
     control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
     batch_id: str,
     scope_hash: str,
-) -> dict:
+):
     """ASK: Execute one exact frozen selected-account remediation batch after native human approval.
 
     Reject means this tool is not called. Approve applies only the frozen
     selected account/resource scope. Execution returns quickly with AWS service
     verification pending; verification is a separate read-only step.
     """
-    return multi_account_call("execute", control, batch_id, scope_hash)
+    value = multi_account_call("execute", control, batch_id, scope_hash)
+    return tool_result(
+        value,
+        uri=f"ui://aws-secops/remediation-result/{batch_id}",
+        html=render_execution_result(value),
+    )
 
 
 @server.tool()
 def verify_multi_account_remediation(
     control: Literal["s3-bucket-level-public-access-prohibited", "restricted-ssh"],
-) -> dict:
+):
     """Read-only: verify the latest applied remediation directly in AWS service state and show AWS Config evaluation."""
     base = backend()
     request = Request(
@@ -393,7 +408,12 @@ def verify_multi_account_remediation(
         data=json.dumps({"control": control}).encode(),
         headers={"Origin": base, "Content-Type": "application/json"},
     )
-    return _request(request, timeout=200)
+    value = _request(request, timeout=200)
+    return tool_result(
+        value,
+        uri=f"ui://aws-secops/remediation-verification/{control}",
+        html=render_verification_result(value),
+    )
 
 
 @server.tool()
