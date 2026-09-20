@@ -15,6 +15,10 @@ _CONTROL_LABELS = {
     SG_CONTROL: "🛡️ Restricted SSH",
 }
 
+_RESIZE_BOOTSTRAP = """<script>
+(()=>{const send=()=>{const d=document.documentElement,b=document.body;const width=d.clientWidth||d.scrollWidth||1;const natural=Math.max(d.scrollHeight,b?b.scrollHeight:0);const height=Math.min(Math.max(natural+4,260),720);parent.postMessage({type:"ui-size-change",payload:{width,height}},"*");};new ResizeObserver(send).observe(document.documentElement);addEventListener("load",send,{once:true});requestAnimationFrame(send);})();
+</script>"""
+
 
 def _e(value: object) -> str:
     return escape(str(value), quote=True)
@@ -56,7 +60,7 @@ code{{font-family:inherit}}@media(max-width:650px){{.grid{{grid-template-columns
 </style></head><body><section class="card">
 <h2>{_e(title)}</h2><div class="sub">{_e(subtitle)}</div>
 {body}{detail_html}
-</section></body></html>"""
+</section>{_RESIZE_BOOTSTRAP}</body></html>"""
 
 
 def _technical(value: dict[str, Any]) -> str:
@@ -174,11 +178,20 @@ def render_verification_result(value: dict[str, Any]) -> str:
     )
 
 
-def tool_result(value: dict[str, Any], *, uri: str, html: str) -> CallToolResult:
-    """Preserve exact machine JSON for the model and add one deterministic UI resource."""
+def tool_result(
+    value: dict[str, Any],
+    *,
+    uri: str,
+    html: str,
+    model_text: str | None = None,
+) -> CallToolResult:
+    """Preserve exact structured data and add one deterministic UI resource."""
     return CallToolResult(
         content=[
-            TextContent(type="text", text=json.dumps(value, separators=(",", ":"), sort_keys=True)),
+            TextContent(
+                type="text",
+                text=model_text or json.dumps(value, separators=(",", ":"), sort_keys=True),
+            ),
             EmbeddedResource(
                 type="resource",
                 resource=TextResourceContents(uri=uri, mimeType="text/html", text=html),
