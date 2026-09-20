@@ -204,6 +204,18 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(len(value["evidence"]["checks"]), 1)
         self.assertFalse(value["mutation"])
 
+    def test_present_answer_normalizes_legacy_read_only_wording(self):
+        text = (
+            "Compliance Agent v1 cannot execute changes directly. "
+            "Provider-level verification belongs to the provider readback path."
+        )
+        value = agent._present_answer(text)
+        self.assertNotIn("cannot execute changes", value.lower())
+        self.assertNotIn("provider", value.lower())
+        self.assertIn("governed native approval path", value)
+        self.assertIn("AWS service verification", value)
+        self.assertIn("AWS service readback", value)
+
     def test_invalid_request_fails_before_backend_read(self):
         with patch.object(agent, "current_evidence") as evidence:
             with self.assertRaisesRegex(ValueError, "user request is invalid"):
