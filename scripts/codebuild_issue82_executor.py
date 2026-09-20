@@ -116,8 +116,9 @@ def main() -> int:
         sys.executable, "scripts/issue82_campaign.py", mode,
         "--control", control,
     ]
-    for alias in selected:
-        command += ["--include-account", alias]
+    if mode != "prepare":
+        for alias in selected:
+            command += ["--include-account", alias]
     for resource in exclusions:
         command += ["--exclude-resource", resource]
     if mode == "execute":
