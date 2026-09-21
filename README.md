@@ -120,6 +120,7 @@ The clean v1 baseline is verified and ready for tag/release:
 - [Management audit view](docs/operations/MANAGEMENT_AUDIT_VIEW.md)
 - [Architecture](docs/architecture.md)
 - [Governance](docs/governance.md)
+- [ChatGPT + GitHub OIDC + AWS MCP operating guide](docs/operations/CHATGPT_GITHUB_OIDC_AWS_MCP.md)
 - [Project status](PROJECT_STATUS.md)
 - [Demo v1](docs/demo-v1.md) — retained legacy/single-account detail
 
