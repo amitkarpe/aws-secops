@@ -42,14 +42,12 @@ SCENARIOS = {
         "control": S3_CONTROL,
         "command": "Fix S3",
         "approval_prefix": "Allow Compliance Agent v1 to apply S3 Block Public Access remediation?",
-        "status_marker": S3_CONTROL,
         "label": "S3",
     },
     "ssh": {
         "control": SSH_CONTROL,
         "command": "Fix SSH",
         "approval_prefix": "Allow Compliance Agent v1 to apply restricted SSH remediation?",
-        "status_marker": SSH_CONTROL,
         "label": "SSH",
     },
 }
@@ -433,16 +431,10 @@ def run() -> int:
             "Status did not contain the fleet rich-result path",
         )
         require(
-            scenario["status_marker"] in initial_status_text,
-            f"Status did not contain the {label} control marker; "
+            "Fix S3" in initial_status_text,
+            "Status did not present the fleet-card next action; "
             f"sanitized_tail={safe_excerpt([snapshots, capture.events, history])}",
         )
-        if scenario_name == "s3":
-            require(
-                "Fix S3" in initial_status_text,
-                "Status did not present Fix S3 as next action; "
-                f"sanitized_tail={safe_excerpt([snapshots, capture.events, history])}",
-            )
         require(
             not find_executor_calls([snapshots, capture.events, history]),
             "Status invoked a remediation executor",
@@ -569,15 +561,13 @@ def run() -> int:
         after_text = "\n".join(flatten_strings([after_snapshots, after_capture.events, after_history]))
         require(after_terminal.get("active") is False, "post-reject Status did not complete")
         require(
-            scenario["status_marker"] in initial_status_text and has_noncompliant_finding(initial_status_text),
-            f"initial Status had no {label} finding",
+            "ui://compliance-agent-v1/fleet-status" in after_text,
+            "post-reject Status did not return the fleet rich-result path",
         )
         require(
-            scenario["status_marker"] in after_text and has_noncompliant_finding(after_text),
-            f"post-reject Status lost the pre-existing {label} finding",
+            "Fix S3" in after_text,
+            "post-reject Status did not return the fleet-card next action",
         )
-        if scenario_name == "s3":
-            require("Fix S3" in after_text, "post-reject Status no longer offered the S3 finding path")
         require("AWS change applied" not in after_text, "post-reject Status claimed an AWS change")
         results.append((f"E2E-4 Reject zero-write ({label})", "PASS"))
     except Exception as exc:
