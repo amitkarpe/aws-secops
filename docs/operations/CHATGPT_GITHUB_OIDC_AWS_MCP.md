@@ -280,7 +280,7 @@ finding evidence
 |---|---|---|
 | GitHub App | ChatGPT repository access | managed connector/app session |
 | GitHub Actions | CI/deployment runtime | runner |
-| GitHub OIDC | GitHub Actions -> AWS identity | short-lived OIDC/ST​​S credentials |
+| GitHub OIDC | GitHub Actions -> AWS identity | short-lived OIDC/STS credentials |
 | AWS MCP | ChatGPT live AWS access | connected AWS control-plane session |
 | Git/IaC | durable desired state | repository content |
 | AWS IAM | AWS authorization boundary | roles/policies/trust |
