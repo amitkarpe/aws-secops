@@ -1,6 +1,7 @@
 // Native LibreChat ASK hook for the exact four-account CodeBuild executor.
 // This hook performs no AWS mutation. It validates that the submitted
 // control+batch_id exactly matches the current short-lived frozen preview.
+const APPROVAL_TTL_SECONDS = 1800;
 const CONTROLS = new Set([
   's3-bucket-level-public-access-prohibited',
   'restricted-ssh',
@@ -51,7 +52,7 @@ module.exports = () => (context) => async (input) => {
         pending.length < 1 ||
         typeof preview?.age_seconds !== 'number' ||
         preview.age_seconds < 0 ||
-        preview.age_seconds > 900) {
+        preview.age_seconds > APPROVAL_TTL_SECONDS) {
       return {decision: 'deny', reason: 'DENY — stale or changed frozen four-account batch. Prepare a new plan; no dispatch.'};
     }
     const title = args.control === 's3-bucket-level-public-access-prohibited'
@@ -86,7 +87,7 @@ module.exports = () => (context) => async (input) => {
       : '';
     return {
       decision: 'ask',
-      reason: `Allow Compliance Agent v1 to apply ${title} remediation? Selected accounts: ${includedText}. Change: ${action}.${unselectedText}${excludedText} Choose Approve or Reject, then Submit. Approve applies only this frozen scope; Reject makes zero remediation execution dispatch and zero AWS resource writes. AWS service verification runs after the change; AWS Config evaluation may update later.`,
+      reason: `Allow Compliance Agent v1 to apply ${title} remediation? Selected accounts: ${includedText}. Change: ${action}.${unselectedText}${excludedText} Approval is valid for 30 minutes from preparation. Choose Approve or Reject, then Submit. Approve applies only this frozen scope; Reject makes zero remediation execution dispatch and zero AWS resource writes. AWS service verification runs after the change; AWS Config evaluation may update later.`,
       allowedDecisions: ['approve', 'reject'],
     };
   } catch {
