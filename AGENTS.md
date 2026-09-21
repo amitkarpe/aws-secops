@@ -12,6 +12,7 @@ Repository: `amitkarpe/aws-secops`
 6. `PROMPT.md` for the aws-secops ChatGPT + GitHub + AWS MCP operating model
 7. `SPEC.md` before implementation, mutation, deployment, cleanup, or trusted-contract changes
 8. `ROADMAP.md` when selecting future scope
+9. `docs/operations/CHATGPT_GITHUB_OIDC_AWS_MCP.md` when GitHub App, GitHub Actions/OIDC, AWS MCP, deployment identity, or Actions billing/usage boundaries matter
 
 For warm continuation, use the named owning Issue/PR, latest relevant authorized delta, and current HEAD/state. Load the broader sequence above only for cold start/recovery or when context is stale, contradictory, incomplete, or otherwise unsafe to reuse.
 
