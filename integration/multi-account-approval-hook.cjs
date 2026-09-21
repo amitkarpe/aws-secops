@@ -86,7 +86,8 @@ module.exports = () => (context) => async (input) => {
       : '';
     return {
       decision: 'ask',
-      reason: `Allow Compliance Agent v1 to apply ${title} remediation? Selected accounts: ${includedText}. Change: ${action}.${unselectedText}${excludedText} Choose Approve or Reject, then Submit. Approve applies only this frozen scope; Reject makes zero remediation execution dispatch and zero AWS resource writes. AWS service verification runs after the change; AWS Config evaluation may update later.`
+      reason: `Allow Compliance Agent v1 to apply ${title} remediation? Selected accounts: ${includedText}. Change: ${action}.${unselectedText}${excludedText} Choose Approve or Reject, then Submit. Approve applies only this frozen scope; Reject makes zero remediation execution dispatch and zero AWS resource writes. AWS service verification runs after the change; AWS Config evaluation may update later.`,
+      allowedDecisions: ['approve', 'reject'],
     };
   } catch {
     return {decision: 'deny', reason: 'BLOCKED — exact four-account execution preview unavailable. No dispatch.'};

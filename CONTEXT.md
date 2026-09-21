@@ -2,7 +2,7 @@
 
 Repository: `amitkarpe/aws-secops`  
 Status: ACTIVE  
-Updated: 2026-09-20
+Updated: 2026-09-21
 
 > Current-only restart index. Read the latest owning Issue/PR comment for mutable rollout state; historical proof documents are not live truth.
 
@@ -56,13 +56,11 @@ Issue #138 makes this exact execution authority available through the same Compl
 
 ## Current Engineering Work
 
-Issue #138 adds governed remediation to v1.0.0 by reusing the accepted Issue #100 executor.\n\nCompleted hardening from Issue #133:
-
-1. reproducible fail-closed LibreChat ACL helper;
-2. real stdio MCP startup/list-tools regression;
-3. current README/STATUS/ROADMAP/CONTEXT refresh.
-
-A prepared release branch also exists, but GitHub Release publication has not yet completed.
+Issue #161 / Draft PR #160 is the active authority. It adds four authenticated
+LibreChat HTTP API gates for the real Compliance Agent v1 path and the smallest
+backend-only approval-description compatibility correction exposed by those
+gates. Automated acceptance submits Reject only and must prove zero remediation
+writes plus cleanup of ephemeral test auth/data.
 
 ## Session Power
 
@@ -75,4 +73,6 @@ Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md).
 
 ## Next
 
-Finish Issue #133 review/CI/live idempotency proof, merge it, then publish and verify `compliance-agent-v1.0.0` before closing Issue #125.
+Finish all four Issue #161 retained-LAB API gates, publish sanitized PASS/FAIL
+evidence on Issue #161, and leave `HANDOFF: CHATGPT` on Draft PR #160 for final
+review and browser visual acceptance. Do not merge.
