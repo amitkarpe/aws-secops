@@ -56,11 +56,11 @@ Issue #138 makes this exact execution authority available through the same Compl
 
 ## Current Engineering Work
 
-Issue #161 / Draft PR #160 is the active authority. It adds four authenticated
-LibreChat HTTP API gates for the real Compliance Agent v1 path and the smallest
-backend-only approval-description compatibility correction exposed by those
-gates. Automated acceptance submits Reject only and must prove zero remediation
-writes plus cleanup of ephemeral test auth/data.
+Issue #161 / Draft PR #160 is the active authority. Its four authenticated
+LibreChat HTTP API gates pass against the retained Compliance Agent v1 path.
+The backend-only approval-description compatibility correction is deployed;
+automated acceptance submitted Reject only, proved the finding remained, and
+cleaned up ephemeral test auth/data.
 
 ## Session Power
 
@@ -73,6 +73,5 @@ Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md).
 
 ## Next
 
-Finish all four Issue #161 retained-LAB API gates, publish sanitized PASS/FAIL
-evidence on Issue #161, and leave `HANDOFF: CHATGPT` on Draft PR #160 for final
-review and browser visual acceptance. Do not merge.
+Review the sanitized Issue #161 evidence and Draft PR #160 handoff, then perform
+the final browser visual acceptance. Do not merge until ChatGPT/Amit accepts it.
