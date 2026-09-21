@@ -9,6 +9,7 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import CallToolResult, TextContent
 from pydantic import ConfigDict
 
 from .agentic_evidence import build_decision_timeline, build_s3_investigation
@@ -304,7 +305,7 @@ server = FastMCP(
         "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
         "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS resource change and does not approve execution. "
-        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, include_accounts, exclude_resources) when exact one-time exclusions were requested, then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. A successful prepare is not a completed response: emit no assistant text and never ask the user to type Approve, Reject, go, or yes before invoking execute. The native Approve/Reject + Submit card is the only authorization UI. The selected account list is frozen during prepare and never supplied again at execute. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
+        "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, include_accounts, exclude_resources), then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. If include_accounts is omitted, the server deterministically derives the exact currently NON_COMPLIANT aliases for that control from fresh four-account status; it never defaults a generic fix to already-COMPLIANT aliases. Explicitly supplied aliases remain exact. A successful prepare is not a completed response: emit no assistant text and never ask the user to type Approve, Reject, go, or yes before invoking execute. The native Approve/Reject + Submit card is the only authorization UI. The selected account list is frozen during prepare and never supplied again at execute. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
         "Reject means no executor call. S3 and SG approvals remain separate. prepare_remediation(control) is legacy retained single-account behavior only."
     ),
 )
@@ -345,8 +346,10 @@ def prepare_multi_account_remediation(
     turn so LibreChat displays its native Approve/Reject + Submit card. Never ask
     the user to type Approve/Reject/go/yes between prepare and that native card.
 
-    Omit include_accounts for all four. Accounts not selected are outside scope,
-    not exceptions. S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
+    Omit include_accounts only when the caller did not name aliases; the server then
+    derives exactly the aliases currently NON_COMPLIANT for this control from fresh
+    four-account status. Explicit aliases remain exact. Accounts not selected are outside
+    scope, not exceptions. S3 exclusions must be exact bucket names. Restricted-SSH exclusions must be
     exact Security Group IDs or exact deterministic demo group names. Wildcards,
     ambiguous/unmatched resources and excluding every target fail closed.
     A reason is required for any exclusion; reference and YYYY-MM-DD expiry are
@@ -370,15 +373,21 @@ def prepare_multi_account_remediation(
             "The LibreChat native Approve/Reject + Submit card is the only mutation authorization UI."
         ),
     }
-    return tool_result(
-        result,
-        uri=f"ui://aws-secops/remediation-preview/{result['batch_id']}",
-        html=render_remediation_preview(result),
-        model_text=(
-            "Remediation scope is frozen and the native approval card must be shown next. "
-            "Do not emit the rich preview marker or any user-visible text. "
-            "Immediately invoke next_execution with the exact frozen arguments."
-        ),
+    next_execution = result["next_execution"]
+    return CallToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=(
+                    "TRANSITION_ONLY: remediation scope is frozen. Do not emit assistant text. "
+                    "Immediately invoke the executor exactly once with NEXT_EXECUTION_ARGS_JSON="
+                    + json.dumps(next_execution["arguments"], separators=(",", ":"), sort_keys=True)
+                    + ". Do not substitute any UI resource ID or other identifier for scope_hash. "
+                    "If the executor returns DENY or BLOCKED, stop immediately and do not retry."
+                ),
+            ),
+        ],
+        structuredContent=result,
     )
 
 

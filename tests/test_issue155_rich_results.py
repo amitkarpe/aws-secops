@@ -177,8 +177,13 @@ class Issue155RichResultTests(unittest.TestCase):
             result = operator_mcp.prepare_multi_account_remediation(S3, include_accounts=["lab-dev"])
         self.assertEqual(result.structuredContent["assistant_transition"]["mode"], "IMMEDIATE_NATIVE_ASK")
         resources = [x for x in result.content if getattr(x, "type", None) == "resource"]
-        self.assertEqual(len(resources), 1)
-        self.assertTrue(str(resources[0].resource.uri).startswith("ui://aws-secops/remediation-preview/"))
+        self.assertEqual(resources, [])
+        model_text = result.content[0].text
+        self.assertIn("NEXT_EXECUTION_ARGS_JSON=", model_text)
+        self.assertIn('"batch_id":"' + "a" * 20 + '"', model_text)
+        self.assertIn('"scope_hash":"' + "b" * 24 + '"', model_text)
+        self.assertIn("Do not substitute any UI resource ID", model_text)
+        self.assertIn("If the executor returns DENY or BLOCKED, stop immediately and do not retry.", model_text)
 
 
 if __name__ == "__main__":

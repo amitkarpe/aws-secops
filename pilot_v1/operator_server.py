@@ -274,20 +274,30 @@ class OperatorService(BulkService):
     ) -> dict:
         if control not in {S3_CONTROL, SG_CONTROL}:
             raise ValueError("one exact supported control required")
-        selected_accounts = self._normalize_selected_accounts(include_accounts)
-        unselected_accounts = [alias for alias in ["lab-dev", "lab-poc", "lab-qa", "lab-sec"] if alias not in selected_accounts]
+        current = self.multi_account_status()
+        rows = current.get("accounts", [])
+        by_alias = {row.get("alias"): row for row in rows if isinstance(row, dict)}
+        allowed_accounts = ["lab-dev", "lab-poc", "lab-qa", "lab-sec"]
+        states = {
+            alias: by_alias.get(alias, {}).get("controls", {}).get(control)
+            for alias in allowed_accounts
+        }
+        if any(state not in {"COMPLIANT", "NON_COMPLIANT"} for state in states.values()):
+            raise ValueError("complete current four-account compliance state required before preparation")
+        if include_accounts is None:
+            selected_accounts = [
+                alias for alias in allowed_accounts if states[alias] == "NON_COMPLIANT"
+            ]
+            if not selected_accounts:
+                raise ValueError("no current NON_COMPLIANT accounts for requested control")
+        else:
+            selected_accounts = self._normalize_selected_accounts(include_accounts)
+        unselected_accounts = [alias for alias in allowed_accounts if alias not in selected_accounts]
         exclusions = self._normalize_exclusions(exclude_resources)
         exception = self._normalize_exception_metadata(
             exclusions, exception_reason, exception_reference, exception_expires_at
         )
-        current = self.multi_account_status()
-        rows = current.get("accounts", [])
-        by_alias = {row.get("alias"): row for row in rows if isinstance(row, dict)}
-        if any(
-            alias not in by_alias
-            or by_alias[alias].get("controls", {}).get(control) != "NON_COMPLIANT"
-            for alias in selected_accounts
-        ):
+        if any(states[alias] != "NON_COMPLIANT" for alias in selected_accounts):
             raise ValueError("selected account scope must currently be NON_COMPLIANT")
         result = run_four_account_build(
             "plan", control, exclusions=exclusions, include_accounts=selected_accounts

@@ -6,7 +6,7 @@
  * Safety:
  * - updates exactly one existing agent named Compliance Agent v1;
  * - preserves _id, public agent id, author and ACL records;
- * - accepts only the three reviewed v1 tools;
+ * - accepts only the four reviewed v1 tools;
  * - does not create users/agents or widen ACLs.
  */
 const fs = require('node:fs');
@@ -31,13 +31,18 @@ if (typeof spec?.instructions !== 'string' || !spec.instructions.includes('nativ
 if (!Array.isArray(spec?.conversation_starters) || spec.conversation_starters.length < 1 || spec.conversation_starters.length > 4) throw Error('1-4 conversation starters required');
 if (spec.conversation_starters.some((x) => typeof x !== 'string' || x.length < 1 || x.length > 80)) throw Error('invalid conversation starter');
 
+const fixEvidenceMarker = 'If the user explicitly names one or more LAB aliases';
+const fixEvidenceInstruction = 'For the short commands Fix S3 and Fix SSH, pass that exact short command to ask_compliance_agent_v1; never replace it with Status. Its evidence and UI instructions are intermediate during explicit fix intent: do not stop at its read-only Next line, and continue immediately to preparation when the requested control has a current NON_COMPLIANT scope. ';
+if (!spec.instructions.includes(fixEvidenceMarker)) throw Error('explicit fix evidence marker missing');
+const instructions = spec.instructions.replace(fixEvidenceMarker, fixEvidenceInstruction + fixEvidenceMarker);
+
 const update = {
   name: spec.name,
   description: spec.description,
   provider: spec.provider,
   model: spec.model,
   model_parameters: spec.model_parameters,
-  instructions: spec.instructions,
+  instructions,
   tools: spec.tools,
   conversation_starters: spec.conversation_starters,
 };

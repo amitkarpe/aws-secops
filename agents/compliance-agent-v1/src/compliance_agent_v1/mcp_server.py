@@ -13,9 +13,10 @@ from .ui_cards import ALIASES, S3, SSH, render_fleet_card
 mcp = FastMCP(
     "Compliance Agent v1",
     instructions=(
-        "Read-only frontend bridge to the dedicated AgentCore Harness-backed Compliance Agent v1. "
+        "Read-only evidence bridge used by the outer Compliance Agent v1. "
         "Use ask_compliance_agent_v1 for current four-account S3 Block Public Access or restricted SSH status, explanation, and no-change planning. "
-        "No remediation or generic AWS tool is exposed."
+        "This MCP itself exposes no remediation tool; the outer LibreChat agent may offer remediation only through its separate governed native-approval planner/executor path. "
+        "Do not imply that the overall Compliance Agent cannot remediate when that governed path is available."
     ),
 )
 

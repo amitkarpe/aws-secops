@@ -72,6 +72,49 @@ class Issue147SelectiveAsyncTests(unittest.TestCase):
         self.assertEqual(saved["unselected_accounts"], ["lab-qa", "lab-sec"])
         self.assertEqual(run.call_args.kwargs["include_accounts"], ["lab-dev", "lab-poc"])
 
+    def test_prepare_without_aliases_derives_current_noncompliant_scope(self):
+        service = object.__new__(OperatorService)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        service.execution_state = Path(tmp.name) / "execution.json"
+        service.multi_account_status = lambda: {
+            "accounts": [
+                {"alias": "lab-dev", "controls": {SG_CONTROL: "NON_COMPLIANT"}},
+                {"alias": "lab-poc", "controls": {SG_CONTROL: "NON_COMPLIANT"}},
+                {"alias": "lab-qa", "controls": {SG_CONTROL: "COMPLIANT"}},
+                {"alias": "lab-sec", "controls": {SG_CONTROL: "COMPLIANT"}},
+            ]
+        }
+        fake_plan = {
+            "decision": "PLAN",
+            "batch_id": "c" * 20,
+            "pending_aliases": ["lab-dev", "lab-poc"],
+            "excluded_aliases": [],
+            "excluded_count": 0,
+        }
+        with patch("pilot_v1.operator_server.run_four_account_build", return_value=fake_plan) as run:
+            value = service.prepare_multi_account_execution(SG_CONTROL)
+
+        self.assertEqual(value["selected_accounts"], ["lab-dev", "lab-poc"])
+        self.assertEqual(value["unselected_accounts"], ["lab-qa", "lab-sec"])
+        self.assertEqual(run.call_args.kwargs["include_accounts"], ["lab-dev", "lab-poc"])
+
+    def test_prepare_without_aliases_stops_when_no_current_findings(self):
+        service = object.__new__(OperatorService)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        service.execution_state = Path(tmp.name) / "execution.json"
+        service.multi_account_status = lambda: {
+            "accounts": [
+                {"alias": alias, "controls": {SG_CONTROL: "COMPLIANT"}}
+                for alias in ("lab-dev", "lab-poc", "lab-qa", "lab-sec")
+            ]
+        }
+        with patch("pilot_v1.operator_server.run_four_account_build") as run:
+            with self.assertRaisesRegex(ValueError, "no current NON_COMPLIANT accounts"):
+                service.prepare_multi_account_execution(SG_CONTROL)
+        run.assert_not_called()
+
     def test_execute_returns_verification_pending_without_readback_requirement(self):
         service = object.__new__(OperatorService)
         tmp = tempfile.TemporaryDirectory()
