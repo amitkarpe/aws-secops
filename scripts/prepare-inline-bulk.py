@@ -147,7 +147,7 @@ commands += [
     "tar -xzf /opt/aws-secops/.runtime/inline-bulk.tgz -C /opt/aws-secops-bulk",
     "test -x /opt/aws-secops-bulk/.venv/bin/python || python3 -m venv /opt/aws-secops-bulk/.venv",
     "/opt/aws-secops-bulk/.venv/bin/pip install --disable-pip-version-check -r /opt/aws-secops-bulk/requirements-bulk.txt",
-    "chmod -R a+rX /opt/aws-secops-bulk/pilot_v1 /opt/aws-secops-bulk/agents/compliance-agent-v1/src /opt/aws-secops-bulk/integration /opt/aws-secops-bulk/scripts /opt/aws-secops-bulk/.venv",
+    "chmod -R a+rX /opt/aws-secops-bulk/pilot_v1 /opt/aws-secops-bulk/agents /opt/aws-secops-bulk/integration /opt/aws-secops-bulk/scripts /opt/aws-secops-bulk/.venv",
 ]
 if not a.update_code_only:
     commands += stage("/var/lib/aws-secops-bulk/manifest.json", a.manifest.read_bytes())
