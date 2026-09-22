@@ -10,19 +10,22 @@
 - Rich native MCP cards with responsive width/height behavior.
 - Authenticated LibreChat API E2E for S3 and SSH Reject-only paths.
 - Manual browser Approve/Submit path exercised.
+- Single next-action rendering in the native rich card.
 
 ## Active — Issue #170
 
 ### M0 — close Compliance Agent v1
 
+Execution owner for the final closure sprint: **Issue #173**.
+
 Finish only:
 
-1. remove duplicate next-action rendering;
-2. keep S3 + SSH authenticated Reject-only E2E green;
+1. prove the explicit one-time-exception **Reject** path from Issue #141;
+2. preserve S3 + SSH authenticated Reject-only E2E;
 3. preserve zero automated Approve and native approval boundary;
-4. refresh reproducible v1 release evidence against current main;
-5. publish/record one current v1 release baseline;
-6. close stale completed v1 Issues/PRs.
+4. validate the exact current release candidate;
+5. publish/record one fresh `compliance-agent-v1.0.0` release;
+6. close stale/completed v1 release work.
 
 M0 blocks all larger roadmap implementation.
 
@@ -67,7 +70,7 @@ Run only after 1K is green and a real need exists.
 
 ## Order
 
-`M0 v1 closure -> M1 catalog adapter -> M2 1K query/export -> M3 bulk Ops -> M4 governed expansion -> optional M5 2K`
+`M0 via #173 -> M1 catalog adapter -> M2 1K query/export -> M3 bulk Ops -> M4 governed expansion -> optional M5 2K`
 
 ## Boundaries
 
