@@ -2,7 +2,7 @@
 
 Repository: `amitkarpe/aws-secops`  
 Status: ACTIVE  
-Updated: 2026-09-21
+Updated: 2026-09-22
 
 > Current-only restart index. Read the latest owning Issue/PR comment for mutable rollout state; historical proof documents are not live truth.
 
@@ -10,61 +10,40 @@ Updated: 2026-09-21
 
 - Personal-LAB standing authority remains active.
 - Keep the retained host running during active demo work unless Amit explicitly requests shutdown.
-- Config Dashboard is the single active hosted dashboard.
 - Exactly four registered LAB aliases and exactly two supported controls remain the current v1 scope.
 - No company/PROD scope and no generic model-accessible AWS mutation.
 
 ## Current Product
 
-### Compliance Agent v1
+Compliance Agent v1 is the stable four-account/two-control baseline:
 
-```text
-LibreChat
-  -> ask_compliance_agent_v1
-  -> loopback unified Config backend (:1111)
-  -> exact 4-account × 2-control evidence
-  -> dedicated AgentCore Harness compliance_agent_v1
-  -> Nova 2 Lite, no Harness tools
-  -> grounded answer
+`Status -> explain/prepare -> native Approve/Reject -> bounded execute -> AWS service readback -> Config evaluation`
 
-Explicit fix
-  -> prepare_multi_account_remediation
-  -> native Approve / Reject
-  -> execute_multi_account_remediation
-  -> fixed CodeBuild/G/O path
-  -> provider readback + Config convergence
-```
-
-Verified 2026-09-20:
-
-- Config evidence: PASS 4 aliases × 2 controls = 8 checks;
-- Harness golden prompts: PASS 5/5;
-- installed read MCP: PASS; v1 remediation wiring is Issue #138;
-- LibreChat agent visible/selectable for Amit: PASS;
-- authenticated LibreChat status prompt: PASS;
-- final direct MCP invocation: PASS, `mutation=false`.
-
-Issue #125 remains open only for release closure.
-
-### Governed remediation
-
-The separate Issue #100 path remains the bounded mutation boundary:
-
-`explicit fix -> frozen exact batch -> native decision -> fixed CodeBuild/G/O path -> exact target sessions -> provider readback -> Config convergence`
-
-Issue #138 makes this exact execution authority available through the same Compliance Agent v1 shell; the Harness itself remains tool-free.
+Accepted current evidence:
+- S3 authenticated Reject-only API E2E: 4/4 PASS;
+- SSH authenticated Reject-only API E2E: 4/4 PASS;
+- manual browser Approve/Submit path exercised;
+- rich-card width regression fixed and visually accepted;
+- PR #169 and PR #163 merged;
+- stale PRs #105, #137 and #171 closed.
 
 ## Current Engineering Work
 
-Issue #161 / Draft PR #160 is the active authority. Its four authenticated
-LibreChat HTTP API gates pass against the retained Compliance Agent v1 path.
-The backend-only approval-description compatibility correction is deployed;
-automated acceptance submitted Reject only, proved the finding remained, and
-cleaned up ephemeral test auth/data.
+Issue #170 owns the roadmap.
+
+Current gate is **M0 — close Compliance Agent v1**.
+
+Remaining closure work:
+1. remove duplicate next-action text outside the rich card;
+2. refresh reproducible v1 release evidence against current main;
+3. publish/record one current v1 release baseline;
+4. close stale completed v1 Issues after evidence is durable.
+
+Do not start #170 M1+ implementation until M0 is complete.
 
 ## Session Power
 
-Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md).
+Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 - repository-only edits do not require a host start;
 - runtime validation may use the same verified retained host;
@@ -73,5 +52,4 @@ Follow [Personal LAB session power](docs/operations/LAB_SESSION_POWER.md).
 
 ## Next
 
-Review the sanitized Issue #161 evidence and Draft PR #160 handoff, then perform
-the final browser visual acceptance. Do not merge until ChatGPT/Amit accepts it.
+Finish Issue #170 M0 autonomously. After M0 is closed, leave #170 as the single active future roadmap and stop before M1 implementation.
