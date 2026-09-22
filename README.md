@@ -133,6 +133,8 @@ Key milestones:
 - Issue #120 — four-account demo re-arm + legacy Operator retirement
 - Issues #123/#125 — clean Compliance Agent v1 + AgentCore Harness acceptance
 - Issue #130 — next read-only AWS MCP evidence-source experiment
+- Issue #186 — synthetic deterministic exception/audit substrate for the
+  post-v1 roadmap; it is not a new live control or execution path
 
 ## Important boundaries
 
