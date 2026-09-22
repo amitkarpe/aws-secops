@@ -38,30 +38,29 @@ APPROVAL_TTL_SECONDS = 1800
 
 
 def _load_live_s3_ssl_adapter(agent_src: Path):
-    import importlib
+    import importlib.util
     import sys
-    import types
 
-    package_name = "compliance_agent_v1"
-    package_path = str(agent_src / package_name)
-    package = sys.modules.get(package_name)
-    if package is None:
-        package = types.ModuleType(package_name)
-        package.__package__ = package_name
-        package.__path__ = [package_path]
-        sys.modules[package_name] = package
-    elif not hasattr(package, "__path__"):
-        raise RuntimeError("compliance_agent_v1 is not a package")
-    else:
-        package.__path__ = [package_path, *(path for path in package.__path__ if path != package_path)]
-
-    module_name = f"{package_name}.live_s3_ssl"
+    module_name = "_aws_secops_issue191_live_s3_ssl"
+    expected_file = agent_src / "compliance_agent_v1" / "live_s3_ssl.py"
+    if not expected_file.is_file():
+        raise ModuleNotFoundError("fixed live adapter source is unavailable", name="issue191_adapter_source")
     module = sys.modules.get(module_name)
-    expected_file = agent_src / package_name / "live_s3_ssl.py"
     if module is not None and Path(getattr(module, "__file__", "")).resolve() != expected_file.resolve():
         del sys.modules[module_name]
-    importlib.invalidate_caches()
-    return importlib.import_module(module_name)
+        module = None
+    if module is None:
+        spec = importlib.util.spec_from_file_location(module_name, expected_file)
+        if spec is None or spec.loader is None:
+            raise ImportError("fixed live adapter loader is unavailable")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        try:
+            spec.loader.exec_module(module)
+        except Exception:
+            sys.modules.pop(module_name, None)
+            raise
+    return module
 
 
 LATEST_ACCEPTANCE = {
