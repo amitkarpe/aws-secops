@@ -39,18 +39,18 @@ APPROVAL_TTL_SECONDS = 1800
 
 def _load_live_s3_ssl_adapter(agent_src: Path):
     import importlib.util
+    import os
     import sys
 
     module_name = "_aws_secops_issue191_live_s3_ssl"
     expected_file = agent_src / "compliance_agent_v1" / "live_s3_ssl.py"
-    if not expected_file.is_file():
-        raise ModuleNotFoundError("fixed live adapter source is unavailable", name="issue191_adapter_source")
+    expected_path = os.path.abspath(str(expected_file))
     module = sys.modules.get(module_name)
-    if module is not None and Path(getattr(module, "__file__", "")).resolve() != expected_file.resolve():
+    if module is not None and os.path.abspath(getattr(module, "__file__", "")) != expected_path:
         del sys.modules[module_name]
         module = None
     if module is None:
-        spec = importlib.util.spec_from_file_location(module_name, expected_file)
+        spec = importlib.util.spec_from_file_location(module_name, expected_path)
         if spec is None or spec.loader is None:
             raise ImportError("fixed live adapter loader is unavailable")
         module = importlib.util.module_from_spec(spec)
@@ -137,7 +137,7 @@ class OperatorService(BulkService):
 
     def _collect_s3_ssl(self) -> dict:
         """Read only the exact four personal-LAB aliases and emit no raw identifiers."""
-        agent_src = Path(__file__).resolve().parents[1] / "agents" / "compliance-agent-v1" / "src"
+        agent_src = Path(__file__).absolute().parents[1] / "agents" / "compliance-agent-v1" / "src"
         adapter = _load_live_s3_ssl_adapter(agent_src)
         ALIASES = adapter.ALIASES
         AccountBinding = adapter.AccountBinding
