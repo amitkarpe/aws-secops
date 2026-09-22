@@ -1,11 +1,12 @@
 from pathlib import Path
+import sys
 import tempfile
 import time
 import unittest
 from unittest.mock import patch
 
 from pilot_v1.native_decision_receipt import ReceiptError
-from pilot_v1.operator_server import OperatorHandler, OperatorService
+from pilot_v1.operator_server import OperatorHandler, OperatorService, _prioritize_import_path
 from compliance_agent_v1.live_s3_ssl import _BotoS3ReadClient, MAX_BUCKETS_PER_ACCOUNT
 
 
@@ -23,6 +24,15 @@ def evidence(*, changed=False):
 
 
 class Issue191NativeIntegrationTests(unittest.TestCase):
+    def test_live_adapter_path_is_first_and_import_caches_are_invalidated(self):
+        entry = "/test/agent-src"
+        with patch.object(sys, "path", ["other", entry, "fallback", entry]) as paths:
+            with patch("importlib.invalidate_caches") as invalidate:
+                _prioritize_import_path(Path(entry))
+        self.assertEqual(paths[0], entry)
+        self.assertEqual(paths.count(entry), 1)
+        invalidate.assert_called_once_with()
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -163,10 +173,14 @@ class Issue191NativeIntegrationTests(unittest.TestCase):
             logger = get_logger.return_value
             OperatorHandler.do_GET(handler)
         self.assertEqual(handler.response, (503, {"error": "live s3_ssl read unavailable"}))
-        logger.warning.assert_called_once_with(
+        logger.warning.assert_called_once()
+        self.assertEqual(logger.warning.call_args.args[:3], (
             "s3_ssl live read unavailable (%s, module=%s, origin=%s)",
             "ModuleNotFoundError", "compliance_agent_v1",
-            "test_issue191_native_integration.py:147:s3_ssl_live_status",
+        ))
+        self.assertRegex(
+            logger.warning.call_args.args[3],
+            r"test_issue191_native_integration\.py:\d+:s3_ssl_live_status",
         )
         self.assertNotIn(private_message, str(handler.response))
 

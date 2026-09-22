@@ -36,6 +36,17 @@ S3_SSL_CONTROL = "s3_ssl"
 S3_SSL_TOOL = "decide_s3_ssl_reject_only_mcp_aws_compliance_planner"
 APPROVAL_TTL_SECONDS = 1800
 
+
+def _prioritize_import_path(path: Path) -> None:
+    import importlib
+    import sys
+
+    entry = str(path)
+    sys.path[:] = [current for current in sys.path if current != entry]
+    sys.path.insert(0, entry)
+    importlib.invalidate_caches()
+
+
 LATEST_ACCEPTANCE = {
     "date": "2026-09-18",
     "scope": "four-account GitHub OIDC acceptance proof",
@@ -110,10 +121,8 @@ class OperatorService(BulkService):
 
     def _collect_s3_ssl(self) -> dict:
         """Read only the exact four personal-LAB aliases and emit no raw identifiers."""
-        import sys
         agent_src = Path(__file__).resolve().parents[1] / "agents" / "compliance-agent-v1" / "src"
-        if str(agent_src) not in sys.path:
-            sys.path.insert(0, str(agent_src))
+        _prioritize_import_path(agent_src)
         from compliance_agent_v1.live_s3_ssl import ALIASES, AccountBinding, REGION, collect_with_boto3
         from pilot_v1.org_config_overview import parse_targets
         import boto3
