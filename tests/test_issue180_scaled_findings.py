@@ -51,6 +51,17 @@ class ScaledFindingTests(unittest.TestCase):
         self.assertEqual(summary["exception_status_counts"]["ONE_TIME_TEST_EXCEPTION"], 200)
         self.assertNotIn("items", summary)
 
+    def test_backend_evidence_receipt_and_candidate_reresolution_are_public_safe(self):
+        receipt = self.store.evidence_receipt()
+        resolved = self.store.resolve_candidate(
+            "lab-001", "restricted_ssh", "sg-lab-001-ssh-01"
+        )
+        self.assertEqual(receipt["version"], 1)
+        self.assertEqual(len(receipt["evidence_digest"]), 64)
+        self.assertNotIn("items", receipt)
+        self.assertEqual(resolved["finding_id"], "f-lab-001-restricted_ssh-01")
+        self.assertIsNone(self.store.resolve_candidate("lab-001", "restricted_ssh", "unknown"))
+
     def test_query_filters_search_sort_and_pages_server_side(self):
         query = FindingQuery(
             control_key="s3_backup", account_alias="lab-010",

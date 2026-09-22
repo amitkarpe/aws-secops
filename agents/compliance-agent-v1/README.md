@@ -124,6 +124,24 @@ This path does not call AWS and cannot prepare or execute remediation. It does
 not widen the four-account/two-control live v1 remediation boundary or the
 sanitized capability ceilings.
 
+## Synthetic CSV candidate pilot
+
+Issue #182 adds the local-first M3A pilot for one generic `restricted_ssh`
+control. A CSV can nominate only `account_alias`, `control_key`, and
+`resource_id`; the server re-resolves each candidate against current synthetic
+truth before it can freeze an exact batch. Duplicates, unknown rows, stale
+evidence, unsupported controls, and one-time exceptions are classified rather
+than trusted.
+
+The frozen batch binds the exact eligible findings, exclusions, selected
+aliases, candidate digest, current evidence digest, scope hash, and a unique
+preparation identity. Its `decide` method is an adapter for the existing native
+Approve/Reject boundary: Reject dispatches nothing, while the M3A test-only
+no-op executor receives only exact eligible rows after Approve. It has no AWS
+client and is not registered as a model execution tool. Per-row result CSV is
+backend generated; model-facing output remains a compact summary, bounded
+rejected sample, and export receipt.
+
 ### Runtime dependencies
 
 - Python 3.12 (deployed release runtime; CI also retains broader repository coverage)
