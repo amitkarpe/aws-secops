@@ -11,6 +11,7 @@ import hashlib
 import hmac
 from http.server import HTTPServer
 import json
+import logging
 import os
 import re
 import time
@@ -1044,7 +1045,10 @@ class OperatorHandler(BulkHandler):
                 self._json(403, {"error": "unexpected local Host"}); return
             try:
                 self._json(200, self.service.s3_ssl_live_status())
-            except Exception:
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "s3_ssl live read unavailable (%s)", type(exc).__name__
+                )
                 self._json(503, {"error": "live s3_ssl read unavailable"})
             return
         if parsed.path == "/api/operator/plan":
