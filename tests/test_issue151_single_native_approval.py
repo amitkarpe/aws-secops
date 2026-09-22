@@ -56,7 +56,8 @@ class Issue151SingleNativeApprovalTests(unittest.TestCase):
         agent_spec = json.loads((ROOT / "integration" / "compliance-agent-v1.json").read_text())
         agent_instructions = agent_spec["instructions"]
         self.assertIn("EXPLICIT FIX (HIGHEST PRECEDENCE)", agent_instructions)
-        self.assertIn("never omit include_accounts for a generic Fix S3/Fix SSH request", agent_instructions)
+        self.assertIn("Call prepare_multi_account_remediation directly", agent_instructions)
+        self.assertIn("OMIT include_accounts", agent_instructions)
         self.assertIn("A bare 'go' or 'yes' may continue only", agent_instructions)
         self.assertIn("Never use typed 'approve', 'reject', 'yes', or 'go' to start, continue, or authorize remediation.", agent_instructions)
         self.assertIn("OVERRIDES ALL GENERAL NEXT/CONFIRMATION RULES", agent_instructions)
