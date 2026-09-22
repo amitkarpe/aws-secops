@@ -64,7 +64,7 @@ The core security principle remains:
 | S3/SSH Approve | **PASS** — exact provider-verified changes |
 | Config convergence | **PASS** — independent asynchronous evidence |
 
-Latest clean v1 live acceptance: **2026-09-20**.
+Latest clean v1 release acceptance: **2026-09-22**.
 
 ## Two agent paths
 
@@ -107,12 +107,13 @@ This is not a generic AWS administration path; it is the only remediation path i
 
 ## Release state
 
-The clean v1 baseline is verified and ready for tag/release:
+Compliance Agent v1.0.0 is published from the exact validated release commit:
 
-- planned tag: `compliance-agent-v1.0.0`
+- release: [Compliance Agent v1.0.0](https://github.com/amitkarpe/aws-secops/releases/tag/compliance-agent-v1.0.0)
+- tag: `compliance-agent-v1.0.0`
+- release commit: `5d4121eb7e3621d04ae2e05c3b66fdd89879b7e0`
 - in-repo release history: [agents/compliance-agent-v1/RELEASE_NOTES.md](agents/compliance-agent-v1/RELEASE_NOTES.md)
 - canonical user-facing history: GitHub Releases
-- GitHub Release publication is still pending while Issue #125 remains open.
 
 ## Current evidence
 

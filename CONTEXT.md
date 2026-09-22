@@ -20,25 +20,23 @@ Compliance Agent v1 is the stable four-account/two-control baseline:
 `Status -> explain/prepare -> native Approve/Reject -> bounded execute -> AWS service readback -> Config evaluation`
 
 Accepted current evidence:
+- immutable GitHub Release `compliance-agent-v1.0.0` published at commit `5d4121eb7e3621d04ae2e05c3b66fdd89879b7e0`;
 - S3 authenticated Reject-only API E2E: 4/4 PASS;
 - SSH authenticated Reject-only API E2E: 4/4 PASS;
+- exact-exclusion authenticated Reject-only API E2E: 4/4 PASS, zero remediation-execution dispatches and zero AWS writes;
 - manual browser Approve/Submit path exercised;
 - rich-card width regression fixed and visually accepted;
 - duplicate assistant next-action removed; native rich card owns the single next action;
-- PRs #169, #163 and #172 merged;
+- PRs #169, #163, #172 and #174 merged;
 - stale PRs #105, #137 and #171 closed.
 
 ## Current Engineering Work
 
-Issue #173 is the active **Codex reset sprint** for Issue #170 M0 release closure.
+Compliance Agent v1 release closure is complete. Issues #141 and #125 are
+closed, and Issue #173 has no remaining implementation scope.
 
-Sprint milestones:
-1. close Issue #141 explicit exception-batch Reject evidence;
-2. freeze the current validated v1 release candidate;
-3. publish a fresh `compliance-agent-v1.0.0` release from current truth;
-4. close v1 release work and leave Issue #170 as the only future roadmap.
-
-Do not start Issue #170 M1+ implementation in this sprint.
+Issue #170 is the single future roadmap. M1 is not started; do not begin it
+without a new bounded implementation Issue/PR and current authorization.
 
 ## Session Power
 
@@ -53,8 +51,8 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Continue Issue #173 / its active PR end-to-end. Codex should not wait for Amit between routine steps.
+Wait at Issue #170 M1. Do not start catalog, 1K, bulk, or new-control work automatically.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md, Issue #173 and the active PR. Own the Codex reset sprint until acceptance or a real stop gate.`
+`Read AGENTS.md, CONTEXT.md and Issue #170. Compliance Agent v1.0.0 is released; do not start M1 without a bounded implementation Issue/PR.`

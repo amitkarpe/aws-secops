@@ -14,24 +14,15 @@
 
 ## Active — Issue #170
 
-### M0 — close Compliance Agent v1
+### M0 — Compliance Agent v1 complete
 
-Execution owner for the final closure sprint: **Issue #173**.
+- Release: [`compliance-agent-v1.0.0`](https://github.com/amitkarpe/aws-secops/releases/tag/compliance-agent-v1.0.0)
+- Exact release commit: `5d4121eb7e3621d04ae2e05c3b66fdd89879b7e0`
+- S3, SSH, and exact-exclusion authenticated Reject-only gates: PASS.
+- Automated Approve decisions: zero.
+- Issues #141 and #125: closed.
 
-Finish only:
-
-1. prove the explicit one-time-exception **Reject** path from Issue #141;
-2. preserve S3 + SSH authenticated Reject-only E2E;
-3. preserve zero automated Approve and native approval boundary;
-4. validate the exact current release candidate;
-5. publish/record one fresh `compliance-agent-v1.0.0` release;
-6. close stale/completed v1 release work.
-
-M0 blocks all larger roadmap implementation.
-
-### M1 — sanitized private capability adapter
-
-After M0 only:
+### M1 — sanitized private capability adapter — NOT STARTED
 
 - consume generic control/resource capability metadata from the private catalog;
 - support explicit DETECT / EXPLAIN / PREPARE / REMEDIATE / VERIFY states;
@@ -70,7 +61,7 @@ Run only after 1K is green and a real need exists.
 
 ## Order
 
-`M0 via #173 -> M1 catalog adapter -> M2 1K query/export -> M3 bulk Ops -> M4 governed expansion -> optional M5 2K`
+`M0 complete -> M1 catalog adapter -> M2 1K query/export -> M3 bulk Ops -> M4 governed expansion -> optional M5 2K`
 
 ## Boundaries
 
