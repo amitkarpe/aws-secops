@@ -37,14 +37,31 @@ S3_SSL_TOOL = "decide_s3_ssl_reject_only_mcp_aws_compliance_planner"
 APPROVAL_TTL_SECONDS = 1800
 
 
-def _prioritize_import_path(path: Path) -> None:
+def _load_live_s3_ssl_adapter(agent_src: Path):
     import importlib
     import sys
+    import types
 
-    entry = str(path)
-    sys.path[:] = [current for current in sys.path if current != entry]
-    sys.path.insert(0, entry)
+    package_name = "compliance_agent_v1"
+    package_path = str(agent_src / package_name)
+    package = sys.modules.get(package_name)
+    if package is None:
+        package = types.ModuleType(package_name)
+        package.__package__ = package_name
+        package.__path__ = [package_path]
+        sys.modules[package_name] = package
+    elif not hasattr(package, "__path__"):
+        raise RuntimeError("compliance_agent_v1 is not a package")
+    else:
+        package.__path__ = [package_path, *(path for path in package.__path__ if path != package_path)]
+
+    module_name = f"{package_name}.live_s3_ssl"
+    module = sys.modules.get(module_name)
+    expected_file = agent_src / package_name / "live_s3_ssl.py"
+    if module is not None and Path(getattr(module, "__file__", "")).resolve() != expected_file.resolve():
+        del sys.modules[module_name]
     importlib.invalidate_caches()
+    return importlib.import_module(module_name)
 
 
 LATEST_ACCEPTANCE = {
@@ -122,8 +139,11 @@ class OperatorService(BulkService):
     def _collect_s3_ssl(self) -> dict:
         """Read only the exact four personal-LAB aliases and emit no raw identifiers."""
         agent_src = Path(__file__).resolve().parents[1] / "agents" / "compliance-agent-v1" / "src"
-        _prioritize_import_path(agent_src)
-        from compliance_agent_v1.live_s3_ssl import ALIASES, AccountBinding, REGION, collect_with_boto3
+        adapter = _load_live_s3_ssl_adapter(agent_src)
+        ALIASES = adapter.ALIASES
+        AccountBinding = adapter.AccountBinding
+        REGION = adapter.REGION
+        collect_with_boto3 = adapter.collect_with_boto3
         from pilot_v1.org_config_overview import parse_targets
         import boto3
 
