@@ -365,6 +365,19 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn('"mode": "IMMEDIATE_NATIVE_ASK"', operator_mcp)
         self.assertIn("Do not emit assistant text", operator_mcp)
 
+    def test_v1_release_publisher_is_manual_main_only_and_immutable(self):
+        workflow = (ROOT / ".github" / "workflows" / "publish-compliance-v1-release.yml").read_text()
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertNotIn("pull_request:", workflow)
+        self.assertNotIn("push:", workflow)
+        self.assertIn("github.ref == 'refs/heads/main'", workflow)
+        self.assertIn("contents: write", workflow)
+        self.assertIn("compliance-agent-v1.0.0", workflow)
+        self.assertIn('--target "$GITHUB_SHA"', workflow)
+        self.assertIn("release tag already exists", workflow)
+        self.assertIn("release already exists", workflow)
+        self.assertIn('test "$tag_sha" = "$GITHUB_SHA"', workflow)
+
     def test_agent_updater_preserves_identity_and_exact_tools(self):
         updater = (ROOT / "integration" / "update-compliance-v1-agent.cjs").read_text()
         self.assertIn("expected exactly one existing Compliance Agent v1", updater)
