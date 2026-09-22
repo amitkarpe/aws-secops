@@ -8,7 +8,7 @@ from mcp.types import CallToolResult, EmbeddedResource, TextContent, TextResourc
 from pydantic import ConfigDict
 
 from .agent import answer
-from .ui_cards import ALIASES, S3, SSH, render_fleet_card
+from .ui_cards import ALIASES, S3, SSH, render_capability_card, render_fleet_card
 
 mcp = FastMCP(
     "Compliance Agent v1",
@@ -21,9 +21,22 @@ mcp = FastMCP(
 )
 
 
+def _is_capability_request(request: str) -> bool:
+    lower = request.strip().lower()
+    return "capabilit" in lower or any(
+        key in lower
+        for key in (
+            "s3_ssl", "s3 ssl", "s3_logging", "s3 logging",
+            "s3_backup", "s3 backup", "restricted_ssh",
+        )
+    )
+
+
 def _rich_status_model_text(request: str, value: dict) -> str | None:
     """Keep the model from duplicating the rich status card as Markdown."""
     lower = request.strip().lower()
+    if _is_capability_request(request):
+        return None
     is_status = "status" in lower and not any(
         token in lower for token in ("explain", "why", "plan", "identifier", "recommend")
     )
@@ -58,6 +71,7 @@ def ask_compliance_agent_v1(request: str) -> CallToolResult:
     """Answer one AWS compliance request using live four-account Config evidence and AgentCore Harness reasoning."""
     value = answer(request)
     lower = request.lower()
+    capability_request = _is_capability_request(request)
     rich_model_text = _rich_status_model_text(request, value)
     content = [
         TextContent(
@@ -65,7 +79,18 @@ def ask_compliance_agent_v1(request: str) -> CallToolResult:
             text=rich_model_text or json.dumps(value, separators=(",", ":"), sort_keys=True),
         ),
     ]
-    if not any(token in lower for token in ("fix ", "apply ", "execute ", "remediate ")):
+    if capability_request:
+        content.append(
+            EmbeddedResource(
+                type="resource",
+                resource=TextResourceContents(
+                    uri="ui://compliance-agent-v1/capabilities",
+                    mimeType="text/html",
+                    text=render_capability_card(value["capabilities"]),
+                ),
+            )
+        )
+    elif not any(token in lower for token in ("fix ", "apply ", "execute ", "remediate ")):
         content.append(
             EmbeddedResource(
                 type="resource",
