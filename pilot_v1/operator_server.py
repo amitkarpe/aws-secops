@@ -38,9 +38,9 @@ APPROVAL_TTL_SECONDS = 1800
 
 
 def _load_live_s3_ssl_adapter(agent_src: Path):
-    import importlib.util
     import os
     import sys
+    import types
 
     module_name = "_aws_secops_issue191_live_s3_ssl"
     expected_file = agent_src / "compliance_agent_v1" / "live_s3_ssl.py"
@@ -50,13 +50,14 @@ def _load_live_s3_ssl_adapter(agent_src: Path):
         del sys.modules[module_name]
         module = None
     if module is None:
-        spec = importlib.util.spec_from_file_location(module_name, expected_path)
-        if spec is None or spec.loader is None:
-            raise ImportError("fixed live adapter loader is unavailable")
-        module = importlib.util.module_from_spec(spec)
+        module = types.ModuleType(module_name)
+        module.__file__ = expected_path
+        module.__package__ = ""
         sys.modules[module_name] = module
         try:
-            spec.loader.exec_module(module)
+            with open(expected_path, "rb") as source_file:
+                source = source_file.read()
+            exec(compile(source, expected_path, "exec"), module.__dict__)
         except Exception:
             sys.modules.pop(module_name, None)
             raise
