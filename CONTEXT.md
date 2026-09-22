@@ -24,22 +24,21 @@ Accepted current evidence:
 - SSH authenticated Reject-only API E2E: 4/4 PASS;
 - manual browser Approve/Submit path exercised;
 - rich-card width regression fixed and visually accepted;
-- PR #169 and PR #163 merged;
+- duplicate assistant next-action removed; native rich card owns the single next action;
+- PRs #169, #163 and #172 merged;
 - stale PRs #105, #137 and #171 closed.
 
 ## Current Engineering Work
 
-Issue #170 owns the roadmap.
+Issue #173 is the active **Codex reset sprint** for Issue #170 M0 release closure.
 
-Current gate is **M0 — close Compliance Agent v1**.
+Sprint milestones:
+1. close Issue #141 explicit exception-batch Reject evidence;
+2. freeze the current validated v1 release candidate;
+3. publish a fresh `compliance-agent-v1.0.0` release from current truth;
+4. close v1 release work and leave Issue #170 as the only future roadmap.
 
-Remaining closure work:
-1. remove duplicate next-action text outside the rich card;
-2. refresh reproducible v1 release evidence against current main;
-3. publish/record one current v1 release baseline;
-4. close stale completed v1 Issues after evidence is durable.
-
-Do not start #170 M1+ implementation until M0 is complete.
+Do not start Issue #170 M1+ implementation in this sprint.
 
 ## Session Power
 
@@ -47,9 +46,15 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 - repository-only edits do not require a host start;
 - runtime validation may use the same verified retained host;
-- stop only on Amit's explicit cost-saving request;
-- never terminate.
+- temporary auth/test data must be cleaned;
+- automated E2E remains Reject-only;
+- stop only on a real safety/access blocker;
+- never terminate retained LAB infrastructure as routine cleanup.
 
 ## Next
 
-Finish Issue #170 M0 autonomously. After M0 is closed, leave #170 as the single active future roadmap and stop before M1 implementation.
+Continue Issue #173 / its active PR end-to-end. Codex should not wait for Amit between routine steps.
+
+## Restart
+
+`Read AGENTS.md, CONTEXT.md, Issue #173 and the active PR. Own the Codex reset sprint until acceptance or a real stop gate.`

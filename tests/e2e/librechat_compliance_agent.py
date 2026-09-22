@@ -10,6 +10,13 @@ Optional environment:
   LIBRECHAT_E2E_TIMEOUT        Per-case deadline in seconds; defaults to 240.
   LIBRECHAT_E2E_FORWARDED_FOR  Private trusted-proxy test source when required.
   LIBRECHAT_E2E_CONTROL        s3 (default) or ssh.
+  LIBRECHAT_E2E_EXCLUDE_RESOURCE
+                               Optional exact one-time exclusion. When set,
+                               LIBRECHAT_E2E_EXCEPTION_REASON is required.
+  LIBRECHAT_E2E_EXCEPTION_REASON
+                               Exact user-supplied reason for the exclusion.
+  LIBRECHAT_E2E_EXCEPTION_REFERENCE
+                               Optional user-supplied risk/change reference.
 
 The token is never logged. The script never submits an approve decision.
 """
@@ -410,6 +417,18 @@ def run() -> int:
     command = scenario["command"]
     control = scenario["control"]
     label = scenario["label"]
+    excluded_resource = os.environ.get("LIBRECHAT_E2E_EXCLUDE_RESOURCE", "").strip()
+    exception_reason = os.environ.get("LIBRECHAT_E2E_EXCEPTION_REASON", "").strip()
+    exception_reference = os.environ.get("LIBRECHAT_E2E_EXCEPTION_REFERENCE", "").strip()
+    if excluded_resource:
+        require(bool(exception_reason), "exact exclusion requires an exception reason")
+        command += f" except {excluded_resource}. Reason: {exception_reason}."
+        if exception_reference:
+            command += f" Reference: {exception_reference}."
+        label += " exception"
+    else:
+        require(not exception_reason, "exception reason requires an exact exclusion")
+        require(not exception_reference, "exception reference requires an exact exclusion")
 
     try:
         # E2E-1: real start + status polling + persisted final response.
@@ -491,7 +510,7 @@ def run() -> int:
         }
         unique_executor_ids.discard(None)
         require(len(unique_executor_ids) == 1, "duplicate executor retry appeared before approval")
-        results.append((f"E2E-2 {command} native ASK", "PASS"))
+        results.append((f"E2E-2 {label} native ASK", "PASS"))
 
         # E2E-3: the exact API payload that drives ToolApproval is user-facing.
         description = paused.get("description")
@@ -501,6 +520,15 @@ def run() -> int:
             f"approval description is not the required user-facing {label} prompt",
         )
         require("Selected accounts:" in description and "Change:" in description, "scope/action missing")
+        if excluded_resource:
+            require(
+                "Excluded by this one-time exception:" in description,
+                "native approval omitted the one-time exception",
+            )
+            require(excluded_resource in description, "native approval omitted the exact excluded resource")
+            require(exception_reason in description, "native approval omitted the exception reason")
+            if exception_reference:
+                require(exception_reference in description, "native approval omitted the exception reference")
         require("ASK - Review execute_multi_account_remediation" not in description, "internal ASK wording leaked")
         review_configs = payload.get("review_configs")
         require(isinstance(review_configs, list) and len(review_configs) == 1, "review config missing")
@@ -529,7 +557,7 @@ def run() -> int:
                     {
                         "tool_call_id": tool_call_id,
                         "decision": "reject",
-                        "reason": f"Automated Issue #162 {label} zero-write rejection proof",
+                        "reason": f"Automated Issue #173 {label} zero-write rejection proof",
                     }
                 ],
             },

@@ -95,6 +95,15 @@ class Issue141ExceptionContractTests(unittest.TestCase):
         self.assertIn("context?.userId", hook)
         self.assertIn("zero remediation execution dispatch and zero AWS resource writes", hook)
 
+    def test_authenticated_e2e_supports_exact_exception_reject_only(self):
+        root = Path(__file__).resolve().parents[1]
+        harness = (root / "tests" / "e2e" / "librechat_compliance_agent.py").read_text()
+        self.assertIn("LIBRECHAT_E2E_EXCLUDE_RESOURCE", harness)
+        self.assertIn("LIBRECHAT_E2E_EXCEPTION_REASON", harness)
+        self.assertIn("Excluded by this one-time exception:", harness)
+        self.assertIn('"decision": "reject"', harness)
+        self.assertNotIn('"decision": "approve"', harness)
+
 
 if __name__ == "__main__":
     unittest.main()
