@@ -1,7 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {recordIfRejectOnly, TOOL} = require('../integration/native-decision-receipt.cjs');
-const {patchSource} = require('../integration/patch-librechat-native-decision-receipt.cjs');
+const {patchSource, patchRetainedSource, patchInstalledSource, retainedDigest, retainedPatchedDigest} = require('../integration/patch-librechat-native-decision-receipt.cjs');
+const s3SslApprovalHook = require('../integration/s3-ssl-reject-only-approval-hook.cjs');
 
 process.env.SECOPS_DECISION_RECEIPT_SECRET = 'unit-test-only-key-with-more-than-thirty-two-characters';
 const args = {control: 's3_ssl', batch_id: 'a'.repeat(20), scope_hash: 'b'.repeat(24)};
@@ -40,7 +41,8 @@ for (const [decision, outcome] of [['reject', 'REJECTED'], ['approve', 'APPROVE_
       const receipt = JSON.parse(options.body);
       assert.equal(receipt.decision, decision);
       assert.equal(receipt.batch_id, args.batch_id);
-      return {ok: true, json: async () => ({outcome, live_execution_authorized: false, downstream_dispatches: 0, aws_writes: 0})};
+      return {ok: true, json: async () => ({outcome, live_execution_authorized: false, downstream_dispatches: 0, aws_writes: 0,
+        ...(decision === 'reject' && {provider_readback: 'UNCHANGED'})})};
     };
     const result = await recordIfRejectOnly({req: request(decision), job, pendingAction: pending()}, send);
     assert.equal(calls, 1);
@@ -79,4 +81,53 @@ test('wrong control, scope, tool count, user, and decision fail before sending',
 
 test('resume patch refuses source drift', () => {
   assert.throws(() => patchSource('unrecognized resume implementation'), /differs from pinned/);
+  assert.throws(() => patchInstalledSource('unrecognized resume implementation'), /differs from both reviewed/);
+});
+
+test('retained runtime patch stays between winning approval validation and provider execution', () => {
+  const fixture = [
+    'GenerationJobManager.approvals.resolve(',
+    '    if (',
+    '      !(await GenerationJobManager.beginProviderExecution(',
+    'client.resumeCompletion({',
+  ].join('\n');
+  const patched = patchRetainedSource(fixture);
+  assert.equal((patched.match(/recordIfRejectOnly/g) ?? []).length, 1);
+  assert.ok(patched.indexOf('recordIfRejectOnly') < patched.indexOf('GenerationJobManager.beginProviderExecution('));
+  assert.ok(patched.indexOf('GenerationJobManager.beginProviderExecution(') < patched.indexOf('client.resumeCompletion({'));
+  assert.equal(retainedDigest, '54dad95a0e143f5d72857d98c8398743e68e101cab527b38382a7c0d51f10e43');
+  assert.equal(retainedPatchedDigest, '9a5ea6723b0daddf7812fba7fb03f47f76183889c3e96a6ad827972f2ad9e0a7');
+});
+
+test('s3_ssl native ASK registers exact scope and offers Reject only', async () => {
+  const oldFetch = global.fetch;
+  let posted;
+  process.env.SECOPS_DECISION_RECEIPT_SECRET = 'unit-test-only-key-with-more-than-thirty-two-characters';
+  global.fetch = async (_url, options) => {
+    posted = JSON.parse(options.body);
+    return {ok: true, json: async () => ({registered: true, live_execution_authorized: false})};
+  };
+  try {
+    const hook = s3SslApprovalHook()({userId: 'authenticated-user-123'});
+    const result = await hook({toolInput: {control: 's3_ssl', batch_id: args.batch_id, scope_hash: args.scope_hash}});
+    assert.deepEqual(posted, {tool: TOOL, control: 's3_ssl', batch_id: args.batch_id,
+      scope_hash: args.scope_hash, user_id: 'authenticated-user-123'});
+    assert.equal(result.decision, 'ask');
+    assert.deepEqual(result.allowedDecisions, ['reject']);
+    assert.match(result.reason, /Reject-only validation/);
+  } finally {
+    global.fetch = oldFetch;
+  }
+});
+
+test('s3_ssl ASK denies malformed scope before registration', async () => {
+  const oldFetch = global.fetch;
+  global.fetch = async () => { throw Error('must not reach registration'); };
+  try {
+    const hook = s3SslApprovalHook()({userId: 'authenticated-user-123'});
+    const result = await hook({toolInput: {control: 'restricted-ssh', batch_id: args.batch_id, scope_hash: args.scope_hash}});
+    assert.equal(result.decision, 'deny');
+  } finally {
+    global.fetch = oldFetch;
+  }
 });

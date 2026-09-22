@@ -11,8 +11,6 @@ import hashlib
 import json
 from typing import Any, Callable, Mapping, Protocol
 
-from .exceptions_audit import ExceptionAuditPilot
-
 CONTROL = "s3_ssl"
 ALIASES = ("lab-dev", "lab-poc", "lab-qa", "lab-sec")
 ROLE_NAME = "ChatGPTCrossAccountReadRole"
@@ -37,7 +35,12 @@ class _BotoS3ReadClient:
         return str(self._sts.get_caller_identity()["Account"])
 
     def list_bucket_names(self) -> list[str]:
-        return [str(item["Name"]) for item in self._s3.list_buckets().get("Buckets", []) if isinstance(item, Mapping) and isinstance(item.get("Name"), str)]
+        paginator = self._s3.get_paginator("list_buckets")
+        result: list[str] = []
+        for page in paginator.paginate(PaginationConfig={"PageSize": MAX_BUCKETS_PER_ACCOUNT, "MaxItems": MAX_BUCKETS_PER_ACCOUNT}):
+            result.extend(str(item["Name"]) for item in page.get("Buckets", [])
+                          if isinstance(item, Mapping) and isinstance(item.get("Name"), str))
+        return result[:MAX_BUCKETS_PER_ACCOUNT]
 
     def bucket_policy(self, bucket: str) -> Mapping[str, Any]:
         return json.loads(self._s3.get_bucket_policy(Bucket=bucket)["Policy"])
@@ -91,7 +94,7 @@ class LiveS3SslEvidence:
                 accounts.append({"alias": binding.alias, "identity_verified": False, "state": "UNAVAILABLE", "reason": "ACCOUNT_MISMATCH"})
                 continue
             statuses: list[dict[str, str]] = []
-            for bucket in client.list_bucket_names()[:MAX_BUCKETS_PER_ACCOUNT]:
+            for bucket in sorted(client.list_bucket_names())[:MAX_BUCKETS_PER_ACCOUNT]:
                 reference = _resource_ref(bucket)
                 try:
                     policy = client.bucket_policy(bucket)
@@ -101,6 +104,7 @@ class LiveS3SslEvidence:
                     # control; all other provider failures remain unavailable.
                     status = "NON_COMPLIANT" if "NoSuchBucketPolicy" in str(exc) else "UNAVAILABLE"
                 statuses.append({"resource_ref": reference, "status": status})
+            statuses.sort(key=lambda item: (item["resource_ref"], item["status"]))
             payload = {"alias": binding.alias, "statuses": statuses}
             accounts.append({
                 "alias": binding.alias,
@@ -159,6 +163,7 @@ def prepare_reject(evidence: Mapping[str, Any], *, alias: str) -> dict[str, Any]
     ]
     if not finding_ids:
         raise ValueError("selected LAB alias has no current s3_ssl finding")
+    from .exceptions_audit import ExceptionAuditPilot
     pilot = ExceptionAuditPilot(LiveS3FindingStore(evidence), control=CONTROL)
     pilot.add(finding_ids[0])
     preview = pilot.preview_selection()
@@ -171,11 +176,11 @@ def prepare_reject(evidence: Mapping[str, Any], *, alias: str) -> dict[str, Any]
 def collect_with_boto3(*, profile: str, bindings: tuple[AccountBinding, ...]) -> dict[str, Any]:
     """Run the fixed personal-LAB read path through existing cross-account roles.
 
-    This function deliberately supports only the `amit` management profile and
-    exact organization-derived bindings supplied by the repo-owned runner.
+    This function deliberately supports only the personal interactive profile
+    or the retained-host profile, with exact organization-derived bindings.
     """
-    if profile != "amit":
-        raise ValueError("live s3_ssl collector requires the approved personal profile")
+    if profile not in {"amit", "vagent"}:
+        raise ValueError("live s3_ssl collector requires an approved personal-LAB profile")
     import boto3
 
     source = boto3.Session(profile_name=profile, region_name=REGION)

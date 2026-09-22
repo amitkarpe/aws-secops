@@ -86,6 +86,28 @@ for(const name of executeNames){
 if(!fs.existsSync('/opt/aws-secops/integration/multi-account-approval-hook.cjs'))
   throw Error('four-account approval hook missing');
 
+const sslPrepare='prepare_s3_ssl_reject_only_mcp_aws_compliance_planner';
+if (!approval.allow.includes(sslPrepare)) approval.allow.push(sslPrepare);
+approval.ask = approval.ask.filter(name => name !== sslPrepare);
+const sslRead='get_s3_ssl_live_status_mcp_aws_compliance_planner';
+if (!approval.allow.includes(sslRead)) approval.allow.push(sslRead);
+approval.ask = approval.ask.filter(name => name !== sslRead);
+const sslDecisionNames=[
+  'decide_s3_ssl_reject_only_mcp_aws_compliance_planner',
+  'mcp:aws_compliance_planner:decide_s3_ssl_reject_only',
+];
+for(const name of sslDecisionNames){
+  if(approval.allow.includes(name)) throw Error('s3_ssl Reject-only decision must not be statically allowed');
+  if(!approval.ask.includes(name)) approval.ask.push(name);
+  const hook={matcher:name,module:'/opt/aws-secops/integration/s3-ssl-reject-only-approval-hook.cjs'};
+  approval.hooks??=[];
+  const existingHook=approval.hooks.find(h=>h.matcher===name);
+  if(existingHook&&!isDeepStrictEqual(existingHook,hook)) throw Error('existing s3_ssl Reject-only approval hook differs');
+  if(!existingHook) approval.hooks.push(hook);
+}
+if(!fs.existsSync('/opt/aws-secops/integration/s3-ssl-reject-only-approval-hook.cjs'))
+  throw Error('s3_ssl Reject-only approval hook missing');
+
 const rendered=yaml.dump(updated,{lineWidth:-1,noRefs:true});
 if(!isDeepStrictEqual(yaml.load(rendered),updated)) throw Error('YAML round trip differs');
 if(rendered!==raw){
@@ -95,4 +117,4 @@ if(rendered!==raw){
   fs.writeFileSync(temp,rendered,{mode:fs.statSync(file).mode&0o777,flag:'wx'});
   fs.renameSync(temp,file);
 }
-console.log('COMPLIANCE_AGENT_V1=READY READ=ALLOW PREPARE=ALLOW VERIFY=ALLOW EXECUTE=ASK HARNESS_TOOLS=0');
+console.log('COMPLIANCE_AGENT_V1=READY READ=ALLOW PREPARE=ALLOW VERIFY=ALLOW EXECUTE=ASK S3_SSL_REJECT_ONLY=ASK HARNESS_TOOLS=0');

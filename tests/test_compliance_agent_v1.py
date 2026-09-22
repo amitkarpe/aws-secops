@@ -328,9 +328,12 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertEqual(spec["tools"], [
             "ask_compliance_agent_v1_mcp_compliance_agent_v1",
             "query_synthetic_fleet_v1_mcp_compliance_agent_v1",
+            "get_s3_ssl_live_status_mcp_aws_compliance_planner",
             "prepare_multi_account_remediation_mcp_aws_compliance_planner",
             "execute_multi_account_remediation_mcp_aws_compliance_planner",
             "verify_multi_account_remediation_mcp_aws_compliance_planner",
+            "prepare_s3_ssl_reject_only_mcp_aws_compliance_planner",
+            "decide_s3_ssl_reject_only_mcp_aws_compliance_planner",
         ])
         instructions = spec["instructions"]
         self.assertIn("READ / EXPLAIN / PLAN", instructions)
@@ -406,7 +409,7 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("expected exactly one existing Compliance Agent v1", updater)
         self.assertIn("after.id !== before.id", updater)
         self.assertIn("String(after.author) !== String(before.author)", updater)
-        self.assertIn("toolCount !== 4", updater)
+        self.assertIn("toolCount !== expectedTools.length", updater)
         self.assertIn("starterCount !== 4", updater)
         self.assertIn("conversation_starters: spec.conversation_starters", updater)
         self.assertIn("instructions: spec.instructions", updater)

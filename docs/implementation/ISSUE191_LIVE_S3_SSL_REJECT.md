@@ -34,17 +34,31 @@ The local decision result was `REJECTED`, with `remediation_dispatches = 0`,
 `PREVIEW_FROZEN` then `NATIVE_APPROVAL_DECISION`. No credentials, account IDs,
 role ARNs, bucket names, or endpoints are retained here.
 
+## Retained-runtime identity preflight
+
+On 2026-09-23, the `amit` profile on the existing retained host was STS-verified
+as the Organizations management identity and its active Organizations mapping
+contained all four registered LAB aliases: `lab-dev`, `lab-poc`,
+`lab-qa`, and `lab-sec`. Region selection is fixed to `ap-southeast-1`. The
+`vagent` profile is present but resolves to a member-account context and its
+Organizations lookup fails with `AWSOrganizationsNotInUseException`; it is not
+used for this control.
+
+The live operator service previously had no explicit `SECOPS_LAB_PROFILE`
+override and therefore selected `vagent` by default. The PR deployment script
+now pins the operator's exact service drop-in to `amit` and checks the running
+process environment before declaring readiness. No service or AWS resource
+was changed during this preflight. The bounded deployment and native browser
+Reject journey are still pending.
+
 ## Native E2E stop gate
 
-The existing authenticated LibreChat E2E harness remains the required native
-card/resume test. This workstation has no retained-runtime private state,
-host/tunnel target, running loopback backend, or short-lived E2E bearer token;
-therefore an authenticated native `s3_ssl` card and real resume/Reject could
-not be run or truthfully represented as passed. No token was created, no
-conversation data was created, and no AWS resource was changed.
-
-The remaining acceptance work is to run the existing authenticated harness
-against the retained personal-LAB runtime after the runtime connection is
-available, extend its fixed scenario to `s3_ssl` (not a generic AWS tool), and
-record the real native card/resume/audit cleanup evidence. Until then PR #192
-must remain draft and Issue #191 remains open.
+The authenticated LibreChat native card/resume test remains the acceptance
+gate. The retained runtime is reachable for bounded SSM inspection, but the
+repo-owned Reject-only integration has not yet been deployed and no native
+`s3_ssl` card or decision has been created. The next step is to deploy the
+reviewed changes, verify the live fixed read and Reject-only surface, then run
+the existing authenticated browser/API harness with Reject only. Do not test
+Approve. Until that journey, zero-dispatch evidence, fresh unchanged provider
+readback, recovery checks, and cleanup are proven, PR #192 remains draft and
+Issue #191 remains open.
