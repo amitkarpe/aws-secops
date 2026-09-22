@@ -36,11 +36,12 @@ Compliance Agent v1 release closure is complete. Issues #141 and #125 are
 closed, and Issue #173 has no remaining implementation scope.
 
 Issue #170 remains the single roadmap. M1 completed in Issue #178 / PR #179,
-M2 in Issue #180 / PR #181, M3A in Issue #182 / PR #183, and M3B in Issue
-#184 / PR #185. Issue #186 / PR #187 is the active bounded M4A synthetic
-exception/audit substrate: exact managed exceptions, freeze-integrity binding,
-and read-only audit evidence only. Issue #176 / PR #177 remains an independent
-read-only MCP evidence track. Do not begin M4B control expansion.
+M2 in Issue #180 / PR #181, M3A in Issue #182 / PR #183, M3B in Issue #184 /
+PR #185, and M4A in Issue #186 / PR #187. Issue #188 / PR #189 is the active
+bounded M4B synthetic control expansion: `s3_ssl` only, reusing the shared
+selection, freeze, native approval, exception, and audit contracts. Issue #176
+/ PR #177 remains an independent read-only MCP evidence track. Do not add a
+third control or a live mutation path.
 
 ## Session Power
 
@@ -55,9 +56,9 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Review and merge PR #187 when its exact-head checks and handoff are accepted.
-Do not start M4B, live bulk remediation, or new-control work.
+Review and merge PR #189 when its exact-head checks and handoff are accepted.
+Do not start another control, live bulk remediation, or new-control work.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md, Issue #186 and PR #187. Continue only bounded M4A synthetic exception/audit work; do not start M4B.`
+`Read AGENTS.md, CONTEXT.md, Issue #188 and PR #189. Continue only bounded M4B synthetic s3_ssl work; do not add a third control.`

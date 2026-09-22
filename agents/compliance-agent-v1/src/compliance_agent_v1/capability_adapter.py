@@ -41,9 +41,9 @@ _SOURCE_FIELDS = {"kind", "version"}
 _VERSION = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 
 # Product ceilings are deliberately narrower than any private source catalog.
-# The three newly surfaced S3 controls have no current aws-secops executor.
+# M4B promotes only public-safe s3_ssl into the synthetic governed path.
 _MAX_STATE = {
-    "s3_ssl": "EXPLAIN",
+    "s3_ssl": "VERIFY",
     "s3_logging": "EXPLAIN",
     "s3_backup": "EXPLAIN",
     "restricted_ssh": "VERIFY",
@@ -96,7 +96,7 @@ def _validate_record(raw: Any) -> dict[str, Any]:
         raise CapabilityContractError("human approval metadata must match remediation support")
     if verification is not record["supports_remediate"]:
         raise CapabilityContractError("AWS service verification metadata must match remediation support")
-    if control_key != "restricted_ssh" and (record["supports_prepare"] or record["supports_remediate"]):
+    if control_key not in {"restricted_ssh", "s3_ssl"} and (record["supports_prepare"] or record["supports_remediate"]):
         raise CapabilityContractError("new controls cannot inherit an execution path")
     return {field: record[field] for field in sorted(_RECORD_FIELDS)}
 
@@ -153,7 +153,10 @@ class CapabilityCatalog:
             "control_key": control_key,
             "requested_state": requested_state,
             "supported": supported,
-            "route": "existing-governed-path" if governed else "read-only",
+            "route": (
+                "synthetic-governed-path" if governed and control_key == "s3_ssl"
+                else "existing-governed-path" if governed else "read-only"
+            ),
             "requires_human_approval": bool(record["requires_human_approval"] and requested_state == "REMEDIATE"),
             "execution_authorized": False,
         }

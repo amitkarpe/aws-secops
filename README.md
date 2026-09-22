@@ -135,6 +135,8 @@ Key milestones:
 - Issue #130 — next read-only AWS MCP evidence-source experiment
 - Issue #186 — synthetic deterministic exception/audit substrate for the
   post-v1 roadmap; it is not a new live control or execution path
+- Issue #188 — synthetic `s3_ssl` second-control governance proof; it reuses
+  the bounded approval path and does not authorize live AWS mutation
 
 ## Important boundaries
 
