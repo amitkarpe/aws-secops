@@ -1046,8 +1046,12 @@ class OperatorHandler(BulkHandler):
             try:
                 self._json(200, self.service.s3_ssl_live_status())
             except Exception as exc:
+                missing_module = getattr(exc, "name", None) if isinstance(exc, ModuleNotFoundError) else None
+                if not isinstance(missing_module, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", missing_module):
+                    missing_module = "unavailable"
                 logging.getLogger(__name__).warning(
-                    "s3_ssl live read unavailable (%s)", type(exc).__name__
+                    "s3_ssl live read unavailable (%s, module=%s)",
+                    type(exc).__name__, missing_module,
                 )
                 self._json(503, {"error": "live s3_ssl read unavailable"})
             return

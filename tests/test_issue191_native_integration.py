@@ -2,9 +2,10 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 from pilot_v1.native_decision_receipt import ReceiptError
-from pilot_v1.operator_server import OperatorService
+from pilot_v1.operator_server import OperatorHandler, OperatorService
 from compliance_agent_v1.live_s3_ssl import _BotoS3ReadClient, MAX_BUCKETS_PER_ACCOUNT
 
 
@@ -136,6 +137,37 @@ class Issue191NativeIntegrationTests(unittest.TestCase):
                         deploy.index("http://127.0.0.1:4444/api/operator/s3-ssl-status"))
         self.assertIn('rm -f /etc/systemd/system/aws-secops-bulk.service.d/issue191.conf', rollback)
         self.assertIn('systemctl start aws-secops-bulk.service', rollback)
+
+    def test_live_status_failure_response_and_log_do_not_expose_exception_message(self):
+        private_message = "private account-specific failure detail"
+
+        class Service:
+            @staticmethod
+            def s3_ssl_live_status():
+                raise ModuleNotFoundError(private_message, name="compliance_agent_v1")
+
+        class Handler:
+            path = "/api/operator/s3-ssl-status"
+            service = Service()
+            response = None
+
+            @staticmethod
+            def _local_host():
+                return True
+
+            def _json(self, status, body):
+                self.response = (status, body)
+
+        handler = Handler()
+        with patch("pilot_v1.operator_server.logging.getLogger") as get_logger:
+            logger = get_logger.return_value
+            OperatorHandler.do_GET(handler)
+        self.assertEqual(handler.response, (503, {"error": "live s3_ssl read unavailable"}))
+        logger.warning.assert_called_once_with(
+            "s3_ssl live read unavailable (%s, module=%s)",
+            "ModuleNotFoundError", "compliance_agent_v1",
+        )
+        self.assertNotIn(private_message, str(handler.response))
 
 
 if __name__ == "__main__":
