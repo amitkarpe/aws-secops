@@ -142,6 +142,21 @@ client and is not registered as a model execution tool. Per-row result CSV is
 backend generated; model-facing output remains a compact summary, bounded
 rejected sample, and export receipt.
 
+## Synthetic grouped/manual selection pilot
+
+Issue #184 adds M3B, a local Config-style selection layer over the same M2
+truth and M3A frozen-batch adapter. Operators can view a bounded filtered page,
+aggregate deterministic groups by account or control, and explicitly add/remove
+only current server-owned `finding_id` values. Page, sort, grouping, and filter
+changes do not mutate the saved selection.
+
+Filtered select-all explicitly materializes the current server-resolved set;
+it is never a wildcard or future-row authorization. Before freezing, each saved
+ID is re-resolved and classified as eligible, stale, unknown, unsupported, or
+excluded. The M3A native decision/no-op/result-export methods are reused
+unchanged. Model-facing views provide counts/digests and one page, not the full
+selection or full result export.
+
 ### Runtime dependencies
 
 - Python 3.12 (deployed release runtime; CI also retains broader repository coverage)

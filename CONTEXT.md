@@ -35,10 +35,11 @@ Accepted current evidence:
 Compliance Agent v1 release closure is complete. Issues #141 and #125 are
 closed, and Issue #173 has no remaining implementation scope.
 
-Issue #170 remains the single roadmap. M1 completed in Issue #178 / PR #179 and
-M2 completed in Issue #180 / PR #181. Issue #182 / PR #183 is the active
-bounded M3A synthetic CSV candidate-scope pilot. Issue #176 / PR #177 remains
-an independent read-only MCP evidence track. Do not begin Config-GUI M3B.
+Issue #170 remains the single roadmap. M1 completed in Issue #178 / PR #179,
+M2 in Issue #180 / PR #181, and M3A in Issue #182 / PR #183. Issue #184 / PR
+#185 is the active bounded M3B synthetic grouped/manual selection pilot. Issue
+#176 / PR #177 remains an independent read-only MCP evidence track. Do not
+begin M4.
 
 ## Session Power
 
@@ -53,9 +54,9 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Review and merge PR #183 when its exact-head checks and handoff are accepted.
-Do not start Config-GUI M3B, live bulk remediation, or new-control work.
+Review and merge PR #185 when its exact-head checks and handoff are accepted.
+Do not start M4, live bulk remediation, or new-control work.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md, Issue #182 and PR #183. Continue only bounded M3A synthetic CSV work; do not start M3B.`
+`Read AGENTS.md, CONTEXT.md, Issue #184 and PR #185. Continue only bounded M3B synthetic manual-selection work; do not start M4.`
