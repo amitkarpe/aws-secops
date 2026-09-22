@@ -35,8 +35,10 @@ Accepted current evidence:
 Compliance Agent v1 release closure is complete. Issues #141 and #125 are
 closed, and Issue #173 has no remaining implementation scope.
 
-Issue #170 is the single future roadmap. M1 is not started; do not begin it
-without a new bounded implementation Issue/PR and current authorization.
+Issue #170 remains the single roadmap. M1 completed in Issue #178 / PR #179.
+Issue #180 / PR #181 is the active bounded M2 implementation for deterministic
+1K synthetic truth, server-side query/pagination, and CSV export. Issue #176 /
+PR #177 remains an independent read-only MCP evidence track. Do not begin M3.
 
 ## Session Power
 
@@ -51,8 +53,9 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Wait at Issue #170 M1. Do not start catalog, 1K, bulk, or new-control work automatically.
+Review and merge PR #181 when its exact-head checks and handoff are accepted.
+Do not start bulk remediation, M3, or new-control work automatically.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md and Issue #170. Compliance Agent v1.0.0 is released; do not start M1 without a bounded implementation Issue/PR.`
+`Read AGENTS.md, CONTEXT.md, Issue #180 and PR #181. Continue only the bounded M2 query/export work; do not start M3.`

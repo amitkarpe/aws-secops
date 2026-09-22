@@ -45,8 +45,9 @@ not reflected into output.
 ## Product integration
 
 The validated summary is added to the existing Compliance Agent read packet and
-structured response. Capability questions receive a compact native card. No new
-MCP tool is registered and the current four tools remain unchanged.
+structured response. Capability questions receive a compact native card. Issue
+#178 itself registered no new MCP tool. Issue #180 later added a separate
+read-only synthetic-fleet query tool without changing these capability ceilings.
 
 The adapter can say that an existing governed path is technically supported,
 but every decision returns `execution_authorized=false`. It cannot accept an

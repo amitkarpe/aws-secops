@@ -8,6 +8,7 @@ from mcp.types import CallToolResult, EmbeddedResource, TextContent, TextResourc
 from pydantic import ConfigDict
 
 from .agent import answer
+from .scaled_findings import model_read
 from .ui_cards import ALIASES, S3, SSH, render_capability_card, render_fleet_card
 
 mcp = FastMCP(
@@ -102,6 +103,38 @@ def ask_compliance_agent_v1(request: str) -> CallToolResult:
             )
         )
     return CallToolResult(content=content, structuredContent=value)
+
+
+@mcp.tool()
+def query_synthetic_fleet_v1(
+    mode: str,
+    control_key: str | None = None,
+    account_alias: str | None = None,
+    config_status: str | None = None,
+    exception_status: str | None = None,
+    search: str | None = None,
+    sort_by: str = "finding_id",
+    sort_direction: str = "asc",
+    page: int = 1,
+    limit: int = 25,
+) -> dict:
+    """Read the synthetic 1K fleet as a summary, one bounded page, or an export receipt.
+
+    Export mode generates CSV from backend truth but returns metadata only; CSV content is
+    deliberately kept out of model context. This tool has no AWS or mutation capability.
+    """
+    return model_read(
+        mode,
+        control_key=control_key,
+        account_alias=account_alias,
+        config_status=config_status,
+        exception_status=exception_status,
+        search=search,
+        sort_by=sort_by,
+        sort_direction=sort_direction,
+        page=page,
+        limit=limit,
+    )
 
 
 # Fail closed on unexpected/coerced MCP arguments without mutating FastMCP settings.

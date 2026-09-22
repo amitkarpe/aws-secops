@@ -257,7 +257,7 @@ class AgentTests(unittest.TestCase):
 
 
 class McpServerRegressionTests(unittest.TestCase):
-    def test_mcp_stdio_initializes_with_one_strict_tool(self):
+    def test_mcp_stdio_initializes_with_exact_strict_read_tools(self):
         async def probe():
             env = dict(os.environ)
             env["PYTHONPATH"] = str(SRC) + os.pathsep + env.get("PYTHONPATH", "")
@@ -271,7 +271,22 @@ class McpServerRegressionTests(unittest.TestCase):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     tools = await session.list_tools()
-                    self.assertEqual([tool.name for tool in tools.tools], ["ask_compliance_agent_v1"])
+                    self.assertEqual(
+                        [tool.name for tool in tools.tools],
+                        ["ask_compliance_agent_v1", "query_synthetic_fleet_v1"],
+                    )
+                    page = await session.call_tool(
+                        "query_synthetic_fleet_v1", {"mode": "page", "limit": 100}
+                    )
+                    self.assertFalse(page.isError)
+                    page_value = json.loads(page.content[0].text)
+                    self.assertEqual(page_value["total_count"], 1000)
+                    self.assertEqual(page_value["returned_count"], 100)
+                    self.assertEqual(len(page_value["items"]), 100)
+                    blocked = await session.call_tool(
+                        "query_synthetic_fleet_v1", {"mode": "page", "limit": 101}
+                    )
+                    self.assertTrue(blocked.isError)
 
         asyncio.run(probe())
 
@@ -279,10 +294,17 @@ class McpServerRegressionTests(unittest.TestCase):
         from compliance_agent_v1.mcp_server import mcp
 
         tools = mcp._tool_manager.list_tools()
-        self.assertEqual([tool.name for tool in tools], ["ask_compliance_agent_v1"])
+        self.assertEqual(
+            [tool.name for tool in tools],
+            ["ask_compliance_agent_v1", "query_synthetic_fleet_v1"],
+        )
         model = tools[0].fn_metadata.arg_model
         with self.assertRaises(ValidationError):
             model.model_validate({"request": "status", "unexpected": "blocked"})
+        with self.assertRaises(ValidationError):
+            tools[1].fn_metadata.arg_model.model_validate(
+                {"mode": "page", "unexpected": "blocked"}
+            )
 
 
 class RepoIsolationTests(unittest.TestCase):
@@ -305,6 +327,7 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("UI Resource Marker", spec["instructions"])
         self.assertEqual(spec["tools"], [
             "ask_compliance_agent_v1_mcp_compliance_agent_v1",
+            "query_synthetic_fleet_v1_mcp_compliance_agent_v1",
             "prepare_multi_account_remediation_mcp_aws_compliance_planner",
             "execute_multi_account_remediation_mcp_aws_compliance_planner",
             "verify_multi_account_remediation_mcp_aws_compliance_planner",

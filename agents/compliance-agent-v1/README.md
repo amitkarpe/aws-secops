@@ -112,6 +112,18 @@ The Harness remains deliberately **tool-free**. Current AWS evidence is fetched 
 The adapter fails closed unless all four registered aliases and both supported
 controls are present as exactly eight account/control checks.
 
+## Synthetic 1K query and export path
+
+Issue #180 adds a separate local-first, read-only scale path. It deterministically
+generates 1,000 public-safe findings across 50 logical aliases and four generic
+control keys. `query_synthetic_fleet_v1` returns only a fleet summary, one page
+of at most 100 findings, or a CSV export receipt. The backend CSV generator uses
+the same filters and ordering but its content is never returned to model context.
+
+This path does not call AWS and cannot prepare or execute remediation. It does
+not widen the four-account/two-control live v1 remediation boundary or the
+sanitized capability ceilings.
+
 ### Runtime dependencies
 
 - Python 3.12 (deployed release runtime; CI also retains broader repository coverage)
@@ -140,4 +152,3 @@ identifier fidelity before LibreChat smoke testing.
 - release hardening: Issue #133 / PR #134
 
 Remaining:\n- complete Issue #138 Reject + Approve live E2E for both controls;\n- publish and verify GitHub Release `compliance-agent-v1.0.0`.
-

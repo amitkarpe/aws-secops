@@ -1,0 +1,15 @@
+{
+  "fixture_version": 1,
+  "name": "synthetic-1k",
+  "total_accounts": 50,
+  "findings_per_account": 20,
+  "total_findings": 1000,
+  "account_alias_pattern": "lab-001 .. lab-050",
+  "region": "ap-southeast-1",
+  "controls": ["s3_ssl", "s3_logging", "s3_backup", "restricted_ssh"],
+  "findings_per_control_per_account": 5,
+  "exception_rule": "The fifth finding for every account and control is ONE_TIME_TEST_EXCEPTION; all others are NONE.",
+  "expected_exception_count": 200,
+  "randomness": false,
+  "real_aws_accounts_required": 0
+}
