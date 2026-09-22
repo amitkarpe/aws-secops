@@ -198,7 +198,10 @@ class CapabilityAdapterTests(unittest.TestCase):
         self.assertIn("s3_ssl, s3_logging and s3_backup", instructions)
         self.assertIn("must never be routed to the S3 Block Public Access planner", instructions)
         self.assertIn("Capability metadata and typed chat approval never authorize execution", instructions)
-        self.assertEqual(len(integration["tools"]), 4)
+        self.assertEqual(len(integration["tools"]), 5)
+        self.assertIn(
+            "query_synthetic_fleet_v1_mcp_compliance_agent_v1", integration["tools"]
+        )
 
 
 if __name__ == "__main__":
