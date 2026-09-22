@@ -26,6 +26,7 @@ MAX_CANDIDATE_BYTES = 128_000
 MAX_CANDIDATE_ROWS = 1_000
 MAX_REJECTED_PAGE_SIZE = 100
 PILOT_CONTROL = "restricted_ssh"
+RESULT_FILENAME = "synthetic-bulk-results.csv"
 PREVIEW_STATES = frozenset({"ELIGIBLE", "DUPLICATE", "STALE", "UNKNOWN", "UNSUPPORTED", "EXCLUDED"})
 
 
@@ -153,10 +154,14 @@ class CsvCandidatePilot:
             "evidence_digest": evidence["evidence_digest"],
             "selected_accounts": sorted({row["account_alias"] for row in eligible}),
         }
+        return self._freeze_preview(rows, scope)
+
+    def _freeze_preview(self, rows: list[dict[str, str]], scope: dict[str, Any]) -> dict[str, Any]:
+        """Shared M3 freeze implementation used by CSV and manual selection pilots."""
         scope_hash = _digest(scope)
         self._preparation_revision += 1
         batch_id = _digest({
-            "kind": "synthetic-csv-m3a",
+            "kind": "synthetic-bulk-m3",
             "scope_hash": scope_hash,
             "preparation_revision": self._preparation_revision,
         })
@@ -169,7 +174,7 @@ class CsvCandidatePilot:
             "execution": [],
         }
         view = self._preview_view(batch)
-        if not eligible:
+        if not scope["eligible"]:
             view.update({
                 "batch_id": None,
                 "scope_hash": None,
@@ -245,7 +250,8 @@ class CsvCandidatePilot:
             "rejected": len(rejected),
             "excluded": counts["EXCLUDED"],
             "account_count": len(batch["scope"]["selected_accounts"]),
-            "candidate_digest": batch["scope"]["candidate_digest"],
+            "candidate_digest": batch["scope"].get("candidate_digest"),
+            "selection_digest": batch["scope"].get("selection_digest"),
             "evidence_version": batch["scope"]["evidence_version"],
             "evidence_digest": batch["scope"]["evidence_digest"],
             "rejected_page": rejected[:MAX_REJECTED_PAGE_SIZE],
@@ -295,7 +301,7 @@ class CsvCandidatePilot:
         content = self.result_csv(batch_id, scope_hash)
         return {
             "version": 1,
-            "filename": "csv-candidate-pilot-results.csv",
+            "filename": RESULT_FILENAME,
             "row_count": max(0, content.count("\n") - 1),
             "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
             "content_in_model_context": False,

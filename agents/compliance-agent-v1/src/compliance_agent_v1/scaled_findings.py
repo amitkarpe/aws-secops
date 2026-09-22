@@ -220,6 +220,31 @@ class ScaledFindingStore:
                 return dict(row)
         return None
 
+    def resolve_finding_id(self, finding_id: str) -> dict[str, str] | None:
+        """Resolve one exact server-owned finding ID without exposing full truth."""
+        if not isinstance(finding_id, str):
+            return None
+        for row in self._rows:
+            if row["finding_id"] == finding_id:
+                return dict(row)
+        return None
+
+    def matching_finding_ids(self, query: FindingQuery) -> tuple[str, ...]:
+        """Return the exact current filter set for server-owned select-all only."""
+        return tuple(row["finding_id"] for row in self._filtered(query))
+
+    def grouped_summary(self, query: FindingQuery, group_by: str) -> dict[str, Any]:
+        """Aggregate current filtered truth without returning an unbounded row list."""
+        if group_by not in {"account_alias", "control_key"}:
+            raise ValueError("unsupported group")
+        counts = Counter(row[group_by] for row in self._filtered(query))
+        return {
+            "group_by": group_by,
+            "total_count": sum(counts.values()),
+            "groups": [{"key": key, "count": counts[key]} for key in sorted(counts)],
+            "read_only": True,
+        }
+
 
 def _csv_safe(value: str) -> str:
     return f"'{value}" if value.startswith(("=", "+", "-", "@")) else value
