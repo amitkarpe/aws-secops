@@ -46,6 +46,7 @@ nav:
       - Management audit view: operations/MANAGEMENT_AUDIT_VIEW.md
       - Start here: learning-path.md
       - Current architecture: architecture.md
+      - Persistent MCP evidence adapter: architecture/PERSISTENT_MCP_EVIDENCE_ADAPTER.md
       - Governance / security model: governance.md
       - Long Demo v1: demo-v1.md
   - AgentCore Lab:

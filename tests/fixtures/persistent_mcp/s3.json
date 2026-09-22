@@ -1,0 +1,6 @@
+{
+  "items": [
+    {"resource_ref": "bucket-ref-a", "all_public_access_blocked": true},
+    {"resource_ref": "bucket-ref-b", "all_public_access_blocked": false}
+  ]
+}
