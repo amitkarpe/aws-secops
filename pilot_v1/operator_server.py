@@ -37,31 +37,15 @@ S3_SSL_TOOL = "decide_s3_ssl_reject_only_mcp_aws_compliance_planner"
 APPROVAL_TTL_SECONDS = 1800
 
 
-def _load_live_s3_ssl_adapter(agent_src: Path):
+def _prioritize_import_path(path: Path) -> None:
+    import importlib
     import os
     import sys
-    import types
 
-    module_name = "_aws_secops_issue191_live_s3_ssl"
-    expected_file = agent_src / "compliance_agent_v1" / "live_s3_ssl.py"
-    expected_path = os.path.abspath(str(expected_file))
-    module = sys.modules.get(module_name)
-    if module is not None and os.path.abspath(getattr(module, "__file__", "")) != expected_path:
-        del sys.modules[module_name]
-        module = None
-    if module is None:
-        module = types.ModuleType(module_name)
-        module.__file__ = expected_path
-        module.__package__ = ""
-        sys.modules[module_name] = module
-        try:
-            with open(expected_path, "rb") as source_file:
-                source = source_file.read()
-            exec(compile(source, expected_path, "exec"), module.__dict__)
-        except Exception:
-            sys.modules.pop(module_name, None)
-            raise
-    return module
+    entry = os.path.abspath(str(path))
+    sys.path[:] = [current for current in sys.path if os.path.abspath(current or os.curdir) != entry]
+    sys.path.insert(0, entry)
+    importlib.invalidate_caches()
 
 
 LATEST_ACCEPTANCE = {
@@ -139,11 +123,8 @@ class OperatorService(BulkService):
     def _collect_s3_ssl(self) -> dict:
         """Read only the exact four personal-LAB aliases and emit no raw identifiers."""
         agent_src = Path(__file__).absolute().parents[1] / "agents" / "compliance-agent-v1" / "src"
-        adapter = _load_live_s3_ssl_adapter(agent_src)
-        ALIASES = adapter.ALIASES
-        AccountBinding = adapter.AccountBinding
-        REGION = adapter.REGION
-        collect_with_boto3 = adapter.collect_with_boto3
+        _prioritize_import_path(agent_src)
+        from compliance_agent_v1.live_s3_ssl import ALIASES, AccountBinding, REGION, collect_with_boto3
         from pilot_v1.org_config_overview import parse_targets
         import boto3
 

@@ -49,6 +49,7 @@ class StagingPayloadTests(unittest.TestCase):
                     self.assertIn("integration/rollback-compliance-v1-agent.cjs", scripts_source(name))
                     self.assertIn("bulk-runtime.before.tar.gz", commands)
                     self.assertIn("/opt/aws-secops/pilot_v1/native_decision_receipt.py", commands)
+                    self.assertIn("/opt/aws-secops-bulk/agents/compliance-agent-v1/src", commands)
                 self.assertIn("SSM_COMMAND_BYTES=", result.stdout)
 
 

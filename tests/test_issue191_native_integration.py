@@ -2,12 +2,11 @@ from pathlib import Path
 import sys
 import tempfile
 import time
-import types
 import unittest
 from unittest.mock import patch
 
 from pilot_v1.native_decision_receipt import ReceiptError
-from pilot_v1.operator_server import OperatorHandler, OperatorService, _load_live_s3_ssl_adapter
+from pilot_v1.operator_server import OperatorHandler, OperatorService, _prioritize_import_path
 from compliance_agent_v1.live_s3_ssl import _BotoS3ReadClient, MAX_BUCKETS_PER_ACCOUNT
 
 
@@ -25,26 +24,14 @@ def evidence(*, changed=False):
 
 
 class Issue191NativeIntegrationTests(unittest.TestCase):
-    def test_live_adapter_import_uses_fixed_bundle_path_without_global_path_lookup(self):
-        root = Path(__file__).resolve().parents[1]
-        source = root / "agents" / "compliance-agent-v1" / "src"
-        expected = (source / "compliance_agent_v1" / "live_s3_ssl.py").resolve()
-        package = sys.modules.get("compliance_agent_v1")
-        adapter_module = sys.modules.pop("compliance_agent_v1.live_s3_ssl", None)
-        sys.modules["compliance_agent_v1"] = types.ModuleType("compliance_agent_v1")
-        sys.modules["compliance_agent_v1"].__path__ = ["/unavailable"]
-        try:
-            adapter = _load_live_s3_ssl_adapter(source)
-            self.assertEqual(Path(adapter.__file__).resolve(), expected)
-            self.assertEqual(adapter.ALIASES, ("lab-dev", "lab-poc", "lab-qa", "lab-sec"))
-        finally:
-            sys.modules.pop("compliance_agent_v1.live_s3_ssl", None)
-            if package is None:
-                sys.modules.pop("compliance_agent_v1", None)
-            else:
-                sys.modules["compliance_agent_v1"] = package
-            if adapter_module is not None:
-                sys.modules["compliance_agent_v1.live_s3_ssl"] = adapter_module
+    def test_live_adapter_path_is_first_and_import_caches_are_invalidated(self):
+        entry = "/test/agent-src"
+        with patch.object(sys, "path", ["other", entry, "fallback", entry]) as paths:
+            with patch("importlib.invalidate_caches") as invalidate:
+                _prioritize_import_path(Path(entry))
+        self.assertEqual(paths[0], entry)
+        self.assertEqual(paths.count(entry), 1)
+        invalidate.assert_called_once_with()
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
