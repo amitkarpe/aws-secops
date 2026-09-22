@@ -132,6 +132,8 @@ class Issue191NativeIntegrationTests(unittest.TestCase):
         self.assertIn("Environment=SECOPS_LAB_PROFILE=amit", deploy)
         self.assertIn("grep -Fxq 'SECOPS_LAB_PROFILE=amit'", deploy)
         self.assertIn('systemctl restart aws-secops-bulk.service', deploy)
+        self.assertLess(deploy.index("ss -ltnH 'sport = :4444' | grep -q ."),
+                        deploy.index("http://127.0.0.1:4444/api/operator/s3-ssl-status"))
         self.assertIn('rm -f /etc/systemd/system/aws-secops-bulk.service.d/issue191.conf', rollback)
         self.assertIn('systemctl start aws-secops-bulk.service', rollback)
 

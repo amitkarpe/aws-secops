@@ -83,6 +83,11 @@ actual_digest="$(sha256sum "$resume" | awk '{print $1}')"
 test "$actual_digest" = 9a5ea6723b0daddf7812fba7fb03f47f76183889c3e96a6ad827972f2ad9e0a7
 status_file="$(mktemp /run/issue191-s3-ssl-status.XXXXXX)"
 trap 'rm -f "$status_file"' EXIT
+for attempt in {1..30}; do
+  if ss -ltnH 'sport = :4444' | grep -q .; then break; fi
+  sleep 1
+done
+ss -ltnH 'sport = :4444' | grep -q .
 curl --fail --silent --show-error --max-time 180 \
   http://127.0.0.1:4444/api/operator/s3-ssl-status -o "$status_file"
 jq -e '
