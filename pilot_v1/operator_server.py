@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 from http.server import HTTPServer
 import json
 import os
@@ -25,6 +26,7 @@ from .demo_prepare import S3_NONCOMPLIANT, count_s3, require_resettable, reset_s
 from .operator_protocol import ConfirmationGate
 from .org_config_overview import read_status as read_four_account_status, remediation_plan as four_account_plan
 from .codebuild_execution import BuildError, run as run_four_account_build
+from .native_decision_receipt import NativeDecisionReceipts, ReceiptError
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
@@ -70,6 +72,14 @@ class OperatorService(BulkService):
         self.sg_origin = sg_origin
         self.gate = ConfirmationGate()
         self.execution_state = execution_state or Path("/tmp/aws-secops-four-account-execution.json")
+        self._decision_receipts: NativeDecisionReceipts | None = None
+
+    def native_decision_receipts(self) -> NativeDecisionReceipts:
+        if self._decision_receipts is None:
+            self._decision_receipts = NativeDecisionReceipts(
+                self.execution_state.with_name("native-decision-receipts.sqlite3")
+            )
+        return self._decision_receipts
 
     def _sg(self, path: str, payload: dict | None = None) -> dict:
         url = self.sg_origin + path
@@ -887,6 +897,7 @@ class OperatorHandler(BulkHandler):
             "/api/operator/multi-account-execution-plan",
             "/api/operator/multi-account-execute",
             "/api/operator/multi-account-verify",
+            "/api/operator/native-decision-receipt",
         }:
             super().do_POST(); return
         if not self._local_host() or not self._same_loopback_origin():
@@ -897,8 +908,19 @@ class OperatorHandler(BulkHandler):
             length = int(self.headers.get("Content-Length", "0"))
             if not 1 <= length <= 4096:
                 raise ValueError("invalid payload")
-            data = json.loads(self.rfile.read(length))
-            if self.path == "/api/operator/prepare-preview" and set(data) == {"family"}:
+            raw = self.rfile.read(length)
+            if self.path == "/api/operator/native-decision-receipt":
+                secret = os.environ.get("SECOPS_DECISION_RECEIPT_SECRET", "")
+                signature = self.headers.get("X-SecOps-Decision-Signature", "")
+                expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest() if len(secret) >= 32 else ""
+                if not expected or not hmac.compare_digest(signature, expected):
+                    self._json(403, {"error": "native decision receipt unauthorized"}); return
+            data = json.loads(raw)
+            if self.path == "/api/operator/native-decision-receipt":
+                if set(data) != {"tool", "control", "batch_id", "scope_hash", "action_id", "generation_id", "user_id", "decision", "decided_at"}:
+                    raise ReceiptError("unexpected native decision fields")
+                result = self.service.native_decision_receipts().record(**data)
+            elif self.path == "/api/operator/prepare-preview" and set(data) == {"family"}:
                 result = self.service.prepare_preview(data["family"])
             elif self.path == "/api/operator/prepare" and set(data) == {"family", "confirmation_token"}:
                 result = self.service.prepare_demo(data["family"], data["confirmation_token"])
