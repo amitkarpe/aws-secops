@@ -17,7 +17,7 @@ _STATUS = {
 }
 
 _RESIZE_BOOTSTRAP = """<script>
-(()=>{const send=()=>{const d=document.documentElement,b=document.body;const width=d.clientWidth||d.scrollWidth||1;const natural=Math.max(d.scrollHeight,b?b.scrollHeight:0);const height=Math.min(Math.max(natural+4,260),720);parent.postMessage({type:"ui-size-change",payload:{width,height}},"*");};new ResizeObserver(send).observe(document.documentElement);addEventListener("load",send,{once:true});requestAnimationFrame(send);})();
+(()=>{const send=()=>{const d=document.documentElement,b=document.body;const natural=Math.max(d.scrollHeight,b?b.scrollHeight:0);const height=Math.min(Math.max(natural+4,260),720);parent.postMessage({type:"ui-size-change",payload:{height}},"*");};new ResizeObserver(send).observe(document.documentElement);addEventListener("load",send,{once:true});requestAnimationFrame(send);})();
 </script>"""
 
 
