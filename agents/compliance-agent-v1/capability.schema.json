@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/amitkarpe/aws-secops/blob/main/agents/compliance-agent-v1/capability.schema.json",
+  "title": "Sanitized Compliance Agent capability contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "source", "capabilities"],
+  "properties": {
+    "contract_version": {"const": 1},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "version"],
+      "properties": {
+        "kind": {"const": "sanitized-capability-contract"},
+        "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"}
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/capability"}
+    }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "control_key", "resource_type", "capability_state",
+        "supports_detect", "supports_explain", "supports_prepare",
+        "supports_remediate", "supports_verify", "requires_human_approval",
+        "provider_verification_required"
+      ],
+      "properties": {
+        "control_key": {"enum": ["s3_ssl", "s3_logging", "s3_backup", "restricted_ssh"]},
+        "resource_type": {"enum": ["AWS::S3::Bucket", "AWS::EC2::SecurityGroup"]},
+        "capability_state": {"enum": ["DETECT", "EXPLAIN", "PREPARE", "REMEDIATE", "VERIFY"]},
+        "supports_detect": {"type": "boolean"},
+        "supports_explain": {"type": "boolean"},
+        "supports_prepare": {"type": "boolean"},
+        "supports_remediate": {"type": "boolean"},
+        "supports_verify": {"type": "boolean"},
+        "requires_human_approval": {"type": "boolean"},
+        "provider_verification_required": {"type": "boolean"}
+      }
+    }
+  }
+}

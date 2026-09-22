@@ -101,3 +101,50 @@ small{{font-size:9px;opacity:.62}}@media(max-width:650px){{.metrics{{grid-templa
 <tbody>{''.join(rows)}</tbody></table>
 <div class="next">➡️ Next: <b>{_e(next_action)}</b></div>
 </section>{_RESIZE_BOOTSTRAP}</body></html>"""
+
+
+def render_capability_card(summary: dict[str, Any]) -> str:
+    """Render only the fixed public-safe capability fields."""
+    controls = summary.get("controls")
+    expected = {"s3_ssl", "s3_logging", "s3_backup", "restricted_ssh"}
+    if not isinstance(controls, list) or len(controls) != 4:
+        raise ValueError("capability UI requires exactly four controls")
+
+    rows = []
+    seen = set()
+    fields = ("supports_detect", "supports_explain", "supports_prepare", "supports_remediate", "supports_verify")
+    for record in controls:
+        if not isinstance(record, dict) or record.get("control_key") not in expected:
+            raise ValueError("capability UI record is outside the public-safe registry")
+        key = record["control_key"]
+        if key in seen or record.get("capability_state") not in {"DETECT", "EXPLAIN", "PREPARE", "REMEDIATE", "VERIFY"}:
+            raise ValueError("capability UI record is invalid")
+        if any(type(record.get(field)) is not bool for field in fields) or type(record.get("requires_human_approval")) is not bool:
+            raise ValueError("capability UI support flags are invalid")
+        seen.add(key)
+        cells = "".join(f"<td>{'✅' if record[field] else '—'}</td>" for field in fields)
+        approval = "Required" if record.get("requires_human_approval") else "Not applicable"
+        rows.append(
+            f"<tr><th>{_e(key)}</th><td><span class=\"badge good\">{_e(record['capability_state'])}</span></td>"
+            f"{cells}<td>{_e(approval)}</td></tr>"
+        )
+    if seen != expected or summary.get("execution_authorized") is not False:
+        raise ValueError("capability UI summary is incomplete")
+
+    return f"""<!doctype html>
+<html><head><meta charset="utf-8"><style>
+:root{{color-scheme:light dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}}
+*{{box-sizing:border-box}}body{{margin:0;padding:2px;background:transparent;color:CanvasText}}
+.card{{border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:14px;padding:16px;background:Canvas;box-shadow:0 4px 18px rgba(0,0,0,.08)}}
+h2{{font-size:16px;margin:0 0 3px}}.sub{{opacity:.68;font-size:11px;margin-bottom:12px}}
+table{{border-collapse:separate;border-spacing:0;width:100%;font-size:11px;overflow:hidden;border:1px solid color-mix(in srgb,CanvasText 14%,transparent);border-radius:10px}}
+th,td{{padding:8px;border-bottom:1px solid color-mix(in srgb,CanvasText 10%,transparent);text-align:center}}
+th:first-child,td:first-child{{text-align:left}}thead th{{font-size:9px;opacity:.72}}tbody tr:last-child th,tbody tr:last-child td{{border-bottom:0}}
+.badge{{display:inline-block;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:750}}.good{{background:#0f7a3c22;color:#2ebd6b}}
+.note{{margin-top:12px;font-size:10px;opacity:.72}}@media(max-width:720px){{table{{font-size:9px}}th,td{{padding:6px 4px}}}}
+</style></head><body><section class="card">
+<h2>🧭 Compliance capabilities</h2><div class="sub">Sanitized metadata · no findings · no execution authorization</div>
+<table><thead><tr><th>Control</th><th>State</th><th>Detect</th><th>Explain</th><th>Prepare</th><th>Remediate</th><th>Verify</th><th>Approval</th></tr></thead>
+<tbody>{''.join(rows)}</tbody></table>
+<div class="note">Human approval remains separate from technical support. Existing governed execution controls remain unchanged.</div>
+</section>{_RESIZE_BOOTSTRAP}</body></html>"""

@@ -6,8 +6,16 @@ import os
 import re
 from typing import Any, Callable
 
+from .capability_adapter import current_capabilities
 from .config_backend import current_evidence
 from .harness_client import invoke
+
+CAPABILITY_RULES = """
+CAPABILITY_RULES:
+- Capability metadata describes product support only; it is not finding evidence, approval, or execution authorization.
+- s3_ssl, s3_logging, and s3_backup are DETECT/EXPLAIN-only. Never claim they can be prepared, remediated, or verified here.
+- restricted_ssh may reference only the existing governed native-approval path. Capability metadata never authorizes that path.
+"""
 
 
 def _normalize_request(user_request: str) -> str:
@@ -79,13 +87,17 @@ def answer(
     backend_url = backend_url or os.environ.get("CONFIG_BACKEND_URL", "http://127.0.0.1:1111")
     harness_arn = harness_arn or os.environ.get("COMPLIANCE_AGENT_V1_HARNESS_ARN", "")
     evidence = current_evidence(backend_url)
-    prompt = build_prompt(request, evidence)
+    capabilities = current_capabilities()
+    prompt_evidence = dict(evidence)
+    prompt_evidence["capability_catalog"] = capabilities
+    prompt = build_prompt(request, prompt_evidence) + CAPABILITY_RULES
     result = harness_call(prompt, harness_arn, region=os.environ.get("AWS_REGION", "ap-southeast-1"))
     return {
         "version": 1,
         "agent": "Compliance Agent v1",
         "runtime": "Amazon Bedrock AgentCore Harness",
         "answer": _present_answer(result["answer"]),
+        "capabilities": capabilities,
         "evidence": {
             "source": evidence["source"],
             "fetched_at": evidence["fetched_at"],

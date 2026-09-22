@@ -1,0 +1,57 @@
+{
+  "contract_version": 1,
+  "source": {
+    "kind": "sanitized-capability-contract",
+    "version": "1"
+  },
+  "capabilities": [
+    {
+      "control_key": "s3_ssl",
+      "resource_type": "AWS::S3::Bucket",
+      "capability_state": "EXPLAIN",
+      "supports_detect": true,
+      "supports_explain": true,
+      "supports_prepare": false,
+      "supports_remediate": false,
+      "supports_verify": false,
+      "requires_human_approval": false,
+      "provider_verification_required": false
+    },
+    {
+      "control_key": "s3_logging",
+      "resource_type": "AWS::S3::Bucket",
+      "capability_state": "EXPLAIN",
+      "supports_detect": true,
+      "supports_explain": true,
+      "supports_prepare": false,
+      "supports_remediate": false,
+      "supports_verify": false,
+      "requires_human_approval": false,
+      "provider_verification_required": false
+    },
+    {
+      "control_key": "s3_backup",
+      "resource_type": "AWS::S3::Bucket",
+      "capability_state": "EXPLAIN",
+      "supports_detect": true,
+      "supports_explain": true,
+      "supports_prepare": false,
+      "supports_remediate": false,
+      "supports_verify": false,
+      "requires_human_approval": false,
+      "provider_verification_required": false
+    },
+    {
+      "control_key": "restricted_ssh",
+      "resource_type": "AWS::EC2::SecurityGroup",
+      "capability_state": "VERIFY",
+      "supports_detect": true,
+      "supports_explain": true,
+      "supports_prepare": true,
+      "supports_remediate": true,
+      "supports_verify": true,
+      "requires_human_approval": true,
+      "provider_verification_required": true
+    }
+  ]
+}
