@@ -45,11 +45,11 @@ def _rich_status_model_text(request: str, value: dict) -> str | None:
         for item in checks
         if isinstance(item, dict)
     )
-    next_action = "Fix S3" if s3_bad else ("Fix SSH" if ssh_bad else "No remediation needed")
     return (
         "Current fleet status is rendered in the attached native Ops card. "
         "Render the UI Resource Marker exactly once and do not repeat the status as Markdown, "
-        f"a second table, or a list. Output only one concise next line: ➡️ Next: {next_action}"
+        "a second table, a list, or a second next-action line. The native card already contains "
+        "the single authoritative next action."
     )
 
 

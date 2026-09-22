@@ -142,7 +142,9 @@ class Issue157AutoSizeCardTests(unittest.TestCase):
             result = read_mcp.ask_compliance_agent_v1("Status")
         text = result.content[0].text
         self.assertIn("do not repeat the status as Markdown", text)
-        self.assertIn("➡️ Next: Fix S3", text)
+        self.assertNotIn("➡️ Next:", text)
+        self.assertIn("single authoritative next action", text)
+        self.assertIn("➡️ Next: <b>Fix S3</b>", result.content[1].resource.text)
         self.assertNotIn("Long grounded answer", text)
         self.assertNotIn("| AWS Account |", text)
         self.assertEqual(result.structuredContent, value)
