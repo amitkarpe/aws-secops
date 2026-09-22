@@ -339,7 +339,7 @@ class RepoIsolationTests(unittest.TestCase):
         self.assertIn("Call prepare_multi_account_remediation directly", instructions)
         self.assertIn("OMIT include_accounts", instructions)
         self.assertIn("Preparation itself performs the fresh four-account compliance read", instructions)
-        self.assertIn("never turn Fix S3/Fix SSH into a read-only Status response", instructions)
+        self.assertIn("Never turn Fix S3/Fix SSH into a read-only Status response", instructions)
         self.assertIn("OVERRIDES ALL GENERAL NEXT/CONFIRMATION RULES", instructions)
         hook = (ROOT / "integration" / "multi-account-approval-hook.cjs").read_text()
         self.assertIn("excluded_resources", hook)
