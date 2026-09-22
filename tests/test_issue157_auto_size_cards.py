@@ -59,6 +59,9 @@ def assert_resize_bootstrap(testcase: unittest.TestCase, html: str) -> None:
     testcase.assertIn("ResizeObserver", html)
     testcase.assertIn("requestAnimationFrame", html)
     testcase.assertIn("Math.min(Math.max(natural+4,260),720)", html)
+    testcase.assertIn('payload:{height}', html)
+    testcase.assertNotIn("clientWidth", html)
+    testcase.assertNotIn("payload:{width,height}", html)
     for token in FORBIDDEN_SCRIPT_APIS:
         testcase.assertNotIn(token, html)
 
