@@ -1051,12 +1051,14 @@ class OperatorHandler(BulkHandler):
                     missing_module = "unavailable"
                 origin = "unavailable"
                 tb = exc.__traceback__
-                if tb is not None and tb.tb_next is not None:
-                    frame = tb.tb_next.tb_frame
+                while tb is not None and tb.tb_next is not None:
+                    tb = tb.tb_next
+                if tb is not None:
+                    frame = tb.tb_frame
                     filename = Path(frame.f_code.co_filename).name
                     function = frame.f_code.co_name
                     if re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", filename) and re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", function):
-                        origin = f"{filename}:{tb.tb_next.tb_lineno}:{function}"
+                        origin = f"{filename}:{tb.tb_lineno}:{function}"
                 logging.getLogger(__name__).warning(
                     "s3_ssl live read unavailable (%s, module=%s, origin=%s)",
                     type(exc).__name__, missing_module, origin,
