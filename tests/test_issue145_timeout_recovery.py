@@ -91,7 +91,7 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
         self.assertNotIn(SG_CONTROL, json.loads(path.read_text())["plans"])
 
     def test_expired_batch_can_only_reconcile_verified_completion(self):
-        service, path = self.make_service(state="PENDING_APPROVAL", age_seconds=1800)
+        service, path = self.make_service(state="PENDING_APPROVAL", age_seconds=3600)
 
         with patch(
             "pilot_v1.operator_server.run_four_account_build",
@@ -105,7 +105,7 @@ class Issue145TimeoutRecoveryTests(unittest.TestCase):
         self.assertNotIn(SG_CONTROL, json.loads(path.read_text())["plans"])
 
     def test_expired_unresolved_batch_never_dispatches(self):
-        service, path = self.make_service(state="PENDING_APPROVAL", age_seconds=1800)
+        service, path = self.make_service(state="PENDING_APPROVAL", age_seconds=3600)
 
         def fake_run(mode, *args, **kwargs):
             self.assertEqual(mode, "verify")

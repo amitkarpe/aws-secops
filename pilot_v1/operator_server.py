@@ -28,6 +28,7 @@ from .codebuild_execution import BuildError, run as run_four_account_build
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
+APPROVAL_TTL_SECONDS = 1800
 
 LATEST_ACCEPTANCE = {
     "date": "2026-09-18",
@@ -379,7 +380,7 @@ class OperatorService(BulkService):
         if not isinstance(plan, dict):
             raise ValueError("no prepared four-account execution")
         age = int(time.time()) - int(plan.get("created_at", 0))
-        if age < 0 or age > 900:
+        if age < 0 or age > APPROVAL_TTL_SECONDS:
             raise ValueError("prepared four-account execution expired")
         return {
             "version": 1,
@@ -492,7 +493,7 @@ class OperatorService(BulkService):
         age = int(time.time()) - int(plan.get("created_at", 0))
         if age < 0:
             raise ValueError("prepared four-account execution has invalid age")
-        expired = age > 900
+        expired = age > APPROVAL_TTL_SECONDS
         preview = {
             "version": 1,
             "scope": "four-account-live-config",

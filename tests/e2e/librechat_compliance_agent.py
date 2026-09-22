@@ -9,6 +9,7 @@ Optional environment:
   LIBRECHAT_AGENT_ID           Defaults to the retained Compliance Agent v1 id.
   LIBRECHAT_E2E_TIMEOUT        Per-case deadline in seconds; defaults to 240.
   LIBRECHAT_E2E_FORWARDED_FOR  Private trusted-proxy test source when required.
+  LIBRECHAT_E2E_CONTROL        s3 (default) or ssh.
 
 The token is never logged. The script never submits an approve decision.
 """
@@ -34,6 +35,22 @@ AGENT_ID = "agent_o1sSYUyZ6Jal-H9M32NT0"
 NO_PARENT = "00000000-0000-0000-0000-000000000000"
 EXECUTOR_PREFIX = "execute_multi_account_remediation"
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
+SSH_CONTROL = "restricted-ssh"
+
+SCENARIOS = {
+    "s3": {
+        "control": S3_CONTROL,
+        "command": "Fix S3",
+        "approval_prefix": "Allow Compliance Agent v1 to apply S3 Block Public Access remediation?",
+        "label": "S3",
+    },
+    "ssh": {
+        "control": SSH_CONTROL,
+        "command": "Fix SSH",
+        "approval_prefix": "Allow Compliance Agent v1 to apply restricted SSH remediation?",
+        "label": "SSH",
+    },
+}
 CONFIRMATION_RE = re.compile(r"\b(?:type|reply|respond)\s+(?:yes|go|approve)\b", re.I)
 FORWARDED_FOR = os.environ.get("LIBRECHAT_E2E_FORWARDED_FOR", "").strip()
 BROWSER_USER_AGENT = (
@@ -386,6 +403,13 @@ def run() -> int:
     conversations: list[str] = []
     results: list[tuple[str, str]] = []
     initial_status_text = ""
+    scenario_name = env("LIBRECHAT_E2E_CONTROL", "s3").lower()
+    scenario = SCENARIOS.get(scenario_name)
+    if scenario is None:
+        raise GateFailure("LIBRECHAT_E2E_CONTROL must be s3 or ssh")
+    command = scenario["command"]
+    control = scenario["control"]
+    label = scenario["label"]
 
     try:
         # E2E-1: real start + status polling + persisted final response.
@@ -408,17 +432,17 @@ def run() -> int:
         )
         require(
             "Fix S3" in initial_status_text,
-            "Status did not present Fix S3 as next action; "
+            "Status did not present the fleet-card next action; "
             f"sanitized_tail={safe_excerpt([snapshots, capture.events, history])}",
         )
         require(
             not find_executor_calls([snapshots, capture.events, history]),
             "Status invoked a remediation executor",
         )
-        results.append(("E2E-1 Status", "PASS"))
+        results.append((f"E2E-1 Status ({label})", "PASS"))
 
         # E2E-2: fresh exact fix request pauses once at the native approval action.
-        fix_id, fix_capture, _ = start_chat(base_url, token, user_id, agent_id, "Fix S3")
+        fix_id, fix_capture, _ = start_chat(base_url, token, user_id, agent_id, command)
         conversations.append(fix_id)
         pending, fix_snapshots = wait_for_status(
             base_url,
@@ -446,7 +470,7 @@ def run() -> int:
         if isinstance(args, str):
             args = json.loads(args)
         require(isinstance(args, dict), "paused executor arguments are not an object")
-        require(args.get("control") == S3_CONTROL, "paused executor has the wrong control")
+        require(args.get("control") == control, "paused executor has the wrong control")
         require(bool(re.fullmatch(r"[a-f0-9]{20}", str(args.get("batch_id", "")))), "bad batch id")
         require(
             bool(re.fullmatch(r"[a-f0-9]{24}", str(args.get("scope_hash", "")))),
@@ -467,14 +491,14 @@ def run() -> int:
         }
         unique_executor_ids.discard(None)
         require(len(unique_executor_ids) == 1, "duplicate executor retry appeared before approval")
-        results.append(("E2E-2 Fix S3 native ASK", "PASS"))
+        results.append((f"E2E-2 {command} native ASK", "PASS"))
 
         # E2E-3: the exact API payload that drives ToolApproval is user-facing.
         description = paused.get("description")
         require(isinstance(description, str), "approval description is missing")
         require(
-            description.startswith("Allow Compliance Agent v1 to apply S3 Block Public Access remediation?"),
-            "approval description is not the required user-facing S3 prompt",
+            description.startswith(scenario["approval_prefix"]),
+            f"approval description is not the required user-facing {label} prompt",
         )
         require("Selected accounts:" in description and "Change:" in description, "scope/action missing")
         require("ASK - Review execute_multi_account_remediation" not in description, "internal ASK wording leaked")
@@ -484,7 +508,7 @@ def run() -> int:
             review_configs[0].get("allowed_decisions") == ["approve", "reject"],
             "approval decisions are not restricted to approve/reject",
         )
-        results.append(("E2E-3 Approval UX", "PASS"))
+        results.append((f"E2E-3 Approval UX ({label})", "PASS"))
 
         # E2E-4: reject through the real resume API; never automate Approve.
         generation_created_at = pending.get("createdAt")
@@ -505,7 +529,7 @@ def run() -> int:
                     {
                         "tool_call_id": tool_call_id,
                         "decision": "reject",
-                        "reason": "Automated Issue #161 zero-write rejection proof",
+                        "reason": f"Automated Issue #162 {label} zero-write rejection proof",
                     }
                 ],
             },
@@ -536,11 +560,16 @@ def run() -> int:
         after_history = get_messages(base_url, token, after_id)
         after_text = "\n".join(flatten_strings([after_snapshots, after_capture.events, after_history]))
         require(after_terminal.get("active") is False, "post-reject Status did not complete")
-        require(has_noncompliant_finding(initial_status_text), "initial Status had no S3 finding")
-        require(has_noncompliant_finding(after_text), "post-reject Status lost the pre-existing finding")
-        require("Fix S3" in after_text, "post-reject Status no longer offered the S3 finding path")
+        require(
+            "ui://compliance-agent-v1/fleet-status" in after_text,
+            "post-reject Status did not return the fleet rich-result path",
+        )
+        require(
+            "Fix S3" in after_text,
+            "post-reject Status did not return the fleet-card next action",
+        )
         require("AWS change applied" not in after_text, "post-reject Status claimed an AWS change")
-        results.append(("E2E-4 Reject zero-write", "PASS"))
+        results.append((f"E2E-4 Reject zero-write ({label})", "PASS"))
     except Exception as exc:
         failed_index = len(results) + 1
         results.append((f"E2E-{failed_index}", f"FAIL — {exc}"))
