@@ -164,8 +164,9 @@ class Issue191NativeIntegrationTests(unittest.TestCase):
             OperatorHandler.do_GET(handler)
         self.assertEqual(handler.response, (503, {"error": "live s3_ssl read unavailable"}))
         logger.warning.assert_called_once_with(
-            "s3_ssl live read unavailable (%s, module=%s)",
+            "s3_ssl live read unavailable (%s, module=%s, origin=%s)",
             "ModuleNotFoundError", "compliance_agent_v1",
+            "test_issue191_native_integration.py:147:s3_ssl_live_status",
         )
         self.assertNotIn(private_message, str(handler.response))
 
