@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -186,6 +187,38 @@ class ScaledFindingStore:
             "content_in_model_context": False,
             "read_only": True,
         }
+
+    def evidence_receipt(self) -> dict[str, Any]:
+        """Return a stable receipt for server-side candidate re-resolution."""
+        payload = json.dumps(
+            sorted(self._rows, key=lambda row: row["finding_id"]),
+            separators=(",", ":"), sort_keys=True,
+        )
+        return {
+            "version": 1,
+            "fixture": "synthetic-1k",
+            "evidence_digest": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+            "read_only": True,
+        }
+
+    def resolve_candidate(
+        self, account_alias: str, control_key: str, resource_id: str
+    ) -> dict[str, str] | None:
+        """Resolve one candidate against backend truth; never trust the CSV row itself."""
+        if (
+            not isinstance(account_alias, str)
+            or not isinstance(control_key, str)
+            or not isinstance(resource_id, str)
+        ):
+            return None
+        for row in self._rows:
+            if (
+                row["account_alias"] == account_alias
+                and row["control_key"] == control_key
+                and row["resource_id"] == resource_id
+            ):
+                return dict(row)
+        return None
 
 
 def _csv_safe(value: str) -> str:
