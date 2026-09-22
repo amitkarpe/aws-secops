@@ -1,42 +1,31 @@
 # CODEX reset sprint — Issue #173
 
-This file is a short durable pointer. The full execution contract lives in GitHub Issue #173.
+Status: **COMPLETE — 2026-09-22**
 
-## Objective
+This file is the durable completion pointer for GitHub Issue #173.
 
-Use the resumed Codex session for one substantial end-to-end job:
+## Completed objective
 
 `finish Compliance Agent v1 closure -> publish current v1.0.0 -> leave Issue #170 clean at M1`
 
 Do not start the future catalog/1K/bulk roadmap.
 
-## Work continuously
+## Result
 
-Codex owns the active Issue #173 PR until acceptance or a real stop gate.
-
-Do not wait for Amit between:
-
-- repo review;
-- implementation;
-- tests;
-- fixing test failures;
-- retained-LAB Reject-only validation;
-- release workflow creation;
-- GitHub Actions validation;
-- safe merge;
-- release verification;
-- context/roadmap cleanup.
+- Issue #141 exact-exclusion Reject acceptance: PASS and closed.
+- PR #174: merged.
+- Repository and dedicated v1 regression on the release commit: PASS.
+- Release: [`compliance-agent-v1.0.0`](https://github.com/amitkarpe/aws-secops/releases/tag/compliance-agent-v1.0.0).
+- Exact release commit: `5d4121eb7e3621d04ae2e05c3b66fdd89879b7e0`.
+- Issue #125: closed.
+- Issue #170 remains the single future roadmap at M1, not started.
 
 ## Read first
 
 1. `AGENTS.md`
 2. `CONTEXT.md`
 3. `SPEC.md`
-4. Issue #173
-5. Issue #141
-6. Issue #125
-7. Issue #170
-8. active PR for #173
+4. Issue #170
 
 ## Key safety
 
@@ -50,12 +39,7 @@ Do not wait for Amit between:
 - no new product architecture;
 - reuse existing harnesses and release patterns.
 
-## Expected finish
+## Stop boundary
 
-- Issue #141 closed with explicit Reject evidence;
-- current v1 candidate green;
-- fresh `compliance-agent-v1.0.0` release published from current validated commit;
-- Issue #125 closed;
-- `CONTEXT.md` updated to release truth;
-- Issue #170 remains open and ready for M1;
-- no stale release PR remains.
+Do not resume this sprint or begin Issue #170 M1 automatically. A new bounded
+implementation Issue/PR must own the next milestone.
