@@ -25,6 +25,26 @@
 - publish immutable GitHub Release `compliance-agent-v1.0.0`;
 - close Issues #123/#125 after release evidence is verified.
 
+### Next execution milestones — Issue #170
+
+Issue #170 defines the execution order across the current v1 closure, Issue #140, and Issue #164.
+
+Immediate closure gate (M0):
+- merge PR #169 after visual acceptance of the rich-card width fix;
+- remove the duplicate `➡️ Next: Fix S3` line so the rich card owns the next action;
+- finish PR #163 / Issue #162 without regressing S3/SSH authenticated Reject-only E2E;
+- complete reproducible LibreChat access, stdio MCP CI regression, and immutable `compliance-agent-v1.0.0` release evidence.
+
+Then proceed in this order:
+
+1. **M1 — IM8 authoritative policy catalog**: versioned registry plus first 5–10 read-only DETECT/EXPLAIN controls.
+2. **M2 — Scalable query + export foundation**: server-side summary/filter/page, CSV export, and 50+ account / 1k finding E2E.
+3. **M3 — Bulk Ops remediation UX**: Agent GUI CSV pilot plus Config GUI grouped/manual fix pilot, both using the same frozen-scope/native-approval backend contract.
+4. **M4 — Governed control expansion + exceptions/audit**: add only 2–3 remediable IM8-backed controls per batch and make exclusions, managed exceptions, and operational event history first-class.
+5. **M5 — 10k/100k operational scale acceptance**: failure-mode, replay/restart/TTL, export-integrity, and measured performance acceptance before broader promotion.
+
+Each milestone gets its own bounded Issue/PR and E2E gate. Issue #140 remains authoritative for Ops UX/exceptions/audit details; Issue #164 remains authoritative for IM8, bulk workflows, and scale-testing rules.
+
 ### Scalable Ops UX + governed exceptions — Issue #140
 
 Issue #140 is the future master roadmap for:
