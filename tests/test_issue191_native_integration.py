@@ -5,6 +5,7 @@ import unittest
 
 from pilot_v1.native_decision_receipt import ReceiptError
 from pilot_v1.operator_server import OperatorService
+from compliance_agent_v1.live_s3_ssl import _BotoS3ReadClient, MAX_BUCKETS_PER_ACCOUNT
 
 
 def evidence(*, changed=False):
@@ -101,6 +102,28 @@ class Issue191NativeIntegrationTests(unittest.TestCase):
                 user_id="authenticated-user-123")
         with self.assertRaisesRegex(ValueError, "expired"):
             self.service.record_s3_ssl_native_decision(**self.receipt(prepared))
+
+    def test_s3_list_buckets_is_single_read_compatible_with_old_botocore(self):
+        class S3WithoutPaginator:
+            def __init__(self):
+                self.calls = 0
+
+            def list_buckets(self):
+                self.calls += 1
+                return {"Buckets": [{"Name": f"bucket-{index:02d}"} for index in reversed(range(25))]}
+
+        class Session:
+            def __init__(self):
+                self.s3 = S3WithoutPaginator()
+
+            def client(self, service, region_name=None):
+                return self.s3 if service == "s3" else object()
+
+        session = Session()
+        names = _BotoS3ReadClient(session).list_bucket_names()
+        self.assertEqual(session.s3.calls, 1)
+        self.assertEqual(len(names), MAX_BUCKETS_PER_ACCOUNT)
+        self.assertEqual(names, [f"bucket-{index:02d}" for index in range(MAX_BUCKETS_PER_ACCOUNT)])
 
     def test_runtime_deploy_binds_management_profile_and_rollback_removes_only_issue191_dropins(self):
         deploy = (Path(__file__).resolve().parents[1] / "scripts" / "issue191-deploy-runtime.sh").read_text()

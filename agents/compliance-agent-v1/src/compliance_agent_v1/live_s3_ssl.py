@@ -35,12 +35,13 @@ class _BotoS3ReadClient:
         return str(self._sts.get_caller_identity()["Account"])
 
     def list_bucket_names(self) -> list[str]:
-        paginator = self._s3.get_paginator("list_buckets")
-        result: list[str] = []
-        for page in paginator.paginate(PaginationConfig={"PageSize": MAX_BUCKETS_PER_ACCOUNT, "MaxItems": MAX_BUCKETS_PER_ACCOUNT}):
-            result.extend(str(item["Name"]) for item in page.get("Buckets", [])
-                          if isinstance(item, Mapping) and isinstance(item.get("Name"), str))
-        return result[:MAX_BUCKETS_PER_ACCOUNT]
+        # Keep compatible with the retained host's older Botocore model, which
+        # does not register an S3 ListBuckets paginator. ListBuckets itself is
+        # one read; only the fixed first 20 sorted names can trigger policy reads.
+        response = self._s3.list_buckets()
+        names = [str(item["Name"]) for item in response.get("Buckets", [])
+                 if isinstance(item, Mapping) and isinstance(item.get("Name"), str)]
+        return sorted(names)[:MAX_BUCKETS_PER_ACCOUNT]
 
     def bucket_policy(self, bucket: str) -> Mapping[str, Any]:
         return json.loads(self._s3.get_bucket_policy(Bucket=bucket)["Policy"])
