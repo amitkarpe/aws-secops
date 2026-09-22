@@ -1,0 +1,5 @@
+{
+  "items": [
+    {"status": "ENABLED", "finding_counts": {"HIGH": 1, "MEDIUM": 2}}
+  ]
+}
