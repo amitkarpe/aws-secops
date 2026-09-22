@@ -18,15 +18,14 @@ def _digest(value: Any) -> str:
 class GroupedSelectionPilot(CsvCandidatePilot):
     """Server-owned manual selection; changing a view never changes selection."""
 
-    def __init__(self, store: ScaledFindingStore | None = None) -> None:
-        super().__init__(store)
+    def __init__(self, store: ScaledFindingStore | None = None, *, control: str = PILOT_CONTROL) -> None:
+        super().__init__(store, control=control)
         self._selection: dict[str, dict[str, str]] = {}
 
-    @staticmethod
-    def _query(**values: Any) -> FindingQuery:
+    def _query(self, **values: Any) -> FindingQuery:
         query = FindingQuery(**values)
-        if query.control_key != PILOT_CONTROL:
-            raise ValueError("M3B accepts only the restricted_ssh control filter")
+        if query.control_key != self.control:
+            raise ValueError("selection filter must match the explicit governed control")
         return query
 
     def selection_receipt(self, *, include_ids: bool = False) -> dict[str, Any]:
@@ -55,7 +54,7 @@ class GroupedSelectionPilot(CsvCandidatePilot):
     ) -> dict[str, Any]:
         """Return one bounded Config-style page and aggregate group counts only."""
         query = self._query(
-            control_key=PILOT_CONTROL,
+            control_key=self.control,
             account_alias=account_alias,
             config_status=config_status,
             exception_status=exception_status,
@@ -68,7 +67,7 @@ class GroupedSelectionPilot(CsvCandidatePilot):
         groups = self.store.grouped_summary(query, group_by)
         return {
             "version": 1,
-            "control": PILOT_CONTROL,
+            "control": self.control,
             "page": page_value,
             "groups": groups,
             "selection": self.selection_receipt(),
@@ -81,7 +80,7 @@ class GroupedSelectionPilot(CsvCandidatePilot):
         row = self.store.resolve_finding_id(finding_id)
         if row is None:
             raise ValueError("unknown finding ID")
-        if row["control_key"] != PILOT_CONTROL:
+        if row["control_key"] != self.control:
             raise ValueError("unsupported finding control")
         if row["config_status"] != "NON_COMPLIANT":
             raise ValueError("stale finding cannot be selected")
@@ -105,7 +104,7 @@ class GroupedSelectionPilot(CsvCandidatePilot):
     ) -> dict[str, Any]:
         """Explicitly materialize only the current server-side filtered set."""
         query = self._query(
-            control_key=PILOT_CONTROL,
+            control_key=self.control,
             account_alias=account_alias,
             config_status=config_status,
             exception_status=exception_status,
@@ -135,7 +134,7 @@ class GroupedSelectionPilot(CsvCandidatePilot):
             }
             if resolved is None:
                 rows.append({**base, "preview_state": "UNKNOWN", "reason": "NOT_IN_CURRENT_EVIDENCE"})
-            elif resolved["control_key"] != PILOT_CONTROL:
+            elif resolved["control_key"] != self.control:
                 rows.append({**base, "preview_state": "UNSUPPORTED", "reason": "CONTROL_NOT_IN_M3B"})
             elif resolved["config_status"] != "NON_COMPLIANT":
                 rows.append({**base, "preview_state": "STALE", "reason": "CURRENT_EVIDENCE_NOT_NON_COMPLIANT"})
@@ -147,7 +146,7 @@ class GroupedSelectionPilot(CsvCandidatePilot):
         eligible = [row for row in rows if row["preview_state"] == "ELIGIBLE"]
         excluded = [row for row in rows if row["preview_state"] == "EXCLUDED"]
         scope = {
-            "control": PILOT_CONTROL,
+            "control": self.control,
             "eligible": [
                 {key: row[key] for key in ("finding_id", "account_alias", "resource_id")}
                 for row in eligible

@@ -43,11 +43,10 @@ class CapabilityAdapterTests(unittest.TestCase):
             [row["control_key"] for row in summary["controls"]],
             ["restricted_ssh", "s3_backup", "s3_logging", "s3_ssl"],
         )
-        self.assertEqual(summary["controls"][0]["capability_state"], "VERIFY")
-        self.assertTrue(summary["controls"][0]["requires_human_approval"])
-        self.assertEqual(
-            {row["capability_state"] for row in summary["controls"][1:]}, {"EXPLAIN"}
-        )
+        governed = {row["control_key"] for row in summary["controls"] if row["capability_state"] == "VERIFY"}
+        self.assertEqual(governed, {"restricted_ssh", "s3_ssl"})
+        self.assertTrue(all(row["requires_human_approval"] for row in summary["controls"] if row["control_key"] in governed))
+        self.assertEqual({row["capability_state"] for row in summary["controls"] if row["control_key"] not in governed}, {"EXPLAIN"})
         self.assertTrue(summary["read_only"])
         self.assertFalse(summary["execution_authorized"])
         serialized = json.dumps(summary, sort_keys=True)
@@ -78,7 +77,7 @@ class CapabilityAdapterTests(unittest.TestCase):
 
     def test_over_privileged_control_and_missing_approval_are_rejected(self):
         over = payload()
-        row = next(item for item in over["capabilities"] if item["control_key"] == "s3_ssl")
+        row = next(item for item in over["capabilities"] if item["control_key"] == "s3_logging")
         row.update({
             "capability_state": "REMEDIATE",
             "supports_prepare": True,
@@ -110,8 +109,9 @@ class CapabilityAdapterTests(unittest.TestCase):
         self.assertNotIn("private_control", json.dumps(unsupported))
 
         s3 = catalog.decision("s3_ssl", "REMEDIATE")
-        self.assertFalse(s3["supported"])
-        self.assertEqual(s3["route"], "read-only")
+        self.assertTrue(s3["supported"])
+        self.assertEqual(s3["route"], "synthetic-governed-path")
+        self.assertTrue(s3["requires_human_approval"])
         self.assertFalse(s3["execution_authorized"])
 
     def test_schema_is_closed_and_matches_public_registry(self):

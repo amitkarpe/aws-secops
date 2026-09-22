@@ -15,7 +15,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from .csv_bulk_pilot import PILOT_CONTROL, NoopExecutor
+from .csv_bulk_pilot import GOVERNED_SYNTHETIC_CONTROLS, PILOT_CONTROL, NoopExecutor
 from .grouped_selection_pilot import GroupedSelectionPilot
 from .scaled_findings import ALIASES
 
@@ -47,9 +47,10 @@ class ExceptionRegistry:
     def _validate(payload: dict[str, str]) -> None:
         if set(payload) != _RECORD_FIELDS:
             raise ValueError("exception fields must exactly match the public contract")
-        if payload["control_key"] != PILOT_CONTROL or payload["account_alias"] not in ALIASES:
+        if payload["control_key"] not in GOVERNED_SYNTHETIC_CONTROLS or payload["account_alias"] not in ALIASES:
             raise ValueError("exception target is unsupported")
-        if not payload["resource_id"].startswith("sg-lab-"):
+        expected_prefix = "bucket-lab-" if payload["control_key"] == "s3_ssl" else "sg-lab-"
+        if not payload["resource_id"].startswith(expected_prefix):
             raise ValueError("exception requires one exact public resource")
         if not all(isinstance(value, str) and _TEXT.fullmatch(value) for value in payload.values()):
             raise ValueError("exception contains an invalid or private value")
@@ -273,7 +274,7 @@ class ExceptionAuditPilot(GroupedSelectionPilot):
             base = {key: prior[key] for key in ("finding_id", "account_alias", "control_key", "resource_id")}
             if resolved is None:
                 rows.append({**base, "preview_state": "UNKNOWN", "reason": "NOT_IN_CURRENT_EVIDENCE"})
-            elif resolved["control_key"] != PILOT_CONTROL:
+            elif resolved["control_key"] != self.control:
                 rows.append({**base, "preview_state": "UNSUPPORTED", "reason": "CONTROL_NOT_IN_M3B"})
             elif resolved["config_status"] != "NON_COMPLIANT":
                 rows.append({**base, "preview_state": "STALE", "reason": "CURRENT_EVIDENCE_NOT_NON_COMPLIANT"})
@@ -289,12 +290,22 @@ class ExceptionAuditPilot(GroupedSelectionPilot):
         receipt = self.registry.receipt(current_findings, as_of=as_of)
         eligible = [row for row in rows if row["preview_state"] == "ELIGIBLE"]
         excluded = [row for row in rows if row["preview_state"] == "EXCLUDED"]
-        scope = {"control": PILOT_CONTROL,
+        mixed_control = any(row["preview_state"] == "UNSUPPORTED" for row in rows)
+        # M4B never silently drops a second control out of a selected scope.
+        # Operators must explicitly create one exact batch per control.
+        if mixed_control:
+            for row in rows:
+                if row["preview_state"] == "ELIGIBLE":
+                    row["preview_state"] = "UNSUPPORTED"
+                    row["reason"] = "MIXED_CONTROL_SCOPE_REQUIRES_SEPARATE_BATCHES"
+            eligible = []
+        scope = {"control": self.control,
                  "eligible": [{key: row[key] for key in ("finding_id", "account_alias", "resource_id")} for row in eligible],
                  "exclusions": [{key: row[key] for key in ("finding_id", "account_alias", "resource_id")} for row in excluded],
                  "selection_digest": selected["selection_digest"], "evidence_version": evidence["version"],
                  "evidence_digest": evidence["evidence_digest"], "selected_accounts": sorted({row["account_alias"] for row in eligible}),
-                 "exception_as_of": as_of, "exception_digest": receipt["exception_digest"], "exception_ids": receipt["exception_ids"]}
+                 "exception_as_of": as_of, "exception_digest": receipt["exception_digest"], "exception_ids": receipt["exception_ids"],
+                 "mixed_control_blocked": mixed_control}
         self.ledger.append("EXCEPTION_RESOLUTION", outcome="RESOLVED", source="exception-registry", selection_digest=selected["selection_digest"], exception_digest=receipt["exception_digest"], exception_ids=receipt["exception_ids"])
         preview = self._freeze_preview(rows, scope)
         preview["selected_count"] = selected["selected_count"]
@@ -360,6 +371,21 @@ class ExceptionAuditPilot(GroupedSelectionPilot):
     def audit_export_receipt(self) -> dict[str, Any]:
         self.ledger.append("EXPORT_GENERATION", outcome="AUDIT_EXPORTED", source="audit-export")
         return self.ledger.export_receipt()
+
+    def operator_view(self, batch_id: str, scope_hash: str) -> dict[str, Any]:
+        """One compact, control-bound operator receipt; export bodies stay backend-only."""
+        batch = self._batch(batch_id, scope_hash)
+        active = sum(
+            item["status"] == "ACTIVE" and item["control_key"] == self.control
+            for item in self.registry.current()
+        )
+        return {
+            "version": 1, "control": self.control, "result": self.compact_result(batch_id, scope_hash),
+            "active_exception_count": active, "audit": self.ledger.timeline(batch_id),
+            "result_export": self.result_export_receipt(batch_id, scope_hash),
+            "audit_export": self.ledger.export_receipt(), "model_context": "COMPACT_TWO_CONTROL_OPERATOR_RECEIPT",
+            "read_only": True, "aws_mutation": False,
+        }
 
 
 __all__ = ["AuditLedger", "ExceptionAuditPilot", "ExceptionRegistry", "MAX_PAGE_SIZE"]

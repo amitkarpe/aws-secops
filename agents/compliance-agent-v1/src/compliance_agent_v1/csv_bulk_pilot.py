@@ -26,6 +26,7 @@ MAX_CANDIDATE_BYTES = 128_000
 MAX_CANDIDATE_ROWS = 1_000
 MAX_REJECTED_PAGE_SIZE = 100
 PILOT_CONTROL = "restricted_ssh"
+GOVERNED_SYNTHETIC_CONTROLS = frozenset({"restricted_ssh", "s3_ssl"})
 RESULT_FILENAME = "synthetic-bulk-results.csv"
 PREVIEW_STATES = frozenset({"ELIGIBLE", "DUPLICATE", "STALE", "UNKNOWN", "UNSUPPORTED", "EXCLUDED"})
 
@@ -103,8 +104,13 @@ class NoopExecutor:
 class CsvCandidatePilot:
     """Server-side M3A preview/freeze/decision state using native approval semantics."""
 
-    def __init__(self, store: ScaledFindingStore | None = None) -> None:
+    def __init__(self, store: ScaledFindingStore | None = None, *, control: str = PILOT_CONTROL,
+                 strict_control_scope: bool | None = None) -> None:
+        if control not in GOVERNED_SYNTHETIC_CONTROLS:
+            raise ValueError("unsupported governed synthetic control")
         self.store = store or ScaledFindingStore()
+        self.control = control
+        self._strict_control_scope = control != PILOT_CONTROL if strict_control_scope is None else strict_control_scope
         self._batches: dict[str, dict[str, Any]] = {}
         self._preparation_revision = 0
 
@@ -122,7 +128,7 @@ class CsvCandidatePilot:
             resolved = self.store.resolve_candidate(*candidate.key())
             if resolved is None:
                 rows.append({**base, "preview_state": "UNKNOWN", "reason": "NOT_IN_CURRENT_EVIDENCE"})
-            elif candidate.control_key != PILOT_CONTROL:
+            elif candidate.control_key != self.control:
                 rows.append({**base, "preview_state": "UNSUPPORTED", "reason": "CONTROL_NOT_IN_M3A"})
             elif resolved["config_status"] != "NON_COMPLIANT":
                 rows.append({**base, "preview_state": "STALE", "reason": "CURRENT_EVIDENCE_NOT_NON_COMPLIANT"})
@@ -136,11 +142,20 @@ class CsvCandidatePilot:
         rows.sort(key=lambda row: (row["account_alias"], row["control_key"], row["resource_id"], row["preview_state"]))
         eligible = [row for row in rows if row["preview_state"] == "ELIGIBLE"]
         excluded = [row for row in rows if row["preview_state"] == "EXCLUDED"]
+        mixed_control = self._strict_control_scope and any(
+            candidate.control_key != self.control for candidate in candidates
+        )
+        if mixed_control:
+            for row in rows:
+                if row["preview_state"] == "ELIGIBLE":
+                    row["preview_state"] = "UNSUPPORTED"
+                    row["reason"] = "MIXED_CONTROL_SCOPE_REQUIRES_SEPARATE_BATCHES"
+            eligible = []
         rejected = [row for row in rows if row["preview_state"] not in {"ELIGIBLE", "EXCLUDED"}]
         counts = Counter(row["preview_state"] for row in rows)
         candidate_digest = _digest([candidate.public() for candidate in sorted(candidates, key=Candidate.key)])
         scope = {
-            "control": PILOT_CONTROL,
+            "control": self.control,
             "eligible": [
                 {key: row[key] for key in ("finding_id", "account_alias", "resource_id")}
                 for row in eligible
@@ -153,6 +168,7 @@ class CsvCandidatePilot:
             "evidence_version": evidence["version"],
             "evidence_digest": evidence["evidence_digest"],
             "selected_accounts": sorted({row["account_alias"] for row in eligible}),
+            "mixed_control_blocked": mixed_control,
         }
         return self._freeze_preview(rows, scope)
 
@@ -242,7 +258,7 @@ class CsvCandidatePilot:
             "version": 1,
             "batch_id": batch["batch_id"],
             "scope_hash": batch["scope_hash"],
-            "control": PILOT_CONTROL,
+            "control": batch["scope"]["control"],
             "submitted": len(batch["rows"]),
             "normalized": len(batch["rows"]) - counts["DUPLICATE"],
             "duplicates": counts["DUPLICATE"],
