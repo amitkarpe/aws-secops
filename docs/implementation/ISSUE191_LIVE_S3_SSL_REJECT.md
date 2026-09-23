@@ -88,7 +88,7 @@ The native resume path is accepted only when its receipt-gated request returns
 HTTP 200/201; the runtime boundary verifies the durable Reject receipt and
 fresh unchanged provider readback before allowing continuation. Batch and
 scope are emitted only as one-way digests. Its local Node contract suite passes
-7/7, and the combined native-decision/browser boundary suite passes 18/18.
+8/8, and the combined native-decision/browser boundary suite passes 19/19.
 
 The authenticated LibreChat native card/resume test remains the acceptance
 gate. The repo-owned Reject-only integration is deployed, but no native

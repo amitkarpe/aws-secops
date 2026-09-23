@@ -8,8 +8,10 @@ let hasExecutorDispatch;
 let hasPersistedAssistantReply;
 let flattenText;
 let publicDigest;
+let validateVisibleRejectCard;
 test.before(async () => {
-  ({validateRejectOnlyAction, hasExecutorDispatch, hasPersistedAssistantReply, flattenText, publicDigest} =
+  ({validateRejectOnlyAction, hasExecutorDispatch, hasPersistedAssistantReply, flattenText, publicDigest,
+    validateVisibleRejectCard} =
     await import('./e2e/issue191_s3_ssl_reject.mjs'));
 });
 
@@ -54,6 +56,12 @@ test('browser gate refuses any approval choices beyond Reject', () => {
   const value = exactAction();
   value.pendingAction.payload.review_configs[0].allowed_decisions = ['approve', 'reject'];
   assert.throws(() => validateRejectOnlyAction(value), /Reject-only approval/);
+});
+
+test('visible native card must identify the s3_ssl Reject-only validation', () => {
+  assert.doesNotThrow(() => validateVisibleRejectCard('s3_ssl Reject-only validation. Choose Reject, then Submit.'));
+  assert.throws(() => validateVisibleRejectCard('S3 TLS approval card'), /Reject-only validation/);
+  assert.throws(() => validateVisibleRejectCard('Reject-only validation for S3 BPA'), /s3_ssl Reject-only/);
 });
 
 test('chat completion requires persisted assistant output, not an idle status snapshot', () => {

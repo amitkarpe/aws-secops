@@ -45,7 +45,7 @@ post-restart read-only SSM status check on 2026-09-23 returned HTTP 200 with all
 four registered aliases identity-verified and available, and a current
 finding. It also confirmed both services active and the pinned resume patch
 installed. AWS writes and remediation dispatches remain zero. Local regression
-is green (336 repository tests, 24 Compliance Agent v1 tests, 18 native-decision
+is green (336 repository tests, 24 Compliance Agent v1 tests, 19 native-decision
 and browser-boundary Node tests), including duplicate/racing Reject,
 durable receipt reopen/retry, timeout, scope mismatch, expiry and source-drift
 cases. The authenticated native Reject E2E remains unaccepted: the dedicated

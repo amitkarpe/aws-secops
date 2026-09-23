@@ -36,6 +36,14 @@ export function validateRejectOnlyAction(status) {
   return { toolCallId: action.tool_call_id, batchId: args.batch_id, scopeHash: args.scope_hash };
 }
 
+export function validateVisibleRejectCard(text) {
+  if (typeof text !== 'string' ||
+      (!/s3[_ -]?ssl/i.test(text) && !/S3 TLS/i.test(text)) ||
+      !/Reject-only validation/i.test(text)) {
+    throw new Error('visible native card does not identify the s3_ssl Reject-only validation');
+  }
+}
+
 async function sameOriginStatus(page, conversationId) {
   return page.evaluate(async (id) => {
     const response = await fetch(`/api/agents/chat/status/${encodeURIComponent(id)}`, {
@@ -187,9 +195,7 @@ async function run() {
     if (status.status !== 'requires_action') throw new Error('chat settled before the native Reject-only card appeared');
     const frozen = validateRejectOnlyAction(status);
     const bodyText = await page.locator('body').innerText();
-    if (!/s3[_ -]?ssl/i.test(bodyText) && !/S3 TLS/i.test(bodyText)) {
-      throw new Error('visible native card does not identify the s3_ssl validation');
-    }
+    validateVisibleRejectCard(bodyText);
     const reject = page.getByRole('button', { name: /^reject$/i });
     if (await reject.count() !== 1) throw new Error('expected one native Reject button');
     await reject.click();
