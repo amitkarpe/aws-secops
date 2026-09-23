@@ -55,11 +55,21 @@ remediation state was changed. A fresh AWS MCP identity/host preflight on
 retained host ownership, running state, and SSM availability without publishing
 raw identifiers.
 
-The deployed LibreChat `resume.js` matches the pinned v0.8.8-rc1 receipt patch
-digest. Its s3_ssl read endpoint returned HTTP 200; the four registered aliases
-were identity-verified and AVAILABLE, the response was public-safe/read-only,
-and a current non-compliant finding was present. Raw findings and resource
-identifiers were not retained here.
+An independent sparse checkout of the public LibreChat `v0.8.8-rc1` tag
+confirmed the reviewed `resume.js` SHA-256
+`6f0f53afbaa06dd65e9558e1595060433e37952ef9b0ad1d4ad57781bcbcf025` and
+deterministic patched digest
+`311b925b5157aa22fff9fd846ed7075a043579d1ad1f4201ac5e4517dc12a77a`. The
+retained runtime's semantically reviewed source variant is separately pinned
+and its installed Reject-receipt patch digest was verified
+`9a5ea6723b0daddf7812fba7fb03f47f76183889c3e96a6ad827972f2ad9e0a7`; source
+drift fails closed. A post-restart read-only SSM check on 2026-09-23 verified
+both services active, the pinned patch installed, and required private
+environment values present without reading their contents. The s3_ssl read
+endpoint returned HTTP 200; the four registered aliases were identity-verified
+and AVAILABLE, the response was public-safe/read-only, and a current
+non-compliant finding was present. Raw findings and resource identifiers were
+not retained here.
 
 Failure/recovery regression now includes racing duplicate Reject submissions
 (one durable terminal decision, one fail-closed replay) and service recreation
