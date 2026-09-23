@@ -77,6 +77,19 @@ with durable receipt-chain verification and consumed-retry rejection.
 
 ## Native E2E stop gate
 
+The fixed Playwright runner is `tests/e2e/issue191_s3_ssl_reject.mjs`; its
+contract tests are `tests/issue191_browser_e2e.test.cjs`. It reads the four
+alias-only live status first, requires one exact `s3_ssl` / Reject-only frozen
+action, clicks only Reject and Submit once, waits for a persisted assistant
+reply, rejects executor calls or success claims, and deletes both temporary
+conversations after a settled decision. It uses same-origin status/history/
+cleanup requests and never reads browser storage or exports authentication.
+The native resume path is accepted only when its receipt-gated request returns
+HTTP 200/201; the runtime boundary verifies the durable Reject receipt and
+fresh unchanged provider readback before allowing continuation. Batch and
+scope are emitted only as one-way digests. Its local Node contract suite passes
+7/7, and the combined native-decision/browser boundary suite passes 18/18.
+
 The authenticated LibreChat native card/resume test remains the acceptance
 gate. The repo-owned Reject-only integration is deployed, but no native
 `s3_ssl` card or decision has yet been created. The isolated localhost-CDP
@@ -87,4 +100,7 @@ and Playwright Core attachment both pass after isolating the profile to the
 SecOps tab. Do not test Approve. Until the native Reject, durable receipt,
 zero-dispatch evidence, fresh unchanged provider readback, reconnect/recovery
 checks, and temporary-state cleanup are proven, PR #192 remains draft and
-Issue #191 remains open.
+Issue #191 remains open. `scripts/check.sh` passes 336 tests (4 skipped) with
+the repository-pinned temporary dependencies, and the separate Compliance
+Agent v1 / Issue #191 focused suite passes 46 tests. The default worktree had
+no MCP SDK installed initially; no dependencies were added to the repository.

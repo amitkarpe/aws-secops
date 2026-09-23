@@ -45,11 +45,15 @@ post-restart read-only SSM status check on 2026-09-23 returned HTTP 200 with all
 four registered aliases identity-verified and available, and a current
 finding. It also confirmed both services active and the pinned resume patch
 installed. AWS writes and remediation dispatches remain zero. Local regression
-is green (335 repository tests, 24 Compliance Agent v1
-tests, 11 native-decision Node tests), including duplicate/racing Reject,
+is green (336 repository tests, 24 Compliance Agent v1 tests, 18 native-decision
+and browser-boundary Node tests), including duplicate/racing Reject,
 durable receipt reopen/retry, timeout, scope mismatch, expiry and source-drift
 cases. The authenticated native Reject E2E remains unaccepted: the dedicated
 localhost-CDP Chrome profile is at login and requires ordinary human sign-in.
+The isolated-profile Playwright runner now validates read-only status, exact
+Reject-only card scope, one-shot native resume, persisted completion, no
+executor dispatch, and conversation cleanup; it has not passed the live
+authenticated journey yet.
 Keep this path read-only, Reject-only and independent from Issue #176 / PR #177.
 Do not add a third control or a live mutation path.
 
