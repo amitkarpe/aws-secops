@@ -3,6 +3,7 @@ import sys
 import tempfile
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 from pilot_v1.native_decision_receipt import ReceiptError
@@ -75,6 +76,40 @@ class Issue191NativeIntegrationTests(unittest.TestCase):
         self.assertEqual(result["downstream_dispatches"], 0)
         with self.assertRaises(ReceiptError):
             self.service.record_s3_ssl_native_decision(**receipt)
+
+    def test_racing_duplicate_rejects_record_one_terminal_decision(self):
+        prepared = self.prepared_and_registered()
+        receipt = self.receipt(prepared)
+        with ThreadPoolExecutor(max_workers=2) as workers:
+            futures = [workers.submit(self.service.record_s3_ssl_native_decision, **receipt)
+                       for _index in range(2)]
+            successes, failures = [], []
+            for future in futures:
+                try:
+                    successes.append(future.result())
+                except Exception as exc:
+                    failures.append(exc)
+        self.assertEqual(len(successes), 1)
+        self.assertEqual(len(failures), 1)
+        self.assertIsInstance(failures[0], ReceiptError)
+        self.assertEqual(successes[0]["outcome"], "REJECTED")
+        self.assertEqual((successes[0]["downstream_dispatches"], successes[0]["aws_writes"]), (0, 0))
+        self.assertEqual([row["event"] for row in successes[0]["audit"]],
+                         ["PREPARE_FROZEN", "NATIVE_APPROVAL_DECISION", "POST_REJECT_READBACK"])
+
+    def test_service_restart_reopens_receipt_and_consumed_retry_fails_closed(self):
+        prepared = self.prepared_and_registered()
+        receipt = self.receipt(prepared)
+        first = self.service.record_s3_ssl_native_decision(**receipt)
+        restarted = object.__new__(OperatorService)
+        restarted.execution_state = self.service.execution_state
+        restarted._decision_receipts = None
+        restarted._collect_s3_ssl = lambda: evidence()
+        restarted.native_decision_receipts().verify()
+        self.assertEqual(restarted.native_decision_receipts().timeline(prepared["batch_id"]), first["audit"])
+        with self.assertRaises(ReceiptError):
+            restarted.record_s3_ssl_native_decision(**receipt)
+        self.assertEqual(restarted.native_decision_receipts().timeline(prepared["batch_id"]), first["audit"])
 
     def test_changed_provider_readback_records_failure_without_continuation(self):
         self.service._collect_s3_ssl = lambda: evidence()

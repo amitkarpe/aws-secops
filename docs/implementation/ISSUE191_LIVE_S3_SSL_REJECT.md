@@ -47,18 +47,34 @@ used for this control.
 The live operator service previously had no explicit `SECOPS_LAB_PROFILE`
 override and therefore selected `vagent` by default. The PR deployment script
 now pins the operator's exact service drop-in to `amit` and checks the running
-process environment before declaring readiness. No service or AWS resource
-was changed during this preflight. The bounded deployment and native browser
-Reject journey are still pending.
+process environment before declaring readiness. The bounded repo-owned
+deployment completed on 2026-09-22 and restarted only the Operator and LibreChat
+services on the existing host. No AWS resource, IAM, OIDC, networking, or
+remediation state was changed. A fresh AWS MCP identity/host preflight on
+2026-09-23 reconfirmed the exact personal-LAB management identity, Region,
+retained host ownership, running state, and SSM availability without publishing
+raw identifiers.
+
+The deployed LibreChat `resume.js` matches the pinned v0.8.8-rc1 receipt patch
+digest. Its s3_ssl read endpoint returned HTTP 200; the four registered aliases
+were identity-verified and AVAILABLE, the response was public-safe/read-only,
+and a current non-compliant finding was present. Raw findings and resource
+identifiers were not retained here.
+
+Failure/recovery regression now includes racing duplicate Reject submissions
+(one durable terminal decision, one fail-closed replay) and service recreation
+with durable receipt-chain verification and consumed-retry rejection.
 
 ## Native E2E stop gate
 
 The authenticated LibreChat native card/resume test remains the acceptance
-gate. The retained runtime is reachable for bounded SSM inspection, but the
-repo-owned Reject-only integration has not yet been deployed and no native
-`s3_ssl` card or decision has been created. The next step is to deploy the
-reviewed changes, verify the live fixed read and Reject-only surface, then run
-the existing authenticated browser/API harness with Reject only. Do not test
-Approve. Until that journey, zero-dispatch evidence, fresh unchanged provider
-readback, recovery checks, and cleanup are proven, PR #192 remains draft and
+gate. The repo-owned Reject-only integration is deployed, but no native
+`s3_ssl` card or decision has yet been created. The isolated localhost-CDP
+Chrome profile currently lands at the LibreChat login screen; a human must sign
+in normally before the exact browser journey can continue. No password, cookie,
+token, or browser database was read or exported. Direct Windows Node/CDP access
+and Playwright Core attachment both pass after isolating the profile to the
+SecOps tab. Do not test Approve. Until the native Reject, durable receipt,
+zero-dispatch evidence, fresh unchanged provider readback, reconnect/recovery
+checks, and temporary-state cleanup are proven, PR #192 remains draft and
 Issue #191 remains open.
