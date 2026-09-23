@@ -60,6 +60,22 @@ test('receipt failure prevents a continuation result', async () => {
   ), /receipt backend unavailable/);
 });
 
+test('retry after a consumed Reject receipt fails closed without another continuation', async () => {
+  let calls = 0;
+  const send = async () => {
+    calls++;
+    if (calls === 1) return {ok: true, json: async () => ({outcome: 'REJECTED',
+      live_execution_authorized: false, downstream_dispatches: 0, aws_writes: 0,
+      provider_readback: 'UNCHANGED'})};
+    return {ok: false, json: async () => ({})};
+  };
+  const input = {req: request(), job, pendingAction: pending()};
+  const first = await recordIfRejectOnly(input, send);
+  assert.equal(first.outcome, 'REJECTED');
+  await assert.rejects(recordIfRejectOnly(input, send), /durable native decision receipt rejected/);
+  assert.equal(calls, 2);
+});
+
 test('unsafe backend response is refused', async () => {
   await assert.rejects(recordIfRejectOnly(
     {req: request('approve'), job, pendingAction: pending()},
