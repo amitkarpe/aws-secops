@@ -81,9 +81,12 @@ The fixed Playwright runner is `tests/e2e/issue191_s3_ssl_reject.mjs`; its
 contract tests are `tests/issue191_browser_e2e.test.cjs`. It reads the four
 alias-only live status first, requires one exact `s3_ssl` / Reject-only frozen
 action, clicks only Reject and Submit once, waits for a persisted assistant
-reply, rejects executor calls or success claims, and deletes both temporary
-conversations after a settled decision. It uses same-origin status/history/
-cleanup requests and never reads browser storage or exports authentication.
+reply, rejects executor calls or success claims, and deletes its one temporary
+conversation after a settled decision. It selects the exact native LibreChat
+message input and submits through the Send button handler; status and Reject
+preparation share one verified Compliance Agent v1 conversation. It uses
+same-origin status/history/cleanup requests and never reads browser storage or
+exports authentication.
 The native resume path is accepted only when its receipt-gated request returns
 HTTP 200/201; the runtime boundary verifies the durable Reject receipt and
 fresh unchanged provider readback before allowing continuation. Batch and
@@ -93,11 +96,14 @@ scope are emitted only as one-way digests. Its local Node contract suite passes
 The authenticated LibreChat native card/resume test remains the acceptance
 gate. The repo-owned Reject-only integration is deployed, but no native
 `s3_ssl` card or decision has yet been created. The isolated localhost-CDP
-Chrome profile currently lands at the LibreChat login screen; a human must sign
-in normally before the exact browser journey can continue. No password, cookie,
-token, or browser database was read or exported. Direct Windows Node/CDP access
-and Playwright Core attachment both pass after isolating the profile to the
-SecOps tab. Do not test Approve. Until the native Reject, durable receipt,
+profile successfully authenticated in the visible SecOps UI as the expected
+user, with Compliance Agent v1 selected. However, same-origin chat status and
+message-history requests return HTTP 401; the E2E stopped before native
+approval. A single fixed read-only diagnostic conversation was created through
+the UI, but its message-history and cleanup APIs also returned 401, so deletion
+is unverified and manual removal may be needed. No password, cookie, token, or
+browser database was read or exported. Direct Windows Node/CDP access and
+Playwright Core attachment both pass. Do not test Approve. Until the native Reject, durable receipt,
 zero-dispatch evidence, fresh unchanged provider readback, reconnect/recovery
 checks, and temporary-state cleanup are proven, PR #192 remains draft and
 Issue #191 remains open. `scripts/check.sh` passes 336 tests (4 skipped) with

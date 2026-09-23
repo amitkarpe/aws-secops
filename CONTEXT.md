@@ -48,12 +48,17 @@ installed. AWS writes and remediation dispatches remain zero. Local regression
 is green (336 repository tests, 24 Compliance Agent v1 tests, 19 native-decision
 and browser-boundary Node tests), including duplicate/racing Reject,
 durable receipt reopen/retry, timeout, scope mismatch, expiry and source-drift
-cases. The authenticated native Reject E2E remains unaccepted: the dedicated
-localhost-CDP Chrome profile is at login and requires ordinary human sign-in.
-The isolated-profile Playwright runner now validates read-only status, exact
-Reject-only card scope, one-shot native resume, persisted completion, no
-executor dispatch, and conversation cleanup; it has not passed the live
-authenticated journey yet.
+cases. The dedicated isolated localhost-CDP SecOps profile now has an
+authenticated UI session and the exact Compliance Agent v1 selected. However,
+same-origin chat status/history calls return HTTP 401; the live journey stops
+before the native decision. One fixed read-only diagnostic conversation could
+not be removed because its cleanup API also returned 401. No approval,
+executor dispatch, or AWS write occurred. The runner now targets LibreChat's
+exact message-input control, submits through its native button handler, and
+uses one conversation for status then Reject preparation; its local contract
+suite passes 8/8 and the full repository check passes 336 tests (4 skipped).
+Authenticated Reject acceptance remains blocked on restored same-origin API
+authorization and cleanup.
 Keep this path read-only, Reject-only and independent from Issue #176 / PR #177.
 Do not add a third control or a live mutation path.
 

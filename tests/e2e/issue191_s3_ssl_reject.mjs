@@ -83,14 +83,56 @@ async function sameOriginDelete(page, conversationId) {
   }, conversationId);
 }
 
+async function selectComplianceAgent(page) {
+  const selector = page.getByTestId('model-selector-button');
+  await selector.waitFor({state: 'visible', timeout: 15000});
+  if ((await selector.innerText()).trim() === 'Compliance Agent v1') return;
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="model-selector-button"]')?.innerText.trim() === 'Compliance Agent v1',
+  null, {timeout: 20000}).catch(() => {
+    throw new Error('Compliance Agent v1 is not selected for this chat');
+  });
+  if ((await selector.innerText()).trim() !== 'Compliance Agent v1') {
+    throw new Error('Compliance Agent v1 is not selected for this chat');
+  }
+}
+
 async function startConversation(page, prompt) {
-  await page.goto(`${ORIGIN}/c/new`, { waitUntil: 'domcontentloaded' });
-  const composer = page.locator('textarea:visible').last();
+  if (new URL(page.url()).pathname !== '/c/new') {
+    await page.goto(`${ORIGIN}/c/new`, { waitUntil: 'domcontentloaded' });
+  }
+  if (await page.locator('input[type="password"]:visible').count()) {
+    throw new Error('AUTH_REQUIRED: sign in normally in this isolated Chrome profile');
+  }
+  await selectComplianceAgent(page);
+  const composer = page.getByTestId('text-input');
+  if (await composer.count() !== 1) throw new Error('expected one native LibreChat message input');
   await composer.waitFor({ state: 'visible', timeout: 15000 });
   await composer.fill(prompt);
-  await composer.press('Enter');
-  await page.waitForURL((url) => conversationIdFromUrl(url.href) !== null, { timeout: 30000 });
+  const send = page.getByTestId('send-button');
+  if (await send.count() !== 1 || !(await send.isEnabled())) {
+    throw new Error('chat composer did not expose one enabled Send action');
+  }
+  await send.evaluate((button) => button.click());
+  await page.waitForFunction(() =>
+    /^\/c\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(location.pathname),
+  null, {timeout: 30000});
   return conversationIdFromUrl(page.url());
+}
+
+async function continueConversation(page, conversationId, prompt) {
+  if (conversationIdFromUrl(page.url()) !== conversationId) {
+    throw new Error('expected the original E2E conversation to remain active');
+  }
+  const composer = page.getByTestId('text-input');
+  if (await composer.count() !== 1) throw new Error('expected one native LibreChat message input');
+  await composer.fill(prompt);
+  const send = page.getByTestId('send-button');
+  if (await send.count() !== 1 || !(await send.isEnabled())) {
+    throw new Error('chat composer did not expose one enabled Send action');
+  }
+  await send.evaluate((button) => button.click());
+  return conversationId;
 }
 
 async function waitForSettled(page, conversationId, timeoutMs) {
@@ -165,13 +207,12 @@ async function run() {
     if (await page.locator('input[type="password"]:visible').count()) {
       throw new Error('AUTH_REQUIRED: sign in normally in this isolated Chrome profile');
     }
-    await page.goto(`${ORIGIN}/c/new`, { waitUntil: 'domcontentloaded' });
+    if (new URL(page.url()).pathname !== '/c/new') {
+      await page.goto(`${ORIGIN}/c/new`, { waitUntil: 'domcontentloaded' });
+    }
     if (await page.locator('input[type="password"]:visible').count()) {
       throw new Error('AUTH_REQUIRED: sign in normally in this isolated Chrome profile');
     }
-    const isComplianceAgent = await page.getByText('Compliance Agent v1', { exact: false }).count();
-    if (!isComplianceAgent) throw new Error('Compliance Agent v1 is not the selected chat agent');
-
     const statusConversationId = await startConversation(page, STATUS_PROMPT);
     conversations.push(statusConversationId);
     const readStatus = await waitForSettled(page, statusConversationId, 180000);
@@ -190,8 +231,7 @@ async function run() {
     }
     if (/UNAVAILABLE/i.test(visibleStatus)) throw new Error('read-only status reports unavailable evidence');
 
-    const decisionConversationId = await startConversation(page, REJECT_PROMPT);
-    conversations.push(decisionConversationId);
+    const decisionConversationId = await continueConversation(page, statusConversationId, REJECT_PROMPT);
     const status = await waitForSettled(page, decisionConversationId, 240000);
     if (status.status !== 'requires_action') throw new Error('chat settled before the native Reject-only card appeared');
     const frozen = validateRejectOnlyAction(status);

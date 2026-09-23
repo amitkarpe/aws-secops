@@ -98,6 +98,13 @@ test('live runner submits only Reject, never exports browser auth, and has bound
   assert.match(runner, /\[data-testid="tool-approval"\]/);
   assert.match(runner, /card\.getByRole\('button', \{ name: \/\^reject\$\/i \}\)/);
   assert.match(runner, /hasPersistedAssistantReply\(messages\.body\)/);
+  assert.match(runner, /await selectComplianceAgent\(page\)/);
+  assert.match(runner, /innerText\.trim\(\) === 'Compliance Agent v1'/);
+  assert.match(runner, /continueConversation\(page, statusConversationId, REJECT_PROMPT\)/);
+  assert.match(runner, /getByTestId\('send-button'\)/);
+  assert.match(runner, /getByTestId\('text-input'\)/);
+  assert.match(runner, /send\.evaluate\(\(button\) => button\.click\(\)\)/);
+  assert.match(runner, /waitForFunction\(\(\) =>/);
   assert.match(runner, /do not retry/);
   assert.doesNotMatch(runner, /document\.cookie|localStorage|sessionStorage|Bearer\s/);
 });
