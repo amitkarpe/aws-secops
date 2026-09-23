@@ -59,9 +59,13 @@ test('browser gate refuses any approval choices beyond Reject', () => {
 });
 
 test('visible native card must identify the s3_ssl Reject-only validation', () => {
-  assert.doesNotThrow(() => validateVisibleRejectCard('s3_ssl Reject-only validation. Choose Reject, then Submit.'));
-  assert.throws(() => validateVisibleRejectCard('S3 TLS approval card'), /Reject-only validation/);
-  assert.throws(() => validateVisibleRejectCard('Reject-only validation for S3 BPA'), /s3_ssl Reject-only/);
+  const card = {cardCount: 1, expectedToolCallId: 'call-12345678',
+    actualToolCallId: 'call-12345678', text: 'Reject-only validation for one exact S3 TLS finding.'};
+  assert.doesNotThrow(() => validateVisibleRejectCard(card));
+  assert.throws(() => validateVisibleRejectCard({...card, cardCount: 2}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, actualToolCallId: 'call-other'}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, text: 'S3 TLS approval card'}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, text: 'Reject-only validation for S3 BPA'}), /exact visible/);
 });
 
 test('chat completion requires persisted assistant output, not an idle status snapshot', () => {
@@ -91,6 +95,8 @@ test('live runner submits only Reject, never exports browser auth, and has bound
   assert.doesNotMatch(runner, /decision\s*:\s*['"]approve/i);
   assert.match(runner, /sameOriginDelete\(page, conversationId\)/);
   assert.match(runner, /page\.waitForResponse/);
+  assert.match(runner, /\[data-testid="tool-approval"\]/);
+  assert.match(runner, /card\.getByRole\('button', \{ name: \/\^reject\$\/i \}\)/);
   assert.match(runner, /hasPersistedAssistantReply\(messages\.body\)/);
   assert.match(runner, /do not retry/);
   assert.doesNotMatch(runner, /document\.cookie|localStorage|sessionStorage|Bearer\s/);

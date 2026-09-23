@@ -36,11 +36,12 @@ export function validateRejectOnlyAction(status) {
   return { toolCallId: action.tool_call_id, batchId: args.batch_id, scopeHash: args.scope_hash };
 }
 
-export function validateVisibleRejectCard(text) {
-  if (typeof text !== 'string' ||
+export function validateVisibleRejectCard({cardCount, expectedToolCallId, actualToolCallId, text}) {
+  if (cardCount !== 1 || typeof expectedToolCallId !== 'string' ||
+      actualToolCallId !== expectedToolCallId || typeof text !== 'string' ||
       (!/s3[_ -]?ssl/i.test(text) && !/S3 TLS/i.test(text)) ||
       !/Reject-only validation/i.test(text)) {
-    throw new Error('visible native card does not identify the s3_ssl Reject-only validation');
+    throw new Error('native card is not the exact visible s3_ssl Reject-only action');
   }
 }
 
@@ -194,12 +195,15 @@ async function run() {
     const status = await waitForSettled(page, decisionConversationId, 240000);
     if (status.status !== 'requires_action') throw new Error('chat settled before the native Reject-only card appeared');
     const frozen = validateRejectOnlyAction(status);
-    const bodyText = await page.locator('body').innerText();
-    validateVisibleRejectCard(bodyText);
-    const reject = page.getByRole('button', { name: /^reject$/i });
+    const card = page.locator('[data-testid="tool-approval"]');
+    const cardCount = await card.count();
+    validateVisibleRejectCard({cardCount, expectedToolCallId: frozen.toolCallId,
+      actualToolCallId: cardCount === 1 ? await card.getAttribute('data-tool-call-id') : null,
+      text: cardCount === 1 ? await card.innerText() : ''});
+    const reject = card.getByRole('button', { name: /^reject$/i });
     if (await reject.count() !== 1) throw new Error('expected one native Reject button');
     await reject.click();
-    const submit = page.getByRole('button', { name: /^submit$/i });
+    const submit = card.getByRole('button', { name: /^submit$/i });
     if (await submit.count() !== 1 || !(await submit.isEnabled())) {
       throw new Error('native Reject selection did not enable one Submit action');
     }
