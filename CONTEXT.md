@@ -51,10 +51,10 @@ used for this work.
 
 The authenticated native E2E reached the exact s3_ssl card: one Reject, zero
 Approve. Reject was selected and submitted once through the normal LibreChat
-client. The receipt-gated resume returned an accepted 200/201 response, the
-card detached, and rendered completion acknowledged the Reject receipt without
-claiming an AWS change. The runtime returns success only after durable
-`REJECTED` receipt persistence, `downstream_dispatches=0`, `aws_writes=0`, and
+client. The final clean Playwright run returned PASS with native resume HTTP
+200, the card detached, and rendered completion acknowledged the Reject
+receipt without claiming an AWS change. The runtime returns success only after
+durable `REJECTED` receipt persistence, `downstream_dispatches=0`, `aws_writes=0`, and
 a fresh provider readback records `UNCHANGED`; Approve was absent and never
 invoked. The exact completed test chat was archived through the authenticated
 native Archive action (HTTP 200, exact conversation bound); Delete was never

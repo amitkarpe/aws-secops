@@ -120,7 +120,7 @@ or networking were changed.
 The isolated localhost-CDP browser used the normal LibreChat client and
 selected `Compliance Agent v1`. The exact s3_ssl test presented one native
 Reject action and zero Approve actions. Reject was selected and submitted once;
-the receipt-gated resume crossed the runner's accepted HTTP 200/201 check and
+the receipt-gated resume returned HTTP 200 and
 the native card detached. The final rendered acknowledgement contained Reject
 and receipt language, with no AWS-change claim. The runtime only returns a
 successful receipt response after persisting the durable `REJECTED` record,
@@ -128,6 +128,12 @@ checking `live_execution_authorized=false`, `downstream_dispatches=0`,
 `aws_writes=0`, and performing a fresh `s3_ssl` provider readback recorded as
 `UNCHANGED`. A changed or unavailable readback returns failure before
 `resumeCompletion`; no Approve or executor path was invoked.
+
+The final clean Playwright run emitted `PASS`, `decision=REJECTED`,
+`native_reject_submitted_once=true`, `approve_clicked=false`,
+`native_resume_http=200`, `conversation_settled=true`,
+`conversation_cleanup=ARCHIVED`, and `authenticated_history_read=true`. Only a
+one-way digest of the opaque native tool-call identifier was emitted.
 
 The initial Playwright attempt exposed UI timing behavior: while LibreChat was
 still streaming, locator actionability waited on the native controls despite
