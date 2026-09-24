@@ -145,7 +145,9 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /waitForAssistantTurn\(page, 240000, \{approval: true\}\)/);
   assert.doesNotMatch(runner, /composerReady|send\.disabled/);
   assert.match(runner, /await selectComplianceAgent\(page\)/);
-  assert.match(runner, /innerText\.trim\(\) === 'Compliance Agent v1'/);
+  assert.match(runner, /current !== 'My Agents' && current !== ''/);
+  assert.match(runner, /unexpected model selection; refusing to send the test prompt/);
+  assert.match(runner, /current === 'Compliance Agent v1'/);
   const statusStart = runner.indexOf('startConversation(page, STATUS_PROMPT)');
   const statusCleanup = runner.indexOf('archiveConversationInUi(page, statusConversationId');
   const rejectStart = runner.indexOf('startConversation(page, REJECT_PROMPT)');
@@ -154,7 +156,9 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /getByTestId\('send-button'\)/);
   assert.match(runner, /getByTestId\('text-input'\)/);
   assert.match(runner, /send\.evaluate\(\(button\) => button\.click\(\)\)/);
-  assert.match(runner, /waitForFunction\(\(\) =>/);
+  assert.match(runner, /const routeDeadline = Date\.now\(\) \+ 600000/);
+  assert.match(runner, /conversationId = conversationIdFromUrl\(page\.url\(\)\)/);
+  assert.match(runner, /while \(!conversationId && Date\.now\(\) < routeDeadline\)/);
   assert.match(runner, /do not retry/);
   assert.doesNotMatch(runner, /\bfetch\s*\(|document\.cookie|localStorage|sessionStorage|Bearer\s/);
   assert.match(runner, /getByRole\('menuitem', \{name: \/\^archive\$\/i\}\)/);
@@ -172,7 +176,7 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /reject\.click\(\{force: true\}\)/);
   assert.match(runner, /if \(!\(await submit\.isEnabled\(\)\)\)/);
   assert.match(runner, /selectionDeadline = Date\.now\(\) \+ 10000/);
-  assert.match(runner, /submit\.click\(\{force: true\}\)/);
+  assert.match(runner, /submit\.evaluate\(\(button\) => button\.click\(\)\)/);
   assert.match(runner, /\/api\/convos\/archive/);
   assert.ok(runner.indexOf('currentExactStatusConversation(page)') < runner.lastIndexOf("page.goto(`${ORIGIN}/c/new`"),
     'check the current tab before navigating away from a reusable status-only conversation');

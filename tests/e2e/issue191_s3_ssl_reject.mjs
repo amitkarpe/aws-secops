@@ -193,15 +193,16 @@ async function currentExactRejectCardConversation(page) {
 async function selectComplianceAgent(page) {
   const selector = page.getByTestId('model-selector-button');
   await selector.waitFor({state: 'visible', timeout: 15000});
-  if ((await selector.innerText()).trim() === 'Compliance Agent v1') return;
-  await page.waitForFunction(() =>
-    document.querySelector('[data-testid="model-selector-button"]')?.innerText.trim() === 'Compliance Agent v1',
-  null, {timeout: 60000}).catch(() => {
-    throw new Error('Compliance Agent v1 is not selected for this chat');
-  });
-  if ((await selector.innerText()).trim() !== 'Compliance Agent v1') {
-    throw new Error('Compliance Agent v1 is not selected for this chat');
+  const deadline = Date.now() + 60000;
+  while (Date.now() < deadline) {
+    const current = (await selector.innerText()).trim();
+    if (current === 'Compliance Agent v1') return;
+    if (current !== 'My Agents' && current !== '') {
+      throw new Error('unexpected model selection; refusing to send the test prompt');
+    }
+    await page.waitForTimeout(250);
   }
+  throw new Error('Compliance Agent v1 is not selected for this chat');
 }
 
 async function startConversation(page, prompt) {
@@ -221,10 +222,14 @@ async function startConversation(page, prompt) {
     throw new Error('chat composer did not expose one enabled Send action');
   }
   await send.evaluate((button) => button.click());
-  await page.waitForFunction(() =>
-    /^\/c\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(location.pathname),
-  null, {timeout: 600000});
-  return conversationIdFromUrl(page.url());
+  const routeDeadline = Date.now() + 600000;
+  let conversationId = conversationIdFromUrl(page.url());
+  while (!conversationId && Date.now() < routeDeadline) {
+    await page.waitForTimeout(250);
+    conversationId = conversationIdFromUrl(page.url());
+  }
+  if (!conversationId) throw new Error('chat send did not transition to a conversation route');
+  return conversationId;
 }
 
 function flattenText(value) {
@@ -341,7 +346,7 @@ async function run() {
       return new URL(response.url()).pathname === '/api/agents/chat/resume' && request.method() === 'POST';
     }, {timeout: 30000}).then((response) => ({response}), () => ({failed: true}));
     activeStage = 'native-submit';
-    await submit.click({force: true});
+    await submit.evaluate((button) => button.click());
     const resumeResult = await resumeResponsePromise;
     if (resumeResult.failed) throw new Error('native Reject resume request was not observed; do not retry');
     const resumeResponse = resumeResult.response;
