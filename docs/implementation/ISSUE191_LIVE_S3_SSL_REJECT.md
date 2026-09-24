@@ -154,6 +154,18 @@ exported.
 
 The repo-owned live collector independently remains read-only and emits no raw
 account IDs, role ARNs, bucket names, or endpoints. No dependencies were added.
-The browser journey and targeted failure/recovery checks are complete. Refresh
-exact-head CI before the final handoff. PR #192 remains draft and Issue #191
-remains open; do not merge.
+
+### Conditional M4 exception-aware case
+
+Deferred per Issue #191's conditional scope. The live `s3_ssl` prepare path
+currently freezes a fixed `NO_EXCLUSIONS_APPLIED` digest and has no exact
+application-state exception create/revoke interface wired into its live
+candidate resolver. The repository's synthetic exception registry is not
+connected to this live adapter. Adding that integration solely for this proof
+would create a new live exception path rather than reuse an existing safe one.
+No exception was created, no AWS-side mechanism was introduced, and the
+no-exclusion digest remains bound into the accepted batch. The existing
+synthetic exception/freeze tests remain covered by repository regression.
+
+The browser journey and targeted failure/recovery checks are complete. PR #192
+remains draft and Issue #191 remains open for G's review; do not merge from X.

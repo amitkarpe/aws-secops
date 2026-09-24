@@ -67,8 +67,12 @@ already-selected Reject without clicking it twice. Focused browser contract
 tests pass 12/12. Full repository regression passes 336 tests (4 skipped);
 Compliance Agent v1 passes 24/24, and native receipt/browser Node tests pass
 23/23. No AWS resource writes, Approve, remediation executor dispatch, or
-cross-account mutation occurred. Finish bounded failure/recovery checks,
-refresh exact-head CI, and post one sanitized handoff to PR #192; do not merge.
+cross-account mutation occurred. The conditional M4 exception-aware live case
+is deferred: the live prepare path freezes `NO_EXCLUSIONS_APPLIED`, and no
+exact application-state exception create/revoke path is wired to the live
+resolver; adding one would widen this pilot. Synthetic exception tests remain
+green. Exact-head CI is green (4 successful, 1 skipped), and HANDOFF: CHATGPT
+is posted on PR #192. Keep PR #192 draft/open for G review; do not merge.
 Keep this path read-only, Reject-only and independent from Issue #176 / PR #177.
 Do not add a third control or a live mutation path.
 
@@ -85,12 +89,12 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Continue PR #192 in the existing worktree. Complete full regression and
-bounded failure/recovery checks, verify exact-head CI, then update the PR with
-sanitized evidence. The authenticated `s3_ssl` native Reject and exact Archive
-journeys are now proven. Never choose Approve, merge, or start Issue #170 M4
-follow-up work until all acceptance gates are explicitly complete.
+PR #192 is ready for G review at the posted handoff; exact-head CI is green.
+The authenticated `s3_ssl` native Reject and exact Archive journeys are proven.
+The conditional exception-aware variant is explicitly deferred because no safe
+live exception interface exists in this path. Keep #192 draft/open and #191
+open for G review. Never choose Approve, merge, or start Issue #170 M4.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md, Issue #191 and PR #192. Continue the full regression and bounded failure/recovery checks for the completed native s3_ssl Reject proof. No Approve, Delete, merge, or AWS writes.`
+`Read AGENTS.md, CONTEXT.md, Issue #191 and PR #192. Current head has a clean live s3_ssl Reject E2E and green exact-head CI. Review the deferred conditional M4 exception-aware case. Keep PR #192 draft/open; no Approve, Delete, merge, or AWS writes.`
