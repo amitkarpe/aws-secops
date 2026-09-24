@@ -40,34 +40,35 @@ M2 in Issue #180 / PR #181, M3A in Issue #182 / PR #183, M3B in Issue #184 /
 PR #185, M4A in Issue #186 / PR #187, and M4B in Issue #188 / PR #189. Issue
 #191 / PR #192 is the active live `s3_ssl` Reject-only milestone, using the
 merged native decision receipt boundary from Issue #193 / PR #194. The
-repo-owned runtime patch is deployed on the retained personal-LAB host; a fresh
+repo-owned runtime patch is deployed on the retained personal-LAB host. A fresh
 post-restart read-only SSM status check on 2026-09-23 returned HTTP 200 with all
 four registered aliases identity-verified and available, and a current
-finding. It also confirmed both services active and the pinned resume patch
-installed. AWS writes and remediation dispatches remain zero. Local regression
-was green before the current runner update (336 repository tests, 24
-Compliance Agent v1 tests, 19 native-decision and browser-boundary Node tests),
-including duplicate/racing Reject, durable receipt reopen/retry, timeout, scope
-mismatch, expiry and source-drift cases. Issue #195 source/runtime analysis
-found that the previous Playwright runner used page-level `fetch` calls that
-omitted LibreChat's `Authorization` header; LibreChat's normal client sets that
-header through its authenticated request helper. Thus the runner's direct
-status/history/cleanup requests received 401, while normal UI client calls
-succeeded. No runtime auth or proxy change is indicated. The runner now waits
-for rendered UI state and records only sanitized response metadata. The latest
-authenticated UI preflight shows a settled read-only status chat for all four
-registered LAB aliases, with no approval card or unavailable/error marker.
-The runner checks the current tab before navigating to a new chat and resumes
-only that exact prompt, avoiding duplicate diagnostic turns. Focused browser
-contract tests pass 10/10. Native Archive has not yet been verified by
-automation; no Delete request is used. A fresh AWS MCP identity check
-confirmed the `amit` account alias and Singapore Region, but the sole online
-SSM-managed instance could not be bound to the retained SecOps host from its
-current tags/name. No SSM command or native decision was sent during this
-check. No Approve, executor dispatch, or AWS resource write occurred.
-Authenticated Reject acceptance remains open until exact retained-host
-mapping, supported Archive cleanup, the full native journey, and durable
-receipt/readback evidence pass.
+finding. A new sanitized SSM preflight verified `amit` is bound to the retained
+SecOps host (both `aws-secops-bulk` and `aws-secops-librechat` active; operator
+process explicitly uses `amit`). The pinned resume patch remains installed.
+The `vagent` profile resolved to a different member-account EC2 and was not
+used for this work.
+
+The authenticated native E2E reached the exact s3_ssl card: one Reject, zero
+Approve. Reject was selected and submitted once through the normal LibreChat
+client. The receipt-gated resume returned an accepted 200/201 response, the
+card detached, and rendered completion acknowledged the Reject receipt without
+claiming an AWS change. The runtime returns success only after durable
+`REJECTED` receipt persistence, `downstream_dispatches=0`, `aws_writes=0`, and
+a fresh provider readback records `UNCHANGED`; Approve was absent and never
+invoked. The exact completed test chat was archived through the authenticated
+native Archive action (HTTP 200, exact conversation bound); Delete was never
+invoked.
+
+The first run's final assertion was overly specific about agent wording and
+marked this successful receipt-gated completion as a false-negative. The runner
+now accepts a rendered Reject/receipt acknowledgement and resumes an
+already-selected Reject without clicking it twice. Focused browser contract
+tests pass 12/12. Full repository regression passes 336 tests (4 skipped);
+Compliance Agent v1 passes 24/24, and native receipt/browser Node tests pass
+23/23. No AWS resource writes, Approve, remediation executor dispatch, or
+cross-account mutation occurred. Finish bounded failure/recovery checks,
+refresh exact-head CI, and post one sanitized handoff to PR #192; do not merge.
 Keep this path read-only, Reject-only and independent from Issue #176 / PR #177.
 Do not add a third control or a live mutation path.
 
@@ -84,14 +85,12 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Continue PR #192 in the existing worktree. Resume the dedicated isolated
-Chrome profile if it still holds its normal authenticated session. Reconcile
-the exact retained-host mapping and verify native Archive cleanup first. Only
-then run the exact authenticated `s3_ssl` native Reject journey and bounded
-live recovery checks; never choose Approve. Leave one sanitized review
-handoff after acceptance. Do not merge or start Issue #170 M4 follow-up work
-until its acceptance gates are explicitly complete.
+Continue PR #192 in the existing worktree. Complete full regression and
+bounded failure/recovery checks, verify exact-head CI, then update the PR with
+sanitized evidence. The authenticated `s3_ssl` native Reject and exact Archive
+journeys are now proven. Never choose Approve, merge, or start Issue #170 M4
+follow-up work until all acceptance gates are explicitly complete.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md, Issue #195 and PR #192. Continue the runner/auth/cleanup recovery for Issue #191. Do not send Reject until exact retained-host mapping and Archive cleanup are verified; no Approve or AWS writes.`
+`Read AGENTS.md, CONTEXT.md, Issue #191 and PR #192. Continue the full regression and bounded failure/recovery checks for the completed native s3_ssl Reject proof. No Approve, Delete, merge, or AWS writes.`

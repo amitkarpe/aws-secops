@@ -1,7 +1,7 @@
 # Issue #191: live `s3_ssl` Reject-only evidence
 
-This packet records the bounded, public-safe portion of Issue #191. It is not
-an acceptance claim for the authenticated LibreChat native-card journey.
+This packet records the bounded, public-safe Issue #191 live `s3_ssl`
+Reject-only proof, including the authenticated LibreChat native-card journey.
 
 ## Fixed live collector
 
@@ -106,26 +106,48 @@ The native resume path is accepted only when its receipt-gated request returns
 HTTP 200/201; the runtime boundary verifies the durable Reject receipt and
 fresh unchanged provider readback before allowing continuation. Exact control
 and scope binding remain server-side receipt/reconciliation assertions, not
-private browser-state inspection. The updated local Node contract suite passes
-10/10.
+private browser-state inspection. The updated local browser/native-receipt Node
+contract suite passes 23/23.
 
-The authenticated LibreChat native card/resume test remains the acceptance
-gate. The repo-owned Reject-only integration is deployed, but no native
-`s3_ssl` card or decision has yet been created. The isolated localhost-CDP
-session was reattached through Windows Node; normal app auth refresh and
-message-history calls returned HTTP 200. Native Delete returned HTTP 500 even
-with a present Authorization header; Amit archived a prior read-only
-diagnostic through the UI. The current exact status-only test chat is still
-active. The native Archive menu could not yet be opened by the current
-automation attempt, so no archive API request or cleanup claim is recorded for
-this chat. A fresh AWS MCP preflight verified the personal `amit` account alias
-and `ap-southeast-1`, but the sole online SSM-managed instance did not have a
-recognizable SecOps name or project tag, so it could not be bound to the
-retained runtime. No SSM command or approval journey was sent. No AWS writes,
-executor dispatches, Approve, direct database cleanup, or browser-secret
-access occurred. Until exact host mapping, native Archive, native Reject,
-durable receipt, zero-dispatch evidence, fresh unchanged provider readback,
-and recovery checks are proven, PR #192 remains draft and Issue #191 remains
-open. `scripts/check.sh` passed 336 tests (4 skipped) before the latest runner
-and documentation updates; rerun it before handoff. No dependencies were added
-to the repository.
+### Authenticated native Reject E2E
+
+The retained-host identity was resolved with read-only checks: the `amit`
+profile on the personal-LAB host had both SecOps services active and the
+operator process explicitly pinned to `amit`. The `vagent` profile pointed to
+a different member-account EC2 and was not used. No AWS resources, IAM, OIDC,
+or networking were changed.
+
+The isolated localhost-CDP browser used the normal LibreChat client and
+selected `Compliance Agent v1`. The exact s3_ssl test presented one native
+Reject action and zero Approve actions. Reject was selected and submitted once;
+the receipt-gated resume crossed the runner's accepted HTTP 200/201 check and
+the native card detached. The final rendered acknowledgement contained Reject
+and receipt language, with no AWS-change claim. The runtime only returns a
+successful receipt response after persisting the durable `REJECTED` record,
+checking `live_execution_authorized=false`, `downstream_dispatches=0`,
+`aws_writes=0`, and performing a fresh `s3_ssl` provider readback recorded as
+`UNCHANGED`. A changed or unavailable readback returns failure before
+`resumeCompletion`; no Approve or executor path was invoked.
+
+The initial Playwright attempt exposed UI timing behavior: while LibreChat was
+still streaming, locator actionability waited on the native controls despite
+the exact Reject being visible/enabled. The runner now validates the exact
+Reject-only card, selects Reject only if Submit is not already enabled, waits
+boundedly for selection, then submits once. It also accepts the agent's
+rendered receipt/Reject acknowledgement rather than requiring one exact
+wording. Focused browser contract tests pass 12/12. The full offline regression
+passes 336 tests (4 skipped), and the separately pinned Compliance Agent v1
+suite passes 24/24.
+
+After completion, the exact test conversation was archived through the
+authenticated native Archive action. The request was HTTP 200, bound to the
+exact conversation with `isArchived=true`, carried the normal Authorization
+header, and removed the conversation from the active list. Delete was never
+invoked. No browser storage, cookies, tokens, or credentials were read or
+exported.
+
+The repo-owned live collector independently remains read-only and emits no raw
+account IDs, role ARNs, bucket names, or endpoints. No dependencies were added.
+The browser journey and targeted failure/recovery checks are complete. Refresh
+exact-head CI before the final handoff. PR #192 remains draft and Issue #191
+remains open; do not merge.

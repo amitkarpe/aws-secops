@@ -10,9 +10,12 @@ let publicDigest;
 let validateVisibleRejectCard;
 let isExactReadOnlyStatusChat;
 let isReadOnlyStatusPromptChat;
+let isExactArchiveRequest;
+let isExactRejectPromptCardChat;
 test.before(async () => {
   ({validateRejectOnlyAction, hasExecutorDispatch, flattenText, publicDigest,
-    validateVisibleRejectCard, isExactReadOnlyStatusChat, isReadOnlyStatusPromptChat} =
+    validateVisibleRejectCard, isExactReadOnlyStatusChat, isReadOnlyStatusPromptChat, isExactArchiveRequest,
+    isExactRejectPromptCardChat} =
     await import('./e2e/issue191_s3_ssl_reject.mjs'));
 });
 
@@ -60,12 +63,13 @@ test('browser gate refuses any approval choices beyond Reject', () => {
 });
 
 test('visible native card must identify the s3_ssl Reject-only validation', () => {
-  const card = {cardCount: 1, expectedToolCallId: '11111111-1111-4111-8111-111111111111',
-    actualToolCallId: '11111111-1111-4111-8111-111111111111', rejectButtonCount: 1, approveButtonCount: 0,
+  const card = {cardCount: 1, toolCallId: 'call_opaque-provider-id_123', rejectButtonCount: 1, approveButtonCount: 0,
     text: 'Reject-only validation for one exact S3 TLS finding.'};
   assert.doesNotThrow(() => validateVisibleRejectCard(card));
   assert.throws(() => validateVisibleRejectCard({...card, cardCount: 2}), /exact visible/);
-  assert.throws(() => validateVisibleRejectCard({...card, actualToolCallId: 'call-other'}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, toolCallId: 'short'}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, toolCallId: 'has whitespace'}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, toolCallId: null}), /exact visible/);
   assert.throws(() => validateVisibleRejectCard({...card, rejectButtonCount: 0}), /exact visible/);
   assert.throws(() => validateVisibleRejectCard({...card, approveButtonCount: 1}), /exact visible/);
   assert.throws(() => validateVisibleRejectCard({...card, text: 'S3 TLS approval card'}), /exact visible/);
@@ -97,6 +101,22 @@ test('runner reuses only an exact in-progress read-only status prompt', () => {
   assert.equal(isReadOnlyStatusPromptChat({messages: [prompt], approvalCardCount: 1}), false);
 });
 
+test('archive proof must bind the exact conversation and archived state', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  assert.equal(isExactArchiveRequest({conversationId:id,body:{arg:{conversationId:id,isArchived:true}}}), true);
+  assert.equal(isExactArchiveRequest({conversationId:id,body:{arg:{conversationId:'22222222-2222-4222-8222-222222222222',isArchived:true}}}), false);
+  assert.equal(isExactArchiveRequest({conversationId:id,body:{arg:{conversationId:id,isArchived:false}}}), false);
+  assert.equal(isExactArchiveRequest({conversationId:'not-a-uuid',body:{arg:{conversationId:id,isArchived:true}}}), false);
+});
+
+test('runner resumes only the exact Reject prompt when one native card is pending', () => {
+  const prompt = 'Run the current s3_ssl Reject-only validation: use live evidence, select exactly one current finding, prepare and freeze it, then present its native Reject-only card. Do not Approve, execute remediation, or write to AWS.';
+  assert.equal(isExactRejectPromptCardChat({messages:[prompt,'pending'],approvalCardCount:1}), true);
+  assert.equal(isExactRejectPromptCardChat({messages:[prompt.replace('exactly one','one') ,'pending'],approvalCardCount:1}), false);
+  assert.equal(isExactRejectPromptCardChat({messages:[prompt,'pending'],approvalCardCount:0}), false);
+  assert.equal(isExactRejectPromptCardChat({messages:[prompt,'pending','extra'],approvalCardCount:1}), false);
+});
+
 test('Reject transcript is rejected if any remediation executor call appears', () => {
   assert.equal(hasExecutorDispatch([{content: [{text: 'REJECTED'}]}]), false);
   assert.equal(hasExecutorDispatch([{tool_calls: [{name: 'execute_multi_account_remediation'}]}]), true);
@@ -111,7 +131,7 @@ test('browser evidence emits only one-way digests for frozen batch and scope', (
 test('live runner uses only normal LibreChat UI requests, submits Reject, and bounds cleanup', () => {
   const runner = fs.readFileSync(path.join(__dirname, 'e2e', 'issue191_s3_ssl_reject.mjs'), 'utf8');
   assert.match(runner, /getByRole\('button', \{ name: \/\^reject\$\/i \}\)/);
-  assert.match(runner, /await reject\.click\(\)/);
+  assert.match(runner, /await reject\.click\(\{force: true\}\)/);
   assert.doesNotMatch(runner, /getByRole\('button', \{ name: \/.*approve/i);
   assert.doesNotMatch(runner, /decision\s*:\s*['"]approve/i);
   assert.match(runner, /archiveConversationInUi\(page, id, observations\)/);
@@ -141,6 +161,15 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /menuButton\.waitFor\(\{state: 'visible', timeout: 5000\}\)/);
   assert.match(runner, /menuButton\.click\(\{force: true, timeout: 15000\}\)/);
   assert.match(runner, /getAttribute\('aria-expanded'\) === 'true'/);
+  assert.match(runner, /isExactArchiveRequest\(\{conversationId, body: requestBody\}\)/);
+  assert.match(runner, /\.then\(\(response\) => \(\{response\}\), \(\) => \(\{failed: true\}\)\)/);
+  assert.match(runner, /native \$\{label\} is obstructed; refusing to continue/);
+  assert.match(runner, /requireUnobstructedEnabledButton\(reject, 'Reject'\)/);
+  assert.match(runner, /requireUnobstructedEnabledButton\(submit, 'Submit'\)/);
+  assert.match(runner, /reject\.click\(\{force: true\}\)/);
+  assert.match(runner, /if \(!\(await submit\.isEnabled\(\)\)\)/);
+  assert.match(runner, /selectionDeadline = Date\.now\(\) \+ 10000/);
+  assert.match(runner, /submit\.click\(\{force: true\}\)/);
   assert.match(runner, /\/api\/convos\/archive/);
   assert.ok(runner.indexOf('currentExactStatusConversation(page)') < runner.lastIndexOf("page.goto(`${ORIGIN}/c/new`"),
     'check the current tab before navigating away from a reusable status-only conversation');
