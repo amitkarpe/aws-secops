@@ -77,36 +77,48 @@ with durable receipt-chain verification and consumed-retry rejection.
 
 ## Native E2E stop gate
 
+Issue #195 traced the earlier 401s to the test harness, not a retained-runtime
+auth/proxy defect. Its page-level `fetch()` calls sent same-origin cookies but
+did not include LibreChat's `Authorization` header. The pinned upstream
+LibreChat v0.8.8-rc1 auth context sets that header through its authenticated
+request helpers; normal UI-generated requests included the header and
+succeeded. The supported correction is therefore in the runner only; no
+runtime auth, proxy, or session configuration was changed.
+
 The fixed Playwright runner is `tests/e2e/issue191_s3_ssl_reject.mjs`; its
 contract tests are `tests/issue191_browser_e2e.test.cjs`. It reads the four
-alias-only live status first, requires one exact `s3_ssl` / Reject-only frozen
-action, clicks only Reject and Submit once, waits for a persisted assistant
-reply, rejects executor calls or success claims, and deletes its one temporary
-conversation after a settled decision. It selects the exact native LibreChat
-message input and submits through the Send button handler; status and Reject
-preparation share one verified Compliance Agent v1 conversation. It uses
-same-origin status/history/cleanup requests and never reads browser storage or
-exports authentication.
+alias-only live status first, waits on rendered chat state, requires one native
+`s3_ssl` / Reject-only card with exactly one Reject and no Approve action,
+clicks Reject and Submit once, and verifies the rendered terminal response.
+It uses the exact native LibreChat message input and Send handler; status and
+Reject preparation use separate Compliance Agent v1 conversations, with the
+status-only conversation deleted before the approval request is sent. The runner
+observes only status, route, method, and authorization-header-name presence
+from ordinary application responses; it never records header values, reads
+browser storage, or exports authentication. It verifies a successful
+authenticated message-history reload and deletes test conversations only
+through LibreChat's native conversation menu and confirmation dialog.
+
 The native resume path is accepted only when its receipt-gated request returns
 HTTP 200/201; the runtime boundary verifies the durable Reject receipt and
-fresh unchanged provider readback before allowing continuation. Batch and
-scope are emitted only as one-way digests. Its local Node contract suite passes
-8/8, and the combined native-decision/browser boundary suite passes 19/19.
+fresh unchanged provider readback before allowing continuation. Exact control
+and scope binding remain server-side receipt/reconciliation assertions, not
+private browser-state inspection. The updated local Node contract suite passes
+8/8.
 
 The authenticated LibreChat native card/resume test remains the acceptance
 gate. The repo-owned Reject-only integration is deployed, but no native
 `s3_ssl` card or decision has yet been created. The isolated localhost-CDP
-profile successfully authenticated in the visible SecOps UI as the expected
-user, with Compliance Agent v1 selected. However, same-origin chat status and
-message-history requests return HTTP 401; the E2E stopped before native
-approval. A single fixed read-only diagnostic conversation was created through
-the UI, but its message-history and cleanup APIs also returned 401, so deletion
-is unverified and manual removal may be needed. No password, cookie, token, or
-browser database was read or exported. Direct Windows Node/CDP access and
-Playwright Core attachment both pass. Do not test Approve. Until the native Reject, durable receipt,
-zero-dispatch evidence, fresh unchanged provider readback, reconnect/recovery
-checks, and temporary-state cleanup are proven, PR #192 remains draft and
-Issue #191 remains open. `scripts/check.sh` passes 336 tests (4 skipped) with
-the repository-pinned temporary dependencies, and the separate Compliance
-Agent v1 / Issue #191 focused suite passes 46 tests. The default worktree had
-no MCP SDK installed initially; no dependencies were added to the repository.
+session was reattached through Windows Node; normal app auth refresh and
+message-history calls returned HTTP 200. The exact read-only diagnostic
+conversation remains in the UI because its native DELETE returned HTTP 401
+before refresh and HTTP 500 after refresh. Redacted SSM logs attribute the 500
+to the conversation-store delete stage but reveal no safe exception class; no
+direct database cleanup was attempted. No password, cookie, token, or browser
+database was read or exported. Do not test Approve. Until supported cleanup,
+the native Reject, durable receipt, zero-dispatch evidence, fresh unchanged
+provider readback, and reconnect/recovery checks are proven, PR #192 remains
+draft and Issue #191 remains open. `scripts/check.sh` passed 336 tests (4
+skipped) before the current runner update; rerun it before handoff. The default
+worktree had no MCP SDK installed initially; no dependencies were added to the
+repository.

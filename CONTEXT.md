@@ -2,7 +2,7 @@
 
 Repository: `amitkarpe/aws-secops`  
 Status: ACTIVE  
-Updated: 2026-09-23
+Updated: 2026-09-24
 
 > Current-only restart index. Read the latest owning Issue/PR comment for mutable rollout state; historical proof documents are not live truth.
 
@@ -45,20 +45,26 @@ post-restart read-only SSM status check on 2026-09-23 returned HTTP 200 with all
 four registered aliases identity-verified and available, and a current
 finding. It also confirmed both services active and the pinned resume patch
 installed. AWS writes and remediation dispatches remain zero. Local regression
-is green (336 repository tests, 24 Compliance Agent v1 tests, 19 native-decision
-and browser-boundary Node tests), including duplicate/racing Reject,
-durable receipt reopen/retry, timeout, scope mismatch, expiry and source-drift
-cases. The dedicated isolated localhost-CDP SecOps profile now has an
-authenticated UI session and the exact Compliance Agent v1 selected. However,
-same-origin chat status/history calls return HTTP 401; the live journey stops
-before the native decision. One fixed read-only diagnostic conversation could
-not be removed because its cleanup API also returned 401. No approval,
-executor dispatch, or AWS write occurred. The runner now targets LibreChat's
-exact message-input control, submits through its native button handler, and
-uses one conversation for status then Reject preparation; its local contract
-suite passes 8/8 and the full repository check passes 336 tests (4 skipped).
-Authenticated Reject acceptance remains blocked on restored same-origin API
-authorization and cleanup.
+was green before the current runner update (336 repository tests, 24
+Compliance Agent v1 tests, 19 native-decision and browser-boundary Node tests),
+including duplicate/racing Reject, durable receipt reopen/retry, timeout, scope
+mismatch, expiry and source-drift cases. Issue #195 source/runtime analysis
+found that the previous Playwright runner used page-level `fetch` calls that
+omitted LibreChat's `Authorization` header; LibreChat's normal client sets that
+header through its authenticated request helper. Thus the runner's direct
+status/history/cleanup requests received 401, while normal UI client calls
+succeeded. No runtime auth or proxy change is indicated. The runner now waits
+for rendered UI state, records only sanitized response metadata, verifies a
+normal authenticated history reload, and performs conversation deletion only
+through LibreChat's native UI. The focused contract suite passes 8/8 after this
+change. A normal auth refresh and history reload returned HTTP 200, but the
+native DELETE returned 401 once and 500 after refresh. Redacted SSM log
+aggregation attributes the 500 to the conversation-store delete stage but
+exposes no safe exception class. The exact read-only diagnostic remains
+visible in the UI; cleanup is not claimed. No approval, executor dispatch, or
+AWS resource write occurred. Authenticated Reject acceptance remains open
+until supported cleanup, the full native journey, and durable receipt/readback
+evidence pass.
 Keep this path read-only, Reject-only and independent from Issue #176 / PR #177.
 Do not add a third control or a live mutation path.
 
@@ -75,11 +81,13 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Continue PR #192 in the existing worktree. After normal sign-in to the isolated
-temporary Chrome profile, run the exact authenticated `s3_ssl` native Reject
-journey, bounded live recovery checks, and cleanup; never choose Approve. Then
-leave a sanitized review handoff. Do not merge or start Issue #170 M4 follow-up
-work until its acceptance gates are explicitly complete.
+Continue PR #192 in the existing worktree. Resume the dedicated isolated
+Chrome profile if it still holds its normal authenticated session; otherwise
+wait for normal user sign-in without requesting or copying credentials. Run the
+exact authenticated `s3_ssl` native Reject journey, bounded live recovery
+checks, and supported UI cleanup; never choose Approve. Then leave one
+sanitized review handoff. Do not merge or start Issue #170 M4 follow-up work
+until its acceptance gates are explicitly complete.
 
 ## Restart
 

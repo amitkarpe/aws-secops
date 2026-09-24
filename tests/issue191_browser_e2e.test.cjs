@@ -5,12 +5,11 @@ const path = require('node:path');
 
 let validateRejectOnlyAction;
 let hasExecutorDispatch;
-let hasPersistedAssistantReply;
 let flattenText;
 let publicDigest;
 let validateVisibleRejectCard;
 test.before(async () => {
-  ({validateRejectOnlyAction, hasExecutorDispatch, hasPersistedAssistantReply, flattenText, publicDigest,
+  ({validateRejectOnlyAction, hasExecutorDispatch, flattenText, publicDigest,
     validateVisibleRejectCard} =
     await import('./e2e/issue191_s3_ssl_reject.mjs'));
 });
@@ -59,20 +58,19 @@ test('browser gate refuses any approval choices beyond Reject', () => {
 });
 
 test('visible native card must identify the s3_ssl Reject-only validation', () => {
-  const card = {cardCount: 1, expectedToolCallId: 'call-12345678',
-    actualToolCallId: 'call-12345678', text: 'Reject-only validation for one exact S3 TLS finding.'};
+  const card = {cardCount: 1, expectedToolCallId: '11111111-1111-4111-8111-111111111111',
+    actualToolCallId: '11111111-1111-4111-8111-111111111111', rejectButtonCount: 1, approveButtonCount: 0,
+    text: 'Reject-only validation for one exact S3 TLS finding.'};
   assert.doesNotThrow(() => validateVisibleRejectCard(card));
   assert.throws(() => validateVisibleRejectCard({...card, cardCount: 2}), /exact visible/);
   assert.throws(() => validateVisibleRejectCard({...card, actualToolCallId: 'call-other'}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, rejectButtonCount: 0}), /exact visible/);
+  assert.throws(() => validateVisibleRejectCard({...card, approveButtonCount: 1}), /exact visible/);
   assert.throws(() => validateVisibleRejectCard({...card, text: 'S3 TLS approval card'}), /exact visible/);
   assert.throws(() => validateVisibleRejectCard({...card, text: 'Reject-only validation for S3 BPA'}), /exact visible/);
 });
 
-test('chat completion requires persisted assistant output, not an idle status snapshot', () => {
-  assert.equal(hasPersistedAssistantReply(null), false);
-  assert.equal(hasPersistedAssistantReply([{isCreatedByUser: true, text: 'user prompt'}]), false);
-  assert.equal(hasPersistedAssistantReply([{isCreatedByUser: false, unfinished: true, text: 'partial'}]), false);
-  assert.equal(hasPersistedAssistantReply([{isCreatedByUser: false, text: [{text: 'REJECTED'}]}]), true);
+test('chat transcript flattener preserves only rendered visible text', () => {
   assert.equal(flattenText([{text: 'REJECTED'}, 'UNCHANGED']), 'REJECTED UNCHANGED');
 });
 
@@ -87,24 +85,32 @@ test('browser evidence emits only one-way digests for frozen batch and scope', (
   assert.notEqual(digest, 'frozen-public-test-value');
 });
 
-test('live runner submits only Reject, never exports browser auth, and has bounded cleanup', () => {
+test('live runner uses only normal LibreChat UI requests, submits Reject, and bounds cleanup', () => {
   const runner = fs.readFileSync(path.join(__dirname, 'e2e', 'issue191_s3_ssl_reject.mjs'), 'utf8');
   assert.match(runner, /getByRole\('button', \{ name: \/\^reject\$\/i \}\)/);
   assert.match(runner, /await reject\.click\(\)/);
   assert.doesNotMatch(runner, /getByRole\('button', \{ name: \/.*approve/i);
   assert.doesNotMatch(runner, /decision\s*:\s*['"]approve/i);
-  assert.match(runner, /sameOriginDelete\(page, conversationId\)/);
+  assert.match(runner, /deleteConversationInUi\(page, id, observations\)/);
+  assert.match(runner, /observeAppResponses\(page\)/);
+  assert.match(runner, /authorizationHeaderPresent/);
   assert.match(runner, /page\.waitForResponse/);
   assert.match(runner, /\[data-testid="tool-approval"\]/);
   assert.match(runner, /card\.getByRole\('button', \{ name: \/\^reject\$\/i \}\)/);
-  assert.match(runner, /hasPersistedAssistantReply\(messages\.body\)/);
+  assert.match(runner, /waitForAssistantTurn\(page, 240000, \{approval: true\}\)/);
   assert.match(runner, /await selectComplianceAgent\(page\)/);
   assert.match(runner, /innerText\.trim\(\) === 'Compliance Agent v1'/);
-  assert.match(runner, /continueConversation\(page, statusConversationId, REJECT_PROMPT\)/);
+  const statusStart = runner.indexOf('startConversation(page, STATUS_PROMPT)');
+  const statusCleanup = runner.indexOf('deleteConversationInUi(page, statusConversationId');
+  const rejectStart = runner.indexOf('startConversation(page, REJECT_PROMPT)');
+  assert.ok(statusStart >= 0 && statusCleanup > statusStart && rejectStart > statusCleanup,
+    'cleanup proof must pass before the approval journey starts');
   assert.match(runner, /getByTestId\('send-button'\)/);
   assert.match(runner, /getByTestId\('text-input'\)/);
   assert.match(runner, /send\.evaluate\(\(button\) => button\.click\(\)\)/);
   assert.match(runner, /waitForFunction\(\(\) =>/);
   assert.match(runner, /do not retry/);
-  assert.doesNotMatch(runner, /document\.cookie|localStorage|sessionStorage|Bearer\s/);
+  assert.doesNotMatch(runner, /\bfetch\s*\(|document\.cookie|localStorage|sessionStorage|Bearer\s/);
+  assert.match(runner, /getByRole\('menuitem', \{name: \/\^delete\$\/i\}\)/);
+  assert.match(runner, /getByRole\('button', \{name: \/\^delete\$\/i\}\)/);
 });
