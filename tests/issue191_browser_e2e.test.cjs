@@ -158,8 +158,9 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /do not retry/);
   assert.doesNotMatch(runner, /\bfetch\s*\(|document\.cookie|localStorage|sessionStorage|Bearer\s/);
   assert.match(runner, /getByRole\('menuitem', \{name: \/\^archive\$\/i\}\)/);
+  assert.match(runner, /archiveItem\.evaluate\(\(item\) => item\.click\(\)\)/);
   assert.match(runner, /menuButton\.waitFor\(\{state: 'visible', timeout: 5000\}\)/);
-  assert.match(runner, /menuButton\.click\(\{force: true, timeout: 15000\}\)/);
+  assert.match(runner, /menuButton\.evaluate\(\(button\) => button\.click\(\)\)/);
   assert.match(runner, /getAttribute\('aria-expanded'\) === 'true'/);
   assert.match(runner, /isExactArchiveRequest\(\{conversationId, body: requestBody\}\)/);
   assert.match(runner, /\.then\(\(response\) => \(\{response\}\), \(\) => \(\{failed: true\}\)\)/);

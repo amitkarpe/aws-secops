@@ -129,7 +129,10 @@ async function archiveConversationInUi(page, conversationId, observations) {
   await menuButton.waitFor({state: 'attached', timeout: 15000});
   await menuButton.waitFor({state: 'visible', timeout: 5000});
   if ((await menuButton.getAttribute('aria-expanded')) !== 'true') {
-    await menuButton.click({force: true, timeout: 15000});
+    if (!(await menuButton.isEnabled())) throw new Error('native conversation menu is disabled');
+    // Avoid Playwright's animation/stability wait on LibreChat's moving row;
+    // this activates only the exact native menu button, not an API endpoint.
+    await menuButton.evaluate((button) => button.click());
     await page.waitForFunction((id) => document.getElementById(`conversation-menu-${id}`)?.getAttribute('aria-expanded') === 'true',
       conversationId, {timeout: 5000});
   }
@@ -140,7 +143,10 @@ async function archiveConversationInUi(page, conversationId, observations) {
     const url = new URL(response.url());
     return url.origin === ORIGIN && url.pathname === '/api/convos/archive' && response.request().method() === 'POST';
   }, {timeout: 20000}).then((response) => ({response}), () => ({failed: true}));
-  await archiveItem.click({force: true, timeout: 10000});
+  if (!(await archiveItem.isVisible()) || !(await archiveItem.isEnabled())) {
+    throw new Error('native Archive action is not visibly enabled');
+  }
+  await archiveItem.evaluate((item) => item.click());
   const archiveResponse = await archiveResponsePromise;
   if (archiveResponse.failed) throw new Error('native Archive request was not observed; test conversation remains unarchived');
   const response = archiveResponse.response;
