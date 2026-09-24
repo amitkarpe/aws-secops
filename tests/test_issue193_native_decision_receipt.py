@@ -30,20 +30,21 @@ class NativeDecisionReceiptTests(unittest.TestCase):
         result = self.decide()
         self.assertEqual((result["outcome"], result["downstream_dispatches"], result["aws_writes"]), ("REJECTED", 0, 0))
         reopened = NativeDecisionReceipts(self.path)
-        self.assertEqual(len(reopened.timeline(self.binding["batch_id"])), 1)
+        self.assertEqual(len(reopened.timeline(self.binding["batch_id"])), 2)
         with self.assertRaisesRegex(ReceiptError, "consumed"):
             self.decide(reopened)
 
     def test_approve_is_durably_blocked(self):
         result = self.decide(decision="approve")
         self.assertEqual((result["outcome"], result["live_execution_authorized"], result["downstream_dispatches"], result["aws_writes"]), ("APPROVE_BLOCKED", False, 0, 0))
-        self.assertEqual(NativeDecisionReceipts(self.path).timeline(self.binding["batch_id"])[0]["outcome"], "APPROVE_BLOCKED")
+        timeline = NativeDecisionReceipts(self.path).timeline(self.binding["batch_id"])
+        self.assertEqual(timeline[-1]["outcome"], "APPROVE_BLOCKED")
 
     def test_racing_submits_have_one_winner(self):
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(lambda _: self._try_decide(), range(2)))
         self.assertEqual(sorted(results), ["REJECTED", "REJECTED_BY_STORE"])
-        self.assertEqual(len(self.store.timeline(self.binding["batch_id"])), 1)
+        self.assertEqual(len(self.store.timeline(self.binding["batch_id"])), 2)
 
     def _try_decide(self):
         try:
@@ -58,7 +59,7 @@ class NativeDecisionReceiptTests(unittest.TestCase):
                         {"generation_id": "bad"}):
             with self.subTest(changes=changes), self.assertRaises(ReceiptError):
                 self.decide(**changes)
-        self.assertEqual(self.store.timeline(self.binding["batch_id"]), [])
+        self.assertEqual([row["event"] for row in self.store.timeline(self.binding["batch_id"])], ["PREPARE_FROZEN"])
 
     def test_stale_timestamp_and_expired_batch_fail(self):
         with self.assertRaisesRegex(ReceiptError, "stale"):
@@ -74,7 +75,7 @@ class NativeDecisionReceiptTests(unittest.TestCase):
         with self.assertRaises(OSError):
             self.decide()
         self.store._connect = original
-        self.assertEqual(self.store.timeline(self.binding["batch_id"]), [])
+        self.assertEqual([row["event"] for row in self.store.timeline(self.binding["batch_id"])], ["PREPARE_FROZEN"])
 
     def test_tamper_is_detected_after_reopen(self):
         self.decide()

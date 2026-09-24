@@ -2,7 +2,7 @@
 
 Repository: `amitkarpe/aws-secops`  
 Status: ACTIVE  
-Updated: 2026-09-22
+Updated: 2026-09-24
 
 > Current-only restart index. Read the latest owning Issue/PR comment for mutable rollout state; historical proof documents are not live truth.
 
@@ -37,11 +37,44 @@ closed, and Issue #173 has no remaining implementation scope.
 
 Issue #170 remains the single roadmap. M1 completed in Issue #178 / PR #179,
 M2 in Issue #180 / PR #181, M3A in Issue #182 / PR #183, M3B in Issue #184 /
-PR #185, and M4A in Issue #186 / PR #187. Issue #188 / PR #189 is the active
-bounded M4B synthetic control expansion: `s3_ssl` only, reusing the shared
-selection, freeze, native approval, exception, and audit contracts. Issue #176
-/ PR #177 remains an independent read-only MCP evidence track. Do not add a
-third control or a live mutation path.
+PR #185, M4A in Issue #186 / PR #187, and M4B in Issue #188 / PR #189. Issue
+#191 / PR #192 is the active live `s3_ssl` Reject-only milestone, using the
+merged native decision receipt boundary from Issue #193 / PR #194. The
+repo-owned runtime patch is deployed on the retained personal-LAB host. A fresh
+post-restart read-only SSM status check on 2026-09-23 returned HTTP 200 with all
+four registered aliases identity-verified and available, and a current
+finding. A new sanitized SSM preflight verified `amit` is bound to the retained
+SecOps host (both `aws-secops-bulk` and `aws-secops-librechat` active; operator
+process explicitly uses `amit`). The pinned resume patch remains installed.
+The `vagent` profile resolved to a different member-account EC2 and was not
+used for this work.
+
+The authenticated native E2E reached the exact s3_ssl card: one Reject, zero
+Approve. Reject was selected and submitted once through the normal LibreChat
+client. The final clean Playwright run returned PASS with native resume HTTP
+200, the card detached, and rendered completion acknowledged the Reject
+receipt without claiming an AWS change. The runtime returns success only after
+durable `REJECTED` receipt persistence, `downstream_dispatches=0`, `aws_writes=0`, and
+a fresh provider readback records `UNCHANGED`; Approve was absent and never
+invoked. The exact completed test chat was archived through the authenticated
+native Archive action (HTTP 200, exact conversation bound); Delete was never
+invoked.
+
+The first run's final assertion was overly specific about agent wording and
+marked this successful receipt-gated completion as a false-negative. The runner
+now accepts a rendered Reject/receipt acknowledgement and resumes an
+already-selected Reject without clicking it twice. Focused browser contract
+tests pass 12/12. Full repository regression passes 336 tests (4 skipped);
+Compliance Agent v1 passes 24/24, and native receipt/browser Node tests pass
+23/23. No AWS resource writes, Approve, remediation executor dispatch, or
+cross-account mutation occurred. The conditional M4 exception-aware live case
+is deferred: the live prepare path freezes `NO_EXCLUSIONS_APPLIED`, and no
+exact application-state exception create/revoke path is wired to the live
+resolver; adding one would widen this pilot. Synthetic exception tests remain
+green. Exact-head CI is green (4 successful, 1 skipped), and HANDOFF: CHATGPT
+is posted on PR #192. Keep PR #192 draft/open for G review; do not merge.
+Keep this path read-only, Reject-only and independent from Issue #176 / PR #177.
+Do not add a third control or a live mutation path.
 
 ## Session Power
 
@@ -56,9 +89,12 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 
 ## Next
 
-Review and merge PR #189 when its exact-head checks and handoff are accepted.
-Do not start another control, live bulk remediation, or new-control work.
+PR #192 is ready for G review at the posted handoff; exact-head CI is green.
+The authenticated `s3_ssl` native Reject and exact Archive journeys are proven.
+The conditional exception-aware variant is explicitly deferred because no safe
+live exception interface exists in this path. Keep #192 draft/open and #191
+open for G review. Never choose Approve, merge, or start Issue #170 M4.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md, Issue #188 and PR #189. Continue only bounded M4B synthetic s3_ssl work; do not add a third control.`
+`Read AGENTS.md, CONTEXT.md, Issue #191 and PR #192. Current head has a clean live s3_ssl Reject E2E and green exact-head CI. Review the deferred conditional M4 exception-aware case. Keep PR #192 draft/open; no Approve, Delete, merge, or AWS writes.`

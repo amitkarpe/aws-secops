@@ -11,3 +11,11 @@ class NativeDecisionNodeBoundaryTests(unittest.TestCase):
             capture_output=True, text=True, timeout=30,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_issue191_authenticated_runner_contract(self):
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            ["node", "--test", str(root / "tests" / "issue191_browser_e2e.test.cjs")],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

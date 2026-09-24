@@ -23,6 +23,8 @@ from .ui_cards import (
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
+S3_SSL_CONTROL = "s3_ssl"
+S3_SSL_DECISION_TOOL = "decide_s3_ssl_reject_only_mcp_aws_compliance_planner"
 ORDERED_CONTROLS = (S3_CONTROL, SG_CONTROL)
 CONTROLS = {"all", *ORDERED_CONTROLS}
 EXECUTOR_BY_CONTROL = {
@@ -60,7 +62,7 @@ def _request(request: Request, *, timeout: int = 90) -> dict:
 
 
 def read_path(path: str, query: dict[str, object] | None = None) -> dict:
-    if path not in {"/api/operator/status", "/api/operator/plan", "/api/operator/multi-account-plan", "/api/operator/multi-account-execution-preview", "/api/v1/get_batch"}:
+    if path not in {"/api/operator/status", "/api/operator/plan", "/api/operator/multi-account-plan", "/api/operator/multi-account-execution-preview", "/api/operator/s3-ssl-status", "/api/v1/get_batch"}:
         raise ValueError("unsupported operator read")
     url = backend() + path
     if query:
@@ -158,6 +160,18 @@ def multi_account_call(
         raise ValueError(
             "Four-account batch preparation unavailable or rejected. No remediation was authorized."
         ) from None
+
+
+def s3_ssl_reject_prepare() -> dict:
+    request = Request(
+        backend() + "/api/operator/s3-ssl-reject-prepare", data=b"{}",
+        headers={"Origin": backend(), "Content-Type": "application/json"},
+    )
+    return _request(request, timeout=120)
+
+
+def s3_ssl_live_status() -> dict:
+    return read_path("/api/operator/s3-ssl-status")
 
 
 def _read_whole_batch(batch_id: str) -> dict:
@@ -302,11 +316,11 @@ def prepare_eligible() -> dict:
 server = FastMCP(
     "AWS Compliance Planner",
     instructions=(
-        "Server-owned investigation and planning for exactly S3 BPA and restricted SSH. Config evidence is intersected with retained owned scope. "
+        "Server-owned investigation and planning for exactly S3 BPA, restricted SSH, plus live read-only s3_ssl Reject validation. Config evidence is intersected with retained owned scope. "
         "investigate_s3_context and get_s3_decision_timeline are read-only whole-batch evidence views and never expose hidden chain-of-thought. "
         "The caller never supplies resource IDs, AWS API, account, Region or action. Preparing a batch makes no AWS resource change and does not approve execution. "
         "For the primary four-account scope, explicit fix intent must use prepare_multi_account_remediation(control, include_accounts, exclude_resources), then immediately invoke execute_multi_account_remediation(control,batch_id,scope_hash) so LibreChat can show its native Approve/Reject card. If include_accounts is omitted, the server deterministically derives the exact currently NON_COMPLIANT aliases for that control from fresh four-account status; it never defaults a generic fix to already-COMPLIANT aliases. Explicitly supplied aliases remain exact. A successful prepare is not a completed response: emit no assistant text and never ask the user to type Approve, Reject, go, or yes before invoking execute. The native Approve/Reject + Submit card is the only authorization UI. The selected account list is frozen during prepare and never supplied again at execute. Exclusions are resolved deterministically and frozen server-side; execute never accepts a new exclusion list. "
-        "Reject means no executor call. S3 and SG approvals remain separate. prepare_remediation(control) is legacy retained single-account behavior only."
+        "Reject means no executor call. S3 and SG approvals remain separate. For s3_ssl status use get_s3_ssl_live_status. For explicitly requested Reject-only validation, call prepare_s3_ssl_reject_only then immediately call its exact next_execution. The native card is Reject-only; the server records the final receipt and checks fresh provider readback. It has no executor path. prepare_remediation(control) is legacy retained single-account behavior only."
     ),
 )
 
@@ -329,6 +343,12 @@ def get_multi_account_remediation_plan(
 ) -> dict:
     """Read live four-account Config planning evidence. No AWS mutation or approval."""
     return read_path("/api/operator/multi-account-plan", {"control": control})
+
+
+@server.tool()
+def get_s3_ssl_live_status() -> dict:
+    """Read fresh fixed-query S3 TLS posture for the four registered LAB aliases."""
+    return s3_ssl_live_status()
 
 
 @server.tool()
@@ -389,6 +409,39 @@ def prepare_multi_account_remediation(
         ],
         structuredContent=result,
     )
+
+
+@server.tool()
+def prepare_s3_ssl_reject_only() -> dict:
+    """Prepare one current S3 TLS finding for native Reject-only validation.
+
+    This performs only fixed live reads and freezes one public-safe scope. It
+    has no remediation or executor capability. Immediately invoke the exact
+    returned decision tool so LibreChat renders its native decision card.
+    """
+    value = s3_ssl_reject_prepare()
+    next_execution = value.get("next_execution")
+    if not isinstance(next_execution, dict) or next_execution.get("tool") != S3_SSL_DECISION_TOOL:
+        raise ValueError("s3_ssl Reject-only preparation did not return exact decision")
+    value["assistant_transition"] = {
+        "mode": "IMMEDIATE_NATIVE_ASK_REJECT_ONLY",
+        "instruction": "Immediately invoke next_execution. Select Reject only; Approve is blocked.",
+    }
+    return value
+
+
+@server.tool()
+def decide_s3_ssl_reject_only(control: Literal["s3_ssl"], batch_id: str, scope_hash: str) -> dict:
+    """ASK: record one native decision for a frozen Reject-only S3 TLS scope.
+
+    The version-pinned receipt adapter intercepts this exact call. Without the
+    adapter this fallback remains blocked and cannot invoke AWS or an executor.
+    """
+    if control != S3_SSL_CONTROL or not re.fullmatch(r"[a-f0-9]{20}", batch_id) or not re.fullmatch(r"[a-f0-9]{24}", scope_hash):
+        raise ValueError("exact s3_ssl Reject-only scope required")
+    return {"version": 1, "outcome": "LIVE_EXECUTION_NOT_AUTHORIZED",
+            "live_execution_authorized": False, "downstream_dispatches": 0,
+            "aws_writes": 0, "message": "Native receipt adapter unavailable; no dispatch."}
 
 
 @server.tool()
