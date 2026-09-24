@@ -10,6 +10,22 @@ const STATUS_PROMPT = 'Read-only: show live s3_ssl status for the four registere
 const REJECT_PROMPT = 'Run the current s3_ssl Reject-only validation: use live evidence, select exactly one current finding, prepare and freeze it, then present its native Reject-only card. Do not Approve, execute remediation, or write to AWS.';
 const ALIASES = ['lab-dev', 'lab-poc', 'lab-qa', 'lab-sec'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let activeStage = 'startup';
+
+export function isExactReadOnlyStatusChat({messages, approvalCardCount}) {
+  if (!Array.isArray(messages) || messages.length !== 2 || approvalCardCount !== 0) return false;
+  const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+  if (typeof messages[0] !== 'string' || normalize(messages[0]) !== normalize(STATUS_PROMPT)) return false;
+  if (typeof messages[1] !== 'string' || !/s3[_ -]?ssl|S3 TLS/i.test(messages[1])) return false;
+  return ALIASES.every((alias) => messages[1].includes(alias)) &&
+    !/(?:prepared batch|requires_action|unavailable)/i.test(messages[1]);
+}
+
+export function isReadOnlyStatusPromptChat({messages, approvalCardCount}) {
+  if (!Array.isArray(messages) || messages.length < 1 || approvalCardCount !== 0) return false;
+  const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+  return typeof messages[0] === 'string' && normalize(messages[0]) === normalize(STATUS_PROMPT);
+}
 
 export function validateRejectOnlyAction(status) {
   const pending = status?.pendingAction;
@@ -68,14 +84,12 @@ async function waitForAssistantTurn(page, timeoutMs, {approval = false} = {}) {
     if (approval && await card.count() === 1 && await card.isVisible()) return {approval: true};
     const turn = await page.evaluate(() => {
       const bodies = [...document.querySelectorAll('[data-testid="message-body"]')];
-      const send = document.querySelector('[data-testid="send-button"]');
       const text = bodies.at(-1)?.innerText?.trim() ?? '';
       const stopVisible = [...document.querySelectorAll('button')].some((button) =>
         /stop generating/i.test(button.getAttribute('aria-label') ?? ''));
-      return {bodyCount: bodies.length, assistantText: text,
-        composerReady: Boolean(send && !send.disabled), stopVisible};
+      return {bodyCount: bodies.length, assistantText: text, stopVisible};
     });
-    if (turn.bodyCount >= 2 && turn.assistantText && turn.composerReady && !turn.stopVisible) {
+    if (turn.bodyCount >= 2 && turn.assistantText && !turn.stopVisible) {
       return {approval: false, assistantText: turn.assistantText};
     }
     await page.waitForTimeout(500);
@@ -84,43 +98,44 @@ async function waitForAssistantTurn(page, timeoutMs, {approval = false} = {}) {
     'LibreChat did not render a settled assistant turn before the bounded deadline');
 }
 
-async function deleteConversationInUi(page, conversationId, observations) {
+async function archiveConversationInUi(page, conversationId, observations) {
   const observationStart = observations.length;
   const menuButton = page.locator(`button[id="conversation-menu-${conversationId}"]`);
   await menuButton.waitFor({state: 'attached', timeout: 15000});
   await menuButton.waitFor({state: 'visible', timeout: 5000});
-  await clickUiControl(page, menuButton);
-  const deleteItem = page.getByRole('menuitem', {name: /^delete$/i});
-  await deleteItem.waitFor({state: 'visible', timeout: 5000});
-  await clickUiControl(page, deleteItem);
-  const dialog = page.getByRole('dialog');
-  await dialog.waitFor({state: 'visible', timeout: 5000});
-  const confirmation = dialog.getByRole('button', {name: /^delete$/i});
-  if (await confirmation.count() !== 1 || !(await confirmation.isEnabled())) {
-    throw new Error('native conversation cleanup confirmation is not uniquely available');
-  }
-  const deletionResponse = page.waitForResponse((response) => {
+  await menuButton.click({force: true, timeout: 15000});
+  await page.waitForFunction((id) => document.getElementById(`conversation-menu-${id}`)?.getAttribute('aria-expanded') === 'true',
+    conversationId, {timeout: 5000});
+  const archiveItem = page.getByRole('menuitem', {name: /^archive$/i});
+  await archiveItem.waitFor({state: 'visible', timeout: 5000});
+  const archiveResponse = page.waitForResponse((response) => {
     const url = new URL(response.url());
-    return url.origin === ORIGIN && url.pathname === '/api/convos' && response.request().method() === 'DELETE';
+    return url.origin === ORIGIN && url.pathname === '/api/convos/archive' && response.request().method() === 'POST';
   }, {timeout: 20000});
-  await clickUiControl(page, confirmation);
-  const response = await deletionResponse;
-  if (![200, 201, 202, 204].includes(response.status())) {
-    throw new Error(`native cleanup returned HTTP ${response.status()}`);
+  await archiveItem.click({timeout: 10000});
+  const response = await archiveResponse;
+  if (response.status() !== 200) {
+    throw new Error(`native archive returned HTTP ${response.status()}`);
   }
   await page.waitForFunction((id) => !document.querySelector(`button[id="conversation-menu-${id}"]`), conversationId,
     {timeout: 15000});
-  const deletion = observations.slice(observationStart).find((item) => item.method === 'DELETE' && /\/api\/convos(?:\/|$)/.test(item.route));
-  if (!deletion || ![200, 201, 202, 204].includes(deletion.status) || !deletion.authorizationHeaderPresent) {
-    throw new Error('native cleanup did not complete through the authenticated LibreChat client');
+  const archive = observations.slice(observationStart).find((item) =>
+    item.method === 'POST' && item.route === '/api/convos/archive');
+  if (!archive || archive.status !== 200 || !archive.authorizationHeaderPresent) {
+    throw new Error('native archive did not complete through the authenticated LibreChat client');
   }
-  return deletion.status;
+  return response.status();
 }
 
-async function clickUiControl(page, locator) {
-  const bounds = await locator.boundingBox();
-  if (!bounds) throw new Error('native UI control has no visible bounds');
-  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+async function currentExactStatusConversation(page) {
+  const id = conversationIdFromUrl(page.url());
+  const messages = await page.getByTestId('message-body').allInnerTexts();
+  const approvalCardCount = await page.locator('[data-testid="tool-approval"]').count();
+  const reusable = Boolean(id && isReadOnlyStatusPromptChat({messages, approvalCardCount}));
+  console.log(JSON.stringify({status_chat_reuse_check:{conversation_route:Boolean(id),
+    message_count:messages.length, approval_card_count:approvalCardCount, reusable,
+    settled_exact_status:isExactReadOnlyStatusChat({messages, approvalCardCount})}}));
+  return reusable ? id : null;
 }
 
 async function selectComplianceAgent(page) {
@@ -129,7 +144,7 @@ async function selectComplianceAgent(page) {
   if ((await selector.innerText()).trim() === 'Compliance Agent v1') return;
   await page.waitForFunction(() =>
     document.querySelector('[data-testid="model-selector-button"]')?.innerText.trim() === 'Compliance Agent v1',
-  null, {timeout: 20000}).catch(() => {
+  null, {timeout: 60000}).catch(() => {
     throw new Error('Compliance Agent v1 is not selected for this chat');
   });
   if ((await selector.innerText()).trim() !== 'Compliance Agent v1') {
@@ -156,7 +171,7 @@ async function startConversation(page, prompt) {
   await send.evaluate((button) => button.click());
   await page.waitForFunction(() =>
     /^\/c\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(location.pathname),
-  null, {timeout: 30000});
+  null, {timeout: 600000});
   return conversationIdFromUrl(page.url());
 }
 
@@ -190,7 +205,7 @@ async function run() {
   const [, , cdpUrl, corePath] = process.argv;
   if (!cdpUrl || !corePath) throw new Error('usage: issue191_s3_ssl_reject.mjs <localhost-cdp-url> <playwright-core-index.mjs>');
   const { chromium } = await import(pathToFileURL(corePath).href);
-  const browser = await chromium.connectOverCDP(cdpUrl, { noDefaults: true, timeout: 30000 });
+  const browser = await chromium.connectOverCDP(cdpUrl, { noDefaults: true, timeout: 60000 });
   let page;
   const conversations = [];
   let cleanup = 'NOT_NEEDED';
@@ -204,15 +219,13 @@ async function run() {
     if (await page.locator('input[type="password"]:visible').count()) {
       throw new Error('AUTH_REQUIRED: sign in normally in this isolated Chrome profile');
     }
-    if (new URL(page.url()).pathname !== '/c/new') {
-      await page.goto(`${ORIGIN}/c/new`, { waitUntil: 'domcontentloaded' });
-    }
-    if (await page.locator('input[type="password"]:visible').count()) {
-      throw new Error('AUTH_REQUIRED: sign in normally in this isolated Chrome profile');
-    }
-    const statusConversationId = await startConversation(page, STATUS_PROMPT);
+    activeStage = 'status-resume-check';
+    const existingStatusConversationId = await currentExactStatusConversation(page);
+    activeStage = existingStatusConversationId ? 'status-resume' : 'status-send';
+    const statusConversationId = existingStatusConversationId ?? await startConversation(page, STATUS_PROMPT);
     conversations.push(statusConversationId);
-    const readStatus = await waitForAssistantTurn(page, 180000);
+    activeStage = 'status-read';
+    const readStatus = await waitForAssistantTurn(page, 360000);
     if (/approve|submit decision|prepared batch/i.test(readStatus.assistantText)) {
       throw new Error('read-only s3_ssl status unexpectedly asked for a decision');
     }
@@ -224,16 +237,20 @@ async function run() {
       if (!visibleStatus.includes(alias)) throw new Error('read-only status omitted a registered LAB alias');
     }
     if (/UNAVAILABLE/i.test(visibleStatus)) throw new Error('read-only status reports unavailable evidence');
-    await page.reload({waitUntil: 'domcontentloaded'});
-    await page.getByTestId('message-body').first().waitFor({state: 'visible', timeout: 15000});
+    activeStage = 'history-reload';
+    await page.reload({waitUntil: 'domcontentloaded', timeout: 60000});
+    await page.getByTestId('message-body').first().waitFor({state: 'visible', timeout: 60000});
     const historyRead = [...observations].reverse().find((item) => item.method === 'GET' &&
       /\/api\/messages(?:\/|$)/.test(item.route) && item.status >= 200 && item.status < 400 && item.authorizationHeaderPresent);
     if (!historyRead) throw new Error('authenticated UI history reload did not produce a successful LibreChat client read');
 
-    await deleteConversationInUi(page, statusConversationId, observations);
+    activeStage = 'archive-status';
+    await archiveConversationInUi(page, statusConversationId, observations);
     conversations.splice(conversations.indexOf(statusConversationId), 1);
+    activeStage = 'reject-chat';
     const decisionConversationId = await startConversation(page, REJECT_PROMPT);
     conversations.push(decisionConversationId);
+    activeStage = 'reject-card';
     await waitForAssistantTurn(page, 240000, {approval: true});
     const card = page.locator('[data-testid="tool-approval"]');
     const cardCount = await card.count();
@@ -246,6 +263,7 @@ async function run() {
       text: cardCount === 1 ? await card.innerText() : ''});
     const reject = card.getByRole('button', { name: /^reject$/i });
     if (await reject.count() !== 1) throw new Error('expected one native Reject button');
+    activeStage = 'native-reject';
     await reject.click();
     const submit = card.getByRole('button', { name: /^submit$/i });
     if (await submit.count() !== 1 || !(await submit.isEnabled())) {
@@ -255,23 +273,26 @@ async function run() {
       const request = response.request();
       return new URL(response.url()).pathname === '/api/agents/chat/resume' && request.method() === 'POST';
     }, {timeout: 30000});
+    activeStage = 'native-submit';
     await submit.click();
     const resumeResponse = await resumeResponsePromise;
     if (![200, 201].includes(resumeResponse.status())) {
       throw new Error(`native Reject resume returned HTTP ${resumeResponse.status()}; do not retry`);
     }
 
+    activeStage = 'reject-result';
     await card.waitFor({state: 'detached', timeout: 240000});
     const settled = await waitForAssistantTurn(page, 30000);
     const finalText = settled.assistantText;
     if (/AWS change applied/i.test(finalText)) throw new Error('Reject path claimed an AWS change');
     if (!/reject(ed|ion)/i.test(finalText)) throw new Error('Reject completion did not render its final decision result');
-    cleanup = 'PASS';
+    cleanup = 'ARCHIVED';
+    activeStage = 'archive-result';
     for (const id of [...conversations].reverse()) {
-      await deleteConversationInUi(page, id, observations);
+      await archiveConversationInUi(page, id, observations);
     }
     conversations.length = 0;
-    if (cleanup !== 'PASS') throw new Error('temporary conversation cleanup failed');
+    if (cleanup !== 'ARCHIVED') throw new Error('temporary conversation archive failed');
     console.log(JSON.stringify({ result: 'PASS', control: 's3_ssl', decision: 'REJECTED',
       server_scope_authority: 'durable receipt gate', native_reject_submitted_once: true, approve_clicked: false,
       native_tool_call_digest: publicDigest(toolCallId),
@@ -287,7 +308,7 @@ async function run() {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   run().catch((error) => {
     const message = String(error?.message ?? 'unknown failure').replace(/[\r\n]+/g, ' ').slice(0, 240);
-    console.error(`ISSUE191_UI_E2E=FAIL ${message}`);
+    console.error(`ISSUE191_UI_E2E=FAIL stage=${activeStage} ${message}`);
     process.exitCode = 1;
   });
 }

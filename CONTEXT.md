@@ -54,17 +54,20 @@ omitted LibreChat's `Authorization` header; LibreChat's normal client sets that
 header through its authenticated request helper. Thus the runner's direct
 status/history/cleanup requests received 401, while normal UI client calls
 succeeded. No runtime auth or proxy change is indicated. The runner now waits
-for rendered UI state, records only sanitized response metadata, verifies a
-normal authenticated history reload, and performs conversation deletion only
-through LibreChat's native UI. The focused contract suite passes 8/8 after this
-change. A normal auth refresh and history reload returned HTTP 200, but the
-native DELETE returned 401 once and 500 after refresh. Redacted SSM log
-aggregation attributes the 500 to the conversation-store delete stage but
-exposes no safe exception class. The exact read-only diagnostic remains
-visible in the UI; cleanup is not claimed. No approval, executor dispatch, or
-AWS resource write occurred. Authenticated Reject acceptance remains open
-until supported cleanup, the full native journey, and durable receipt/readback
-evidence pass.
+for rendered UI state and records only sanitized response metadata. The latest
+authenticated UI preflight shows a settled read-only status chat for all four
+registered LAB aliases, with no approval card or unavailable/error marker.
+The runner checks the current tab before navigating to a new chat and resumes
+only that exact prompt, avoiding duplicate diagnostic turns. Focused browser
+contract tests pass 10/10. Native Archive has not yet been verified by
+automation; no Delete request is used. A fresh AWS MCP identity check
+confirmed the `amit` account alias and Singapore Region, but the sole online
+SSM-managed instance could not be bound to the retained SecOps host from its
+current tags/name. No SSM command or native decision was sent during this
+check. No Approve, executor dispatch, or AWS resource write occurred.
+Authenticated Reject acceptance remains open until exact retained-host
+mapping, supported Archive cleanup, the full native journey, and durable
+receipt/readback evidence pass.
 Keep this path read-only, Reject-only and independent from Issue #176 / PR #177.
 Do not add a third control or a live mutation path.
 
@@ -82,13 +85,13 @@ Follow `docs/operations/LAB_SESSION_POWER.md`.
 ## Next
 
 Continue PR #192 in the existing worktree. Resume the dedicated isolated
-Chrome profile if it still holds its normal authenticated session; otherwise
-wait for normal user sign-in without requesting or copying credentials. Run the
-exact authenticated `s3_ssl` native Reject journey, bounded live recovery
-checks, and supported UI cleanup; never choose Approve. Then leave one
-sanitized review handoff. Do not merge or start Issue #170 M4 follow-up work
+Chrome profile if it still holds its normal authenticated session. Reconcile
+the exact retained-host mapping and verify native Archive cleanup first. Only
+then run the exact authenticated `s3_ssl` native Reject journey and bounded
+live recovery checks; never choose Approve. Leave one sanitized review
+handoff after acceptance. Do not merge or start Issue #170 M4 follow-up work
 until its acceptance gates are explicitly complete.
 
 ## Restart
 
-`Read AGENTS.md, CONTEXT.md, Issue #191 and PR #192. Continue only the live s3_ssl Reject-only milestone; no Approve or AWS writes.`
+`Read AGENTS.md, CONTEXT.md, Issue #195 and PR #192. Continue the runner/auth/cleanup recovery for Issue #191. Do not send Reject until exact retained-host mapping and Archive cleanup are verified; no Approve or AWS writes.`

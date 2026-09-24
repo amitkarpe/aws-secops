@@ -91,34 +91,41 @@ alias-only live status first, waits on rendered chat state, requires one native
 `s3_ssl` / Reject-only card with exactly one Reject and no Approve action,
 clicks Reject and Submit once, and verifies the rendered terminal response.
 It uses the exact native LibreChat message input and Send handler; status and
-Reject preparation use separate Compliance Agent v1 conversations, with the
-status-only conversation deleted before the approval request is sent. The runner
-observes only status, route, method, and authorization-header-name presence
-from ordinary application responses; it never records header values, reads
-browser storage, or exports authentication. It verifies a successful
-authenticated message-history reload and deletes test conversations only
-through LibreChat's native conversation menu and confirmation dialog.
+Reject preparation use separate Compliance Agent v1 conversations. Before
+navigating to a new chat, the runner checks whether the current tab already has
+the exact fixed read-only status prompt and reuses it only when no approval
+card is present. It observes only status, route, method, and
+authorization-header-name presence from ordinary application responses; it
+never records header values, reads browser storage, or exports authentication.
+It verifies a successful authenticated message-history reload and uses only
+LibreChat's native Archive action for test-conversation cleanup. Archived test
+conversations leave the active chat list while remaining recoverable; the
+runner does not invoke destructive Delete.
 
 The native resume path is accepted only when its receipt-gated request returns
 HTTP 200/201; the runtime boundary verifies the durable Reject receipt and
 fresh unchanged provider readback before allowing continuation. Exact control
 and scope binding remain server-side receipt/reconciliation assertions, not
 private browser-state inspection. The updated local Node contract suite passes
-8/8.
+10/10.
 
 The authenticated LibreChat native card/resume test remains the acceptance
 gate. The repo-owned Reject-only integration is deployed, but no native
 `s3_ssl` card or decision has yet been created. The isolated localhost-CDP
 session was reattached through Windows Node; normal app auth refresh and
-message-history calls returned HTTP 200. The exact read-only diagnostic
-conversation remains in the UI because its native DELETE returned HTTP 401
-before refresh and HTTP 500 after refresh. Redacted SSM logs attribute the 500
-to the conversation-store delete stage but reveal no safe exception class; no
-direct database cleanup was attempted. No password, cookie, token, or browser
-database was read or exported. Do not test Approve. Until supported cleanup,
-the native Reject, durable receipt, zero-dispatch evidence, fresh unchanged
-provider readback, and reconnect/recovery checks are proven, PR #192 remains
-draft and Issue #191 remains open. `scripts/check.sh` passed 336 tests (4
-skipped) before the current runner update; rerun it before handoff. The default
-worktree had no MCP SDK installed initially; no dependencies were added to the
-repository.
+message-history calls returned HTTP 200. Native Delete returned HTTP 500 even
+with a present Authorization header; Amit archived a prior read-only
+diagnostic through the UI. The current exact status-only test chat is still
+active. The native Archive menu could not yet be opened by the current
+automation attempt, so no archive API request or cleanup claim is recorded for
+this chat. A fresh AWS MCP preflight verified the personal `amit` account alias
+and `ap-southeast-1`, but the sole online SSM-managed instance did not have a
+recognizable SecOps name or project tag, so it could not be bound to the
+retained runtime. No SSM command or approval journey was sent. No AWS writes,
+executor dispatches, Approve, direct database cleanup, or browser-secret
+access occurred. Until exact host mapping, native Archive, native Reject,
+durable receipt, zero-dispatch evidence, fresh unchanged provider readback,
+and recovery checks are proven, PR #192 remains draft and Issue #191 remains
+open. `scripts/check.sh` passed 336 tests (4 skipped) before the latest runner
+and documentation updates; rerun it before handoff. No dependencies were added
+to the repository.

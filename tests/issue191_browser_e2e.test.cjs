@@ -8,9 +8,11 @@ let hasExecutorDispatch;
 let flattenText;
 let publicDigest;
 let validateVisibleRejectCard;
+let isExactReadOnlyStatusChat;
+let isReadOnlyStatusPromptChat;
 test.before(async () => {
   ({validateRejectOnlyAction, hasExecutorDispatch, flattenText, publicDigest,
-    validateVisibleRejectCard} =
+    validateVisibleRejectCard, isExactReadOnlyStatusChat, isReadOnlyStatusPromptChat} =
     await import('./e2e/issue191_s3_ssl_reject.mjs'));
 });
 
@@ -74,6 +76,27 @@ test('chat transcript flattener preserves only rendered visible text', () => {
   assert.equal(flattenText([{text: 'REJECTED'}, 'UNCHANGED']), 'REJECTED UNCHANGED');
 });
 
+test('runner resumes only the exact read-only status chat and never an approval chat', () => {
+  const messages = [
+    'Read-only: show live s3_ssl status for the four registered LAB aliases. Do not prepare, decide, execute, or remediate.',
+    's3_ssl status: lab-dev, lab-poc, lab-qa, lab-sec are AVAILABLE.',
+  ];
+  assert.equal(isExactReadOnlyStatusChat({messages, approvalCardCount: 0}), true);
+  assert.equal(isExactReadOnlyStatusChat({messages: [messages[0].replace('show live', 'show\nlive'), messages[1]], approvalCardCount: 0}), true);
+  assert.equal(isExactReadOnlyStatusChat({messages: [messages[0], 's3_ssl status unavailable'], approvalCardCount: 0}), false);
+  assert.equal(isExactReadOnlyStatusChat({messages, approvalCardCount: 1}), false);
+  assert.equal(isExactReadOnlyStatusChat({messages: [messages[0], 'Prepared batch; submit decision'], approvalCardCount: 0}), false);
+  assert.equal(isExactReadOnlyStatusChat({messages: [messages[0].replace('Read-only:', 'Fix:'), messages[1]], approvalCardCount: 0}), false);
+});
+
+test('runner reuses only an exact in-progress read-only status prompt', () => {
+  const prompt = 'Read-only: show live s3_ssl status for the four registered LAB aliases. Do not prepare, decide, execute, or remediate.';
+  assert.equal(isReadOnlyStatusPromptChat({messages: [prompt], approvalCardCount: 0}), true);
+  assert.equal(isReadOnlyStatusPromptChat({messages: [prompt, 'status'], approvalCardCount: 0}), true);
+  assert.equal(isReadOnlyStatusPromptChat({messages: [prompt.replace('Read-only:', 'Fix:')], approvalCardCount: 0}), false);
+  assert.equal(isReadOnlyStatusPromptChat({messages: [prompt], approvalCardCount: 1}), false);
+});
+
 test('Reject transcript is rejected if any remediation executor call appears', () => {
   assert.equal(hasExecutorDispatch([{content: [{text: 'REJECTED'}]}]), false);
   assert.equal(hasExecutorDispatch([{tool_calls: [{name: 'execute_multi_account_remediation'}]}]), true);
@@ -91,17 +114,20 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /await reject\.click\(\)/);
   assert.doesNotMatch(runner, /getByRole\('button', \{ name: \/.*approve/i);
   assert.doesNotMatch(runner, /decision\s*:\s*['"]approve/i);
-  assert.match(runner, /deleteConversationInUi\(page, id, observations\)/);
+  assert.match(runner, /archiveConversationInUi\(page, id, observations\)/);
   assert.match(runner, /observeAppResponses\(page\)/);
   assert.match(runner, /authorizationHeaderPresent/);
   assert.match(runner, /page\.waitForResponse/);
+  assert.match(runner, /POST' && item\.route === '\/api\/convos\/archive'/);
+  assert.match(runner, /stage=\$\{activeStage\}/);
   assert.match(runner, /\[data-testid="tool-approval"\]/);
   assert.match(runner, /card\.getByRole\('button', \{ name: \/\^reject\$\/i \}\)/);
   assert.match(runner, /waitForAssistantTurn\(page, 240000, \{approval: true\}\)/);
+  assert.doesNotMatch(runner, /composerReady|send\.disabled/);
   assert.match(runner, /await selectComplianceAgent\(page\)/);
   assert.match(runner, /innerText\.trim\(\) === 'Compliance Agent v1'/);
   const statusStart = runner.indexOf('startConversation(page, STATUS_PROMPT)');
-  const statusCleanup = runner.indexOf('deleteConversationInUi(page, statusConversationId');
+  const statusCleanup = runner.indexOf('archiveConversationInUi(page, statusConversationId');
   const rejectStart = runner.indexOf('startConversation(page, REJECT_PROMPT)');
   assert.ok(statusStart >= 0 && statusCleanup > statusStart && rejectStart > statusCleanup,
     'cleanup proof must pass before the approval journey starts');
@@ -111,6 +137,12 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /waitForFunction\(\(\) =>/);
   assert.match(runner, /do not retry/);
   assert.doesNotMatch(runner, /\bfetch\s*\(|document\.cookie|localStorage|sessionStorage|Bearer\s/);
-  assert.match(runner, /getByRole\('menuitem', \{name: \/\^delete\$\/i\}\)/);
-  assert.match(runner, /getByRole\('button', \{name: \/\^delete\$\/i\}\)/);
+  assert.match(runner, /getByRole\('menuitem', \{name: \/\^archive\$\/i\}\)/);
+  assert.match(runner, /menuButton\.waitFor\(\{state: 'visible', timeout: 5000\}\)/);
+  assert.match(runner, /menuButton\.click\(\{force: true, timeout: 15000\}\)/);
+  assert.match(runner, /getAttribute\('aria-expanded'\) === 'true'/);
+  assert.match(runner, /\/api\/convos\/archive/);
+  assert.ok(runner.indexOf('currentExactStatusConversation(page)') < runner.lastIndexOf("page.goto(`${ORIGIN}/c/new`"),
+    'check the current tab before navigating away from a reusable status-only conversation');
+  assert.doesNotMatch(runner, /deleteConversationInUi|method\(\) === 'DELETE'/);
 });
