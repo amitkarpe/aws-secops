@@ -152,8 +152,9 @@ async function archiveConversationInUi(page, conversationId, observations) {
   if (!isExactArchiveRequest({conversationId, body: requestBody})) {
     throw new Error('native Archive response was not bound to the exact test conversation');
   }
-  await page.waitForFunction((id) => !document.querySelector(`button[id="conversation-menu-${id}"]`), conversationId,
-    {timeout: 15000});
+  await page.waitForFunction((id) => ![...document.querySelectorAll('a[href]')].some((link) => {
+    try { return new URL(link.href).pathname === `/c/${id}`; } catch { return false; }
+  }), conversationId, {timeout: 15000});
   const archive = observations.slice(observationStart).find((item) =>
     item.method === 'POST' && item.route === '/api/convos/archive');
   if (!archive || archive.status !== 200 || !archive.authorizationHeaderPresent) {

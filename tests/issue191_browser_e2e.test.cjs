@@ -163,6 +163,8 @@ test('live runner uses only normal LibreChat UI requests, submits Reject, and bo
   assert.match(runner, /getAttribute\('aria-expanded'\) === 'true'/);
   assert.match(runner, /isExactArchiveRequest\(\{conversationId, body: requestBody\}\)/);
   assert.match(runner, /\.then\(\(response\) => \(\{response\}\), \(\) => \(\{failed: true\}\)\)/);
+  assert.match(runner, /document\.querySelectorAll\('a\[href\]'\)/);
+  assert.match(runner, /new URL\(link\.href\)\.pathname === `\/c\/\$\{id\}`/);
   assert.match(runner, /native \$\{label\} is obstructed; refusing to continue/);
   assert.match(runner, /requireUnobstructedEnabledButton\(reject, 'Reject'\)/);
   assert.match(runner, /requireUnobstructedEnabledButton\(submit, 'Submit'\)/);
