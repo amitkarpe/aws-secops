@@ -77,7 +77,6 @@ For implementation-ready work where repository changes are expected, G owns the 
 - Preserve the AWS Compliance Agent security boundary: human approval, AgentCore Gateway/Policy, exact bounded tools, provider readback; no generic model-accessible AWS mutation tool.
 - For personal LAB/DEV multi-account discovery, broad read/audit access is acceptable for demo velocity; broad mutation is not implied.
 - Explain the intended AWS change before live mutation. Get explicit confirmation for destructive or irreversible actions.
-- Use proportional validation that matches changed behavior and risk; avoid duplicate validators that add little confidence.
 - The Connector Safety Gate in `CHATGPT.md` is mandatory for connector/platform actions.
 - When the current objective is known, `go`, `g`, `.`, `Y`, or `yes` means execute/continue it within existing authority unless Amit explicitly selected plan/review/discussion mode.
 - Before cross-repo mutation, apply the repository-binding guard in `CHATGPT.md`.
@@ -120,3 +119,8 @@ Issue created by G
 Use the existing PR for corrections. Do not create parallel replacement PRs for the same milestone unless scope or trust boundary materially changes.
 
 Batch local workspace cleanup after roughly 5-10 merged PRs or a major milestone; do not clean after every PR. Preserve active work and referenced evidence. Remote branch or cloud-resource cleanup is separate authority.
+
+## Portfolio Economy Defaults
+
+- Testing: default to **zero new tests**. Use the smallest existing validation that can prove the change. Add or modify tests only for a real uncovered regression, contract, security boundary, failure mode, or high-signal isolated logic. Once required checks pass and the changed behavior is proven, **stop**.
+- Runners: public repositories may use standard GitHub-hosted runners such as `ubuntu-latest`. Private repositories should avoid GitHub-hosted runners by default and reuse an existing approved CodeBuild/CodePipeline or CodeBuild-hosted Actions runner; do not create new CI infrastructure merely to replace a free public runner.
