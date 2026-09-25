@@ -1,64 +1,71 @@
 # Agent Context
 
 Repository: `amitkarpe/aws-secops`  
-Status: ACTIVE  
-Updated: 2026-09-22
+Status: **FROZEN / REFERENCE**  
+Updated: 2026-09-25
 
-> Current-only restart index. Read the latest owning Issue/PR comment for mutable rollout state; historical proof documents are not live truth.
+> This repository is the **old implementation/reference repository**. New product engineering moved to `amitkarpe/awsops`.
 
-## Current Authority
+## Canonical development target
 
-- Personal-LAB standing authority remains active.
-- Keep the retained host running during active demo work unless Amit explicitly requests shutdown.
-- Exactly four registered LAB aliases and exactly two supported controls remain the current v1 scope.
-- No company/PROD scope and no generic model-accessible AWS mutation.
+- New product repository: `amitkarpe/awsops`
+- Owning migration roadmap: `amitkarpe/awsops#1`
+- Current clean M3 acceptance: `amitkarpe/awsops#11` / PR `#13`
 
-## Current Product
+Do not start new features, controls, roadmap work, runtime architecture, or deployment work here.
 
-Compliance Agent v1 is the stable four-account/two-control baseline:
+## What remains authoritative here
 
-`Status -> explain/prepare -> native Approve/Reject -> bounded execute -> AWS service readback -> Config evaluation`
+Keep this repository as historical/reference evidence for:
 
-Accepted current evidence:
-- immutable GitHub Release `compliance-agent-v1.0.0` published at commit `5d4121eb7e3621d04ae2e05c3b66fdd89879b7e0`;
-- S3 authenticated Reject-only API E2E: 4/4 PASS;
-- SSH authenticated Reject-only API E2E: 4/4 PASS;
-- exact-exclusion authenticated Reject-only API E2E: 4/4 PASS, zero remediation-execution dispatches and zero AWS writes;
-- manual browser Approve/Submit path exercised;
-- rich-card width regression fixed and visually accepted;
-- duplicate assistant next-action removed; native rich card owns the single next action;
-- PRs #169, #163, #172 and #174 merged;
-- stale PRs #105, #137 and #171 closed.
+- immutable `compliance-agent-v1.0.0` release;
+- accepted four-account / two-control Compliance Agent v1 behavior;
+- S3 BPA + restricted SSH bounded execution patterns;
+- native Approve/Reject and provider-readback evidence;
+- exception/audit experiments;
+- browser/Playwright learning and recovery evidence;
+- historical deployment/runbook context.
 
-## Current Engineering Work
+## Open legacy PRs
 
-Compliance Agent v1 release closure is complete. Issues #141 and #125 are
-closed, and Issue #173 has no remaining implementation scope.
+### PR #192 — s3_ssl Reject-only R&D
 
-Issue #170 remains the single roadmap. M1 completed in Issue #178 / PR #179,
-M2 in Issue #180 / PR #181, M3A in Issue #182 / PR #183, M3B in Issue #184 /
-PR #185, and M4A in Issue #186 / PR #187. Issue #188 / PR #189 is the active
-bounded M4B synthetic control expansion: `s3_ssl` only, reusing the shared
-selection, freeze, native approval, exception, and audit contracts. Issue #176
-/ PR #177 remains an independent read-only MCP evidence track. Do not add a
-third control or a live mutation path.
+Status: **REFERENCE / HARVEST SOURCE — DO NOT CONTINUE PRODUCT DEVELOPMENT HERE**
 
-## Session Power
+Useful material may be selectively harvested into `awsops` PR #13:
 
-Follow `docs/operations/LAB_SESSION_POWER.md`.
+- native card exactness;
+- Reject-only Playwright behavior;
+- rendered-state timing/recovery;
+- auth-safe request observation;
+- durable decision/readback assertions;
+- native Archive cleanup;
+- race/replay/restart/source-drift/readback failure cases.
 
-- repository-only edits do not require a host start;
-- runtime validation may use the same verified retained host;
-- temporary auth/test data must be cleaned;
-- automated E2E remains Reject-only;
-- stop only on a real safety/access blocker;
-- never terminate retained LAB infrastructure as routine cleanup.
+Do not copy the old retained-host deployment/runtime architecture wholesale.
 
-## Next
+### PR #177 — persistent read-only MCP adapter
 
-Review and merge PR #189 when its exact-head checks and handoff are accepted.
-Do not start another control, live bulk remediation, or new-control work.
+Status: **REFERENCE / DEFERRED HARVEST — DO NOT CONTINUE PRODUCT DEVELOPMENT HERE**
 
-## Restart
+Useful ideas may be selectively rewritten in `awsops` if a future milestone needs them:
 
-`Read AGENTS.md, CONTEXT.md, Issue #188 and PR #189. Continue only bounded M4B synthetic s3_ssl work; do not add a third control.`
+- fixed query surface;
+- per-page account verification;
+- bounded pagination/result caps;
+- explicit partial/unavailable evidence;
+- secret-shaped field rejection;
+- closed schema + fixtures.
+
+Do not port it merely for parity.
+
+## Repository rule
+
+```text
+aws-secops = frozen source/reference
+awsops     = active product/development
+```
+
+G/X may inspect this repository. New implementation belongs in `awsops`.
+
+Do not archive or delete this repository yet. Final archival belongs to `awsops` M5 after useful parity/cutover is complete.
