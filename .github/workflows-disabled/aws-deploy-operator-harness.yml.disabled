@@ -1,0 +1,116 @@
+# Disabled by runner-economy rollout; preserved for reversible reuse.
+name: AWS operator Harness deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-secops-operator-harness
+  cancel-in-progress: false
+
+jobs:
+  deploy-operator-harness:
+    if: github.ref == 'refs/heads/main' && github.repository == 'amitkarpe/aws-secops' && vars.AWS_OPERATOR_HARNESS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_SECOPS_OPERATOR_HARNESS_DEPLOY_ROLE_ARN }}
+      AWS_STACK_EXECUTION_ROLE_ARN: ${{ secrets.AWS_SECOPS_OPERATOR_HARNESS_STACK_EXECUTION_ROLE_ARN }}
+      AWS_MULTI_ACCOUNT_READ_ROLE_ARNS: ${{ secrets.AWS_SECOPS_MULTI_ACCOUNT_READ_ROLE_ARNS }}
+      AWS_ALLOWED_ACCOUNT_ID: ${{ secrets.AWS_ALLOWED_ACCOUNT_ID }}
+      STACK_NAME: aws-secops-operator-harness
+      TEMPLATE_PATH: infra/operator-harness/template.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Require configured deployment identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${AWS_ROLE_ARN:-}"
+          test -n "${AWS_STACK_EXECUTION_ROLE_ARN:-}"
+          test -n "${AWS_ALLOWED_ACCOUNT_ID:-}"
+          test -n "${AWS_MULTI_ACCOUNT_READ_ROLE_ARNS:-}"
+
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ALLOWED_ACCOUNT_ID }}
+          mask-aws-account-id: true
+
+      - name: Verify caller and Region
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          test "$ACCOUNT_ID" = "$AWS_ALLOWED_ACCOUNT_ID"
+          test "$AWS_REGION" = "ap-southeast-1"
+
+      - name: Validate operator Harness template
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws cloudformation validate-template \
+            --template-body "file://${TEMPLATE_PATH}" >/dev/null
+
+      - name: Apply exact operator Harness stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          if aws cloudformation describe-stacks --stack-name "$STACK_NAME" >/dev/null 2>&1; then
+            set +e
+            UPDATE_OUTPUT="$(aws cloudformation update-stack \
+              --stack-name "$STACK_NAME" \
+              --template-body "file://${TEMPLATE_PATH}" \
+              --role-arn "$AWS_STACK_EXECUTION_ROLE_ARN" \
+              --parameters "ParameterKey=MultiAccountReadRoleArns,ParameterValue=${AWS_MULTI_ACCOUNT_READ_ROLE_ARNS}" \
+              --capabilities CAPABILITY_NAMED_IAM 2>&1)"
+            UPDATE_RC=$?
+            set -e
+            if [ "$UPDATE_RC" -eq 0 ]; then
+              aws cloudformation wait stack-update-complete --stack-name "$STACK_NAME"
+            elif ! grep -q 'No updates are to be performed' <<<"$UPDATE_OUTPUT"; then
+              echo "Operator Harness stack update failed; inspect with authorized AWS tooling." >&2
+              exit "$UPDATE_RC"
+            fi
+          else
+            aws cloudformation create-stack \
+              --stack-name "$STACK_NAME" \
+              --template-body "file://${TEMPLATE_PATH}" \
+              --role-arn "$AWS_STACK_EXECUTION_ROLE_ARN" \
+              --parameters "ParameterKey=MultiAccountReadRoleArns,ParameterValue=${AWS_MULTI_ACCOUNT_READ_ROLE_ARNS}" \
+              --capabilities CAPABILITY_NAMED_IAM >/dev/null
+            aws cloudformation wait stack-create-complete --stack-name "$STACK_NAME"
+          fi
+
+      - name: CloudFormation readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATUS="$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks[0].StackStatus' --output text)"
+          case "$STATUS" in
+            CREATE_COMPLETE|UPDATE_COMPLETE) ;;
+            *) echo "Unexpected stack status: $STATUS" >&2; exit 1 ;;
+          esac
+          for key in HarnessArn GatewayArn PolicyEngineId ReadFunctionArn; do
+            COUNT="$(aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --query "length(Stacks[0].Outputs[?OutputKey=='${key}'])" \
+              --output text)"
+            test "$COUNT" = "1"
+          done
+          echo "Operator Harness CloudFormation deployment: PASS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Independent Harness/Gateway/Policy functional verification: REQUIRED" >> "$GITHUB_STEP_SUMMARY"
+          echo "Demo v1 mutation: NO" >> "$GITHUB_STEP_SUMMARY"
