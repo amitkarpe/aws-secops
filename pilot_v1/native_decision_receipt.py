@@ -57,6 +57,17 @@ class NativeDecisionReceipts:
                     outcome TEXT NOT NULL, recorded_at INTEGER NOT NULL,
                     prior_hash TEXT NOT NULL, event_hash TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS evidence_event (
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    batch_id TEXT NOT NULL, event_type TEXT NOT NULL,
+                    outcome TEXT NOT NULL, scope_hash TEXT NOT NULL,
+                    detail_hash TEXT NOT NULL, recorded_at INTEGER NOT NULL,
+                    prior_hash TEXT NOT NULL, event_hash TEXT NOT NULL
+                );
+                CREATE TRIGGER IF NOT EXISTS evidence_no_update BEFORE UPDATE ON evidence_event
+                    BEGIN SELECT RAISE(ABORT, 'evidence is append-only'); END;
+                CREATE TRIGGER IF NOT EXISTS evidence_no_delete BEFORE DELETE ON evidence_event
+                    BEGIN SELECT RAISE(ABORT, 'evidence is append-only'); END;
                 CREATE TRIGGER IF NOT EXISTS receipt_no_update BEFORE UPDATE ON receipt
                     BEGIN SELECT RAISE(ABORT, 'receipt is append-only'); END;
                 CREATE TRIGGER IF NOT EXISTS receipt_no_delete BEFORE DELETE ON receipt
@@ -77,15 +88,20 @@ class NativeDecisionReceipts:
             raise ReceiptError("unsupported or malformed frozen tool scope")
 
     def register(self, *, tool: str, control: str, batch_id: str, scope_hash: str,
-                 user_id: str, expires_at: int) -> None:
+                 user_id: str, expires_at: int, evidence_digest: str | None = None) -> None:
         """Called by a trusted prepare/ASK adapter, never by model input alone."""
         self._validate_binding(tool, control, batch_id, scope_hash)
         if not isinstance(user_id, str) or not user_id or type(expires_at) is not int or not int(time.time()) < expires_at <= int(time.time()) + 1800:
             raise ReceiptError("invalid authenticated freeze binding or TTL")
+        if evidence_digest is not None and (not isinstance(evidence_digest, str) or not re.fullmatch(r"[a-f0-9]{64}", evidence_digest)):
+            raise ReceiptError("invalid provider evidence digest")
         with _LOCK, self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             try:
                 db.execute("INSERT INTO frozen VALUES (?,?,?,?, 'PENDING')", (batch_id, scope_hash, _hash(user_id), expires_at))
+                self._append_event(db, batch_id=batch_id, event_type="PREPARE_FROZEN", outcome="FROZEN",
+                                   scope_hash=scope_hash,
+                                   detail_hash=evidence_digest or _hash(_canonical({"tool": tool, "control": control, "scope_hash": scope_hash})))
                 db.commit()
             except (sqlite3.IntegrityError, sqlite3.OperationalError) as exc:
                 db.rollback()
@@ -118,6 +134,8 @@ class NativeDecisionReceipts:
                 db.execute("INSERT INTO receipt (batch_id,scope_hash,action_hash,generation_hash,user_hash,decision,outcome,recorded_at,prior_hash,event_hash) VALUES (?,?,?,?,?,?,?,?,?,?)",
                            (batch_id, scope_hash, event["action_hash"], event["generation_hash"], event["user_hash"], decision, outcome, now, prior_hash, event_hash))
                 db.execute("UPDATE frozen SET state=? WHERE batch_id=? AND state='PENDING'", (outcome, batch_id))
+                self._append_event(db, batch_id=batch_id, event_type="NATIVE_APPROVAL_DECISION", outcome=outcome,
+                                   scope_hash=scope_hash, detail_hash=event_hash)
                 db.commit()
                 return {"version": 1, "outcome": outcome, "event_hash": event_hash,
                         "live_execution_authorized": LIVE_EXECUTION_AUTHORIZED,
@@ -130,13 +148,52 @@ class NativeDecisionReceipts:
         if not isinstance(batch_id, str) or not _BATCH.fullmatch(batch_id):
             raise ReceiptError("invalid batch")
         with self._connect() as db:
-            rows = db.execute("SELECT decision,outcome,event_hash FROM receipt WHERE batch_id=?", (batch_id,)).fetchall()
-        return [{"decision": row[0], "outcome": row[1], "event_hash": row[2]} for row in rows]
+            rows = db.execute("SELECT event_type,outcome,event_hash FROM evidence_event WHERE batch_id=? ORDER BY sequence", (batch_id,)).fetchall()
+        return [{"event": row[0], "outcome": row[1], "event_hash": row[2]} for row in rows]
+
+    @staticmethod
+    def _append_event(db: sqlite3.Connection, *, batch_id: str, event_type: str,
+                      outcome: str, scope_hash: str, detail_hash: str) -> str:
+        prior = db.execute("SELECT event_hash FROM evidence_event ORDER BY sequence DESC LIMIT 1").fetchone()
+        prior_hash = prior[0] if prior else "GENESIS"
+        recorded_at = int(time.time())
+        value = {"sequence": db.execute("SELECT COALESCE(MAX(sequence),0)+1 FROM evidence_event").fetchone()[0],
+                 "batch_id": batch_id, "event_type": event_type, "outcome": outcome,
+                 "scope_hash": scope_hash, "detail_hash": detail_hash,
+                 "recorded_at": recorded_at, "prior_hash": prior_hash}
+        event_hash = _hash(_canonical(value))
+        db.execute("INSERT INTO evidence_event (batch_id,event_type,outcome,scope_hash,detail_hash,recorded_at,prior_hash,event_hash) VALUES (?,?,?,?,?,?,?,?)",
+                   (batch_id, event_type, outcome, scope_hash, detail_hash, recorded_at, prior_hash, event_hash))
+        return event_hash
+
+    def append_evidence(self, *, batch_id: str, scope_hash: str, event_type: str,
+                        outcome: str, detail_hash: str) -> dict[str, Any]:
+        self._validate_binding(TOOL, CONTROL, batch_id, scope_hash)
+        if event_type != "POST_REJECT_READBACK" or outcome not in {"UNCHANGED", "CHANGED", "UNAVAILABLE"} or not re.fullmatch(r"[a-f0-9]{64}", detail_hash):
+            raise ReceiptError("unsupported evidence event")
+        with _LOCK, self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                receipt = db.execute("SELECT outcome FROM receipt WHERE batch_id=? AND scope_hash=?", (batch_id, scope_hash)).fetchone()
+                if receipt is None or receipt[0] != "REJECTED":
+                    raise ReceiptError("post-Reject readback requires durable Reject receipt")
+                row = db.execute("SELECT COUNT(*) FROM evidence_event WHERE batch_id=? AND event_type='POST_REJECT_READBACK'", (batch_id,)).fetchone()
+                if row[0]:
+                    raise ReceiptError("post-Reject readback already recorded")
+                event_hash = self._append_event(db, batch_id=batch_id, event_type=event_type,
+                                                outcome=outcome, scope_hash=scope_hash,
+                                                detail_hash=detail_hash)
+                db.commit()
+                return {"version": 1, "event_hash": event_hash, "outcome": outcome}
+            except BaseException:
+                db.rollback()
+                raise
 
     def verify(self) -> None:
         """Fail closed on a broken append-only chain after restart/reopen."""
         with self._connect() as db:
             rows = db.execute("SELECT sequence,batch_id,scope_hash,action_hash,generation_hash,user_hash,decision,outcome,recorded_at,prior_hash,event_hash FROM receipt ORDER BY sequence").fetchall()
+            evidence_rows = db.execute("SELECT sequence,batch_id,event_type,outcome,scope_hash,detail_hash,recorded_at,prior_hash,event_hash FROM evidence_event ORDER BY sequence").fetchall()
         previous = "GENESIS"
         for number, row in enumerate(rows, start=1):
             sequence, batch_id, scope_hash, action_hash, generation_hash, user_hash, decision, outcome, recorded_at, prior_hash, event_hash = row
@@ -147,4 +204,13 @@ class NativeDecisionReceipts:
                      "prior_hash": prior_hash}
             if sequence != number or prior_hash != previous or event_hash != _hash(_canonical(event)):
                 raise ReceiptError("native decision receipt integrity failure")
+            previous = event_hash
+        previous = "GENESIS"
+        for number, row in enumerate(evidence_rows, start=1):
+            sequence, batch_id, event_type, outcome, scope_hash, detail_hash, recorded_at, prior_hash, event_hash = row
+            event = {"sequence": sequence, "batch_id": batch_id, "event_type": event_type,
+                     "outcome": outcome, "scope_hash": scope_hash, "detail_hash": detail_hash,
+                     "recorded_at": recorded_at, "prior_hash": prior_hash}
+            if sequence != number or prior_hash != previous or event_hash != _hash(_canonical(event)):
+                raise ReceiptError("native decision evidence integrity failure")
             previous = event_hash

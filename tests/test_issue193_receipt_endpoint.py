@@ -27,6 +27,16 @@ class ReceiptEndpointTests(unittest.TestCase):
                 def native_decision_receipts(self):
                     return store
 
+                def record_s3_ssl_native_decision(self, **receipt):
+                    result = store.record(**receipt)
+                    result["provider_readback"] = "UNCHANGED" if receipt["decision"] == "reject" else "NOT_REQUIRED"
+                    if receipt["decision"] == "reject":
+                        store.append_evidence(batch_id=receipt["batch_id"], scope_hash=receipt["scope_hash"],
+                                              event_type="POST_REJECT_READBACK", outcome="UNCHANGED",
+                                              detail_hash="c" * 64)
+                    result["audit"] = store.timeline(receipt["batch_id"])
+                    return result
+
             class Handler(OperatorHandler):
                 service = Service()
 
@@ -60,7 +70,8 @@ class ReceiptEndpointTests(unittest.TestCase):
                 self.assertEqual(post("wrong")[0], 403)
                 status, result = post(signature)
                 self.assertEqual(status, 200)
-                self.assertEqual((result["outcome"], result["downstream_dispatches"]),
-                                 ("REJECTED", 0))
+                self.assertEqual((result["outcome"], result["downstream_dispatches"], result["provider_readback"]),
+                                 ("REJECTED", 0, "UNCHANGED"))
                 self.assertEqual(post(signature)[0], 400)
-            self.assertEqual(len(NativeDecisionReceipts(store.path).timeline(binding["batch_id"])), 1)
+            self.assertEqual([item["event"] for item in NativeDecisionReceipts(store.path).timeline(binding["batch_id"])],
+                             ["PREPARE_FROZEN", "NATIVE_APPROVAL_DECISION", "POST_REJECT_READBACK"])

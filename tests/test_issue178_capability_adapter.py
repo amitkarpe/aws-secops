@@ -191,14 +191,15 @@ class CapabilityAdapterTests(unittest.TestCase):
         self.assertIn("Capability summary", status_result.content[0].text)
         self.assertNotIn("fleet status", status_result.content[0].text)
 
-    def test_integration_instructions_do_not_route_new_s3_keys_to_executor(self):
+    def test_integration_instructions_keep_new_s3_keys_outside_existing_executor(self):
         integration = json.loads((ROOT / "integration" / "compliance-agent-v1.json").read_text())
         instructions = integration["instructions"]
         self.assertIn("SANITIZED CAPABILITY BOUNDARY", instructions)
-        self.assertIn("s3_ssl, s3_logging and s3_backup", instructions)
-        self.assertIn("must never be routed to the S3 Block Public Access planner", instructions)
+        self.assertIn("s3_logging and s3_backup are capability-metadata-only DETECT/EXPLAIN controls", instructions)
+        self.assertIn("s3_ssl has a separate fixed live read path", instructions)
+        self.assertIn("The native s3_ssl card offers Reject only; never select Approve", instructions)
         self.assertIn("Capability metadata and typed chat approval never authorize execution", instructions)
-        self.assertEqual(len(integration["tools"]), 5)
+        self.assertEqual(len(integration["tools"]), 8)
         self.assertIn(
             "query_synthetic_fleet_v1_mcp_compliance_agent_v1", integration["tools"]
         )
