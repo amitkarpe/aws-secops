@@ -1,0 +1,6 @@
+{
+  "items": [
+    {"resource_ref": "sg-ref-a", "unrestricted_ssh": false},
+    {"resource_ref": "sg-ref-b", "unrestricted_ssh": true}
+  ]
+}
