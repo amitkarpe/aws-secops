@@ -11,9 +11,11 @@ import hashlib
 import hmac
 from http.server import HTTPServer
 import json
+import logging
 import os
 import re
 import time
+import uuid
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
@@ -30,7 +32,21 @@ from .native_decision_receipt import NativeDecisionReceipts, ReceiptError
 
 S3_CONTROL = "s3-bucket-level-public-access-prohibited"
 SG_CONTROL = "restricted-ssh"
+S3_SSL_CONTROL = "s3_ssl"
+S3_SSL_TOOL = "decide_s3_ssl_reject_only_mcp_aws_compliance_planner"
 APPROVAL_TTL_SECONDS = 1800
+
+
+def _prioritize_import_path(path: Path) -> None:
+    import importlib
+    import os
+    import sys
+
+    entry = os.path.abspath(str(path))
+    sys.path[:] = [current for current in sys.path if os.path.abspath(current or os.curdir) != entry]
+    sys.path.insert(0, entry)
+    importlib.invalidate_caches()
+
 
 LATEST_ACCEPTANCE = {
     "date": "2026-09-18",
@@ -80,6 +96,153 @@ class OperatorService(BulkService):
                 self.execution_state.with_name("native-decision-receipts.sqlite3")
             )
         return self._decision_receipts
+
+    @property
+    def _s3_ssl_state_path(self) -> Path:
+        return self.execution_state.with_name("s3-ssl-reject-only.json")
+
+    def _read_s3_ssl_state(self) -> dict:
+        try:
+            value = json.loads(self._s3_ssl_state_path.read_text())
+        except FileNotFoundError as exc:
+            raise ValueError("no current s3_ssl Reject-only preparation") from exc
+        required = {"version", "control", "batch_id", "scope_hash", "alias", "evidence_digest", "exception_digest", "expires_at"}
+        if set(value) != required or value["version"] != 1 or value["control"] != S3_SSL_CONTROL:
+            raise RuntimeError("invalid s3_ssl Reject-only state")
+        if not re.fullmatch(r"[a-f0-9]{20}", value["batch_id"]) or not re.fullmatch(r"[a-f0-9]{24}", value["scope_hash"]):
+            raise RuntimeError("invalid s3_ssl frozen identity")
+        return value
+
+    def _save_s3_ssl_state(self, value: dict) -> None:
+        self._s3_ssl_state_path.parent.mkdir(parents=True, exist_ok=True)
+        temp = self._s3_ssl_state_path.with_suffix(".new")
+        temp.write_text(json.dumps(value, sort_keys=True, separators=(",", ":")))
+        os.chmod(temp, 0o600)
+        os.replace(temp, self._s3_ssl_state_path)
+
+    def _collect_s3_ssl(self) -> dict:
+        """Read only the exact four personal-LAB aliases and emit no raw identifiers."""
+        agent_src = Path(__file__).absolute().parents[1] / "agents" / "compliance-agent-v1" / "src"
+        _prioritize_import_path(agent_src)
+        from compliance_agent_v1.live_s3_ssl import ALIASES, AccountBinding, REGION, collect_with_boto3
+        from pilot_v1.org_config_overview import parse_targets
+        import boto3
+
+        profile = os.environ.get("SECOPS_LAB_PROFILE", "vagent")
+        if profile not in {"amit", "vagent"}:
+            raise ValueError("unapproved s3_ssl runtime profile")
+        source = boto3.Session(profile_name=profile, region_name=REGION)
+        sts = source.client("sts", region_name=REGION)
+        caller = sts.get_caller_identity().get("Account")
+        organizations = source.client("organizations", region_name=REGION)
+        organization = organizations.describe_organization().get("Organization", {})
+        if not isinstance(caller, str) or caller != organization.get("MasterAccountId"):
+            raise ValueError("source identity is not the personal-LAB organization management account")
+        account_pages = organizations.get_paginator("list_accounts").paginate()
+        accounts = [account for page in account_pages for account in page.get("Accounts", [])]
+        bindings = {row.get("Name"): row.get("Id") for row in accounts
+                    if row.get("Name") in ALIASES and row.get("Status") == "ACTIVE"}
+        registered = parse_targets()
+        if set(bindings) != set(ALIASES) or bindings != registered or any(not isinstance(bindings[alias], str) or not re.fullmatch(r"\d{12}", bindings[alias]) for alias in ALIASES):
+            raise ValueError("exact personal-LAB alias binding unavailable")
+        return collect_with_boto3(profile=profile, bindings=tuple(AccountBinding(alias, bindings[alias]) for alias in ALIASES))
+
+    def prepare_s3_ssl_reject_only(self) -> dict:
+        evidence = self._collect_s3_ssl()
+        for account in evidence["accounts"]:
+            if account.get("state") != "AVAILABLE" or account.get("identity_verified") is not True:
+                raise ValueError("s3_ssl live identity evidence unavailable")
+        selected = next((
+            (account, finding) for account in evidence["accounts"]
+            for finding in account.get("statuses", []) if finding.get("status") == "NON_COMPLIANT"
+        ), None)
+        if selected is None:
+            raise ValueError("no current s3_ssl finding requires Reject validation")
+        account, finding = selected
+        # This Reject-only path applies no exception/exclusion. Bind that fact
+        # and the exact selected target; do not imply a global registry scan.
+        exception_digest = hashlib.sha256(json.dumps({
+            "resolution": "NO_EXCLUSIONS_APPLIED",
+            "control": S3_SSL_CONTROL,
+            "alias": account["alias"],
+            "resource_ref": finding["resource_ref"],
+        }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        frozen = {"control": S3_SSL_CONTROL, "alias": account["alias"],
+                  "resource_ref": finding["resource_ref"], "evidence_digest": evidence["evidence_digest"],
+                  "exception_digest": exception_digest}
+        encoded = json.dumps(frozen, sort_keys=True, separators=(",", ":")).encode()
+        batch_id = uuid.uuid4().hex[:20]
+        scope_payload = json.dumps({**frozen, "batch_id": batch_id}, sort_keys=True, separators=(",", ":")).encode()
+        state = {"version": 1, "control": S3_SSL_CONTROL, "batch_id": batch_id,
+                 "scope_hash": hashlib.sha256(b"scope:" + scope_payload).hexdigest()[:24],
+                 "alias": account["alias"], "evidence_digest": evidence["evidence_digest"],
+                 "exception_digest": exception_digest,
+                 "expires_at": int(time.time()) + APPROVAL_TTL_SECONDS}
+        self._save_s3_ssl_state(state)
+        return {"version": 1, "control": S3_SSL_CONTROL, "alias": state["alias"],
+                "batch_id": state["batch_id"], "scope_hash": state["scope_hash"],
+                "provider_evidence_digest": state["evidence_digest"], "approval_ttl_seconds": APPROVAL_TTL_SECONDS,
+                "exception_digest": state["exception_digest"],
+                "live_execution_authorized": False, "aws_writes": 0,
+                "next_execution": {"tool": S3_SSL_TOOL, "arguments": {key: state[key] for key in ("control", "batch_id", "scope_hash")}}}
+
+    def s3_ssl_live_status(self) -> dict:
+        evidence = self._collect_s3_ssl()
+        return {"version": 1, "control": S3_SSL_CONTROL, "region": "ap-southeast-1",
+                "accounts": [{"alias": row["alias"], "identity_verified": row["identity_verified"],
+                              "state": row["state"], "resource_count": row.get("resource_count"),
+                              "status_counts": row.get("status_counts"),
+                              "provider_evidence_digest": row.get("provider_evidence_digest")}
+                             for row in evidence["accounts"]],
+                "provider_evidence_digest": evidence["evidence_digest"],
+                "read_only": True, "aws_writes": 0, "resource_identifiers_emitted": False}
+
+    def s3_ssl_reject_preview(self) -> dict:
+        state = self._read_s3_ssl_state()
+        age = APPROVAL_TTL_SECONDS - max(0, state["expires_at"] - int(time.time()))
+        if state["expires_at"] <= int(time.time()):
+            raise ValueError("s3_ssl Reject-only preparation expired")
+        return {"version": 1, "control": S3_SSL_CONTROL, "batch_id": state["batch_id"],
+                "scope_hash": state["scope_hash"], "alias": state["alias"],
+                "provider_evidence_digest": state["evidence_digest"], "age_seconds": age,
+                "exception_digest": state["exception_digest"],
+                "live_execution_authorized": False, "aws_writes": 0}
+
+    def register_s3_ssl_native_decision(self, *, tool: str, control: str, batch_id: str, scope_hash: str, user_id: str) -> dict:
+        state = self.s3_ssl_reject_preview()
+        if (tool != S3_SSL_TOOL or control != S3_SSL_CONTROL or batch_id != state["batch_id"] or scope_hash != state["scope_hash"]):
+            raise ReceiptError("exact s3_ssl Reject-only scope mismatch")
+        self.native_decision_receipts().register(tool=tool, control=control, batch_id=batch_id,
+                                                 scope_hash=scope_hash, user_id=user_id,
+                                                 expires_at=self._read_s3_ssl_state()["expires_at"],
+                                                 evidence_digest=state["provider_evidence_digest"])
+        return {"version": 1, "registered": True, "live_execution_authorized": False,
+                "aws_writes": 0, "downstream_dispatches": 0}
+
+    def record_s3_ssl_native_decision(self, **receipt) -> dict:
+        state = self.s3_ssl_reject_preview()
+        if receipt.get("batch_id") != state["batch_id"] or receipt.get("scope_hash") != state["scope_hash"]:
+            raise ReceiptError("exact s3_ssl Reject-only scope mismatch")
+        result = self.native_decision_receipts().record(**receipt)
+        result["provider_readback"] = "NOT_REQUIRED"
+        if receipt.get("decision") == "reject":
+            try:
+                after = self._collect_s3_ssl()
+                unchanged = after.get("evidence_digest") == state["provider_evidence_digest"]
+                outcome = "UNCHANGED" if unchanged else "CHANGED"
+                detail_hash = after.get("evidence_digest") if re.fullmatch(r"[a-f0-9]{64}", str(after.get("evidence_digest", ""))) else hashlib.sha256(b"invalid-provider-digest").hexdigest()
+            except Exception as exc:
+                unchanged, outcome = False, "UNAVAILABLE"
+                detail_hash = hashlib.sha256(type(exc).__name__.encode()).hexdigest()
+            self.native_decision_receipts().append_evidence(
+                batch_id=state["batch_id"], scope_hash=state["scope_hash"],
+                event_type="POST_REJECT_READBACK", outcome=outcome, detail_hash=detail_hash,
+            )
+            result["provider_readback"] = "UNCHANGED" if unchanged else outcome
+            if not unchanged:
+                raise RuntimeError("Reject is durable; fresh s3_ssl provider readback did not prove unchanged state")
+        result["audit"] = self.native_decision_receipts().timeline(state["batch_id"])
+        return result
 
     def _sg(self, path: str, payload: dict | None = None) -> dict:
         url = self.sg_origin + path
@@ -876,6 +1039,42 @@ class OperatorHandler(BulkHandler):
             except ValueError: self._json(400, {"error": "invalid or stale four-account execution preview"})
             except Exception: self._json(503, {"error": "four-account execution preview unavailable"})
             return
+        if parsed.path == "/api/operator/s3-ssl-reject-preview":
+            try:
+                if not self._local_host():
+                    raise ValueError("unexpected local Host")
+                query = parse_qs(parsed.query, strict_parsing=True)
+                if set(query) != {"control"} or query["control"] != [S3_SSL_CONTROL]:
+                    raise ValueError("exact s3_ssl control required")
+                self._json(200, self.service.s3_ssl_reject_preview())
+            except (ValueError, RuntimeError):
+                self._json(400, {"error": "s3_ssl Reject-only preview unavailable"})
+            return
+        if parsed.path == "/api/operator/s3-ssl-status":
+            if not self._local_host():
+                self._json(403, {"error": "unexpected local Host"}); return
+            try:
+                self._json(200, self.service.s3_ssl_live_status())
+            except Exception as exc:
+                missing_module = getattr(exc, "name", None) if isinstance(exc, ModuleNotFoundError) else None
+                if not isinstance(missing_module, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", missing_module):
+                    missing_module = "unavailable"
+                origin = "unavailable"
+                tb = exc.__traceback__
+                while tb is not None and tb.tb_next is not None:
+                    tb = tb.tb_next
+                if tb is not None:
+                    frame = tb.tb_frame
+                    filename = Path(frame.f_code.co_filename).name
+                    function = frame.f_code.co_name
+                    if re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", filename) and re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", function):
+                        origin = f"{filename}:{tb.tb_lineno}:{function}"
+                logging.getLogger(__name__).warning(
+                    "s3_ssl live read unavailable (%s, module=%s, origin=%s)",
+                    type(exc).__name__, missing_module, origin,
+                )
+                self._json(503, {"error": "live s3_ssl read unavailable"})
+            return
         if parsed.path == "/api/operator/plan":
             if not self._local_host():
                 self._json(403, {"error": "unexpected local Host"}); return
@@ -898,6 +1097,8 @@ class OperatorHandler(BulkHandler):
             "/api/operator/multi-account-execute",
             "/api/operator/multi-account-verify",
             "/api/operator/native-decision-receipt",
+            "/api/operator/native-decision-register",
+            "/api/operator/s3-ssl-reject-prepare",
         }:
             super().do_POST(); return
         if not self._local_host() or not self._same_loopback_origin():
@@ -909,7 +1110,7 @@ class OperatorHandler(BulkHandler):
             if not 1 <= length <= 4096:
                 raise ValueError("invalid payload")
             raw = self.rfile.read(length)
-            if self.path == "/api/operator/native-decision-receipt":
+            if self.path in {"/api/operator/native-decision-receipt", "/api/operator/native-decision-register"}:
                 secret = os.environ.get("SECOPS_DECISION_RECEIPT_SECRET", "")
                 signature = self.headers.get("X-SecOps-Decision-Signature", "")
                 expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest() if len(secret) >= 32 else ""
@@ -919,7 +1120,13 @@ class OperatorHandler(BulkHandler):
             if self.path == "/api/operator/native-decision-receipt":
                 if set(data) != {"tool", "control", "batch_id", "scope_hash", "action_id", "generation_id", "user_id", "decision", "decided_at"}:
                     raise ReceiptError("unexpected native decision fields")
-                result = self.service.native_decision_receipts().record(**data)
+                result = self.service.record_s3_ssl_native_decision(**data)
+            elif self.path == "/api/operator/native-decision-register":
+                if set(data) != {"tool", "control", "batch_id", "scope_hash", "user_id"}:
+                    raise ReceiptError("unexpected native decision registration fields")
+                result = self.service.register_s3_ssl_native_decision(**data)
+            elif self.path == "/api/operator/s3-ssl-reject-prepare" and data == {}:
+                result = self.service.prepare_s3_ssl_reject_only()
             elif self.path == "/api/operator/prepare-preview" and set(data) == {"family"}:
                 result = self.service.prepare_preview(data["family"])
             elif self.path == "/api/operator/prepare" and set(data) == {"family", "confirmation_token"}:

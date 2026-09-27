@@ -43,7 +43,9 @@ async function recordIfRejectOnly({req, job, pendingAction}, send = fetch) {
       'Content-Type': 'application/json', Origin: 'http://127.0.0.1:4444',
       'X-SecOps-Decision-Signature': signature,
     },
-    body, signal: AbortSignal.timeout(5000),
+    // Reject receipt persistence is followed by one bounded fresh AWS readback.
+    // Its timeout must cover four fixed account reads plus the exact bucket cap.
+    body, signal: AbortSignal.timeout(120000),
   });
   if (!response.ok) throw Error('durable native decision receipt rejected');
   const result = await response.json();
@@ -51,6 +53,9 @@ async function recordIfRejectOnly({req, job, pendingAction}, send = fetch) {
   if (result?.outcome !== expected || result?.live_execution_authorized !== false ||
       result?.downstream_dispatches !== 0 || result?.aws_writes !== 0) {
     throw Error('native decision receipt returned unsafe outcome');
+  }
+  if (receipt.decision === 'reject' && result?.provider_readback !== 'UNCHANGED') {
+    throw Error('fresh post-Reject provider readback did not prove unchanged state');
   }
   // Native Reject skips the tool. Map blocked Approve to that same SDK result,
   // so no MCP/CodeBuild/Gateway/Lambda execution can follow this decision.
