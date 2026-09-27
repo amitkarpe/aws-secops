@@ -1,0 +1,6 @@
+{
+  "items": [
+    {"control": "restricted-ssh", "status": "NON_COMPLIANT", "affected_resources": 1},
+    {"control": "s3-bucket-level-public-access-prohibited", "status": "COMPLIANT", "affected_resources": 0}
+  ]
+}

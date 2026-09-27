@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/amitkarpe/aws-secops/blob/main/agents/compliance-agent-v1/evidence-provider.schema.json",
+  "title": "Persistent AWS MCP normalized SecOps evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "query", "state", "source", "account", "collected_at", "items", "item_count", "partial", "read_only", "mutation"],
+  "properties": {
+    "version": {"const": 1},
+    "query": {"enum": ["config-compliance-summary", "s3-public-access-posture", "security-group-exposure", "inspector-summary"]},
+    "state": {"enum": ["AVAILABLE", "PARTIAL", "UNAVAILABLE"]},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "provenance"],
+      "properties": {
+        "provider": {"const": "persistent-aws-mcp"},
+        "provenance": {"const": "AWS Managed MCP through the persistent read-only runtime"}
+      }
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias", "identity_verified", "public_ref"],
+      "properties": {
+        "alias": {"type": "string", "pattern": "^lab-[a-z0-9-]{1,28}$"},
+        "identity_verified": {"type": "boolean"},
+        "public_ref": {"type": "string", "pattern": "^acct-[a-f0-9]{12}$"}
+      }
+    },
+    "collected_at": {"type": ["string", "null"]},
+    "items": {"type": "array", "maxItems": 100},
+    "item_count": {"type": "integer", "minimum": 0, "maximum": 100},
+    "partial": {"type": "boolean"},
+    "read_only": {"const": true},
+    "mutation": {"const": false},
+    "reason": {"type": "string", "pattern": "^[A-Z_]+$"}
+  },
+  "$defs": {
+    "configItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["affected_resources", "control", "status"],
+      "properties": {
+        "affected_resources": {"type": "integer", "minimum": 0},
+        "control": {"type": "string", "minLength": 1, "maxLength": 160},
+        "status": {"enum": ["COMPLIANT", "NON_COMPLIANT", "INSUFFICIENT_DATA", "NOT_APPLICABLE", "NOT_REPORTED"]}
+      }
+    },
+    "s3Item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["all_public_access_blocked", "resource_ref"],
+      "properties": {
+        "all_public_access_blocked": {"type": "boolean"},
+        "resource_ref": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "securityGroupItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_ref", "unrestricted_ssh"],
+      "properties": {
+        "resource_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "unrestricted_ssh": {"type": "boolean"}
+      }
+    },
+    "inspectorItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_counts", "status"],
+      "properties": {
+        "status": {"enum": ["ENABLED", "DISABLED", "SUSPENDED"]},
+        "finding_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"],
+          "properties": {
+            "CRITICAL": {"type": "integer", "minimum": 0},
+            "HIGH": {"type": "integer", "minimum": 0},
+            "MEDIUM": {"type": "integer", "minimum": 0},
+            "LOW": {"type": "integer", "minimum": 0},
+            "INFORMATIONAL": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"query": {"const": "config-compliance-summary"}}},
+      "then": {"properties": {"items": {"items": {"$ref": "#/$defs/configItem"}}}}
+    },
+    {
+      "if": {"properties": {"query": {"const": "s3-public-access-posture"}}},
+      "then": {"properties": {"items": {"items": {"$ref": "#/$defs/s3Item"}}}}
+    },
+    {
+      "if": {"properties": {"query": {"const": "security-group-exposure"}}},
+      "then": {"properties": {"items": {"items": {"$ref": "#/$defs/securityGroupItem"}}}}
+    },
+    {
+      "if": {"properties": {"query": {"const": "inspector-summary"}}},
+      "then": {"properties": {"items": {"items": {"$ref": "#/$defs/inspectorItem"}}}}
+    },
+    {
+      "if": {"properties": {"state": {"const": "UNAVAILABLE"}}},
+      "then": {
+        "required": ["reason"],
+        "properties": {
+          "account": {"properties": {"identity_verified": {"const": false}}},
+          "items": {"maxItems": 0},
+          "item_count": {"const": 0},
+          "partial": {"const": false},
+          "collected_at": {"type": "null"}
+        }
+      },
+      "else": {
+        "properties": {
+          "account": {"properties": {"identity_verified": {"const": true}}},
+          "collected_at": {"type": "string"}
+        }
+      }
+    }
+  ]
+}

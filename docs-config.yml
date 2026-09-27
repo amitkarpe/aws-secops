@@ -47,6 +47,7 @@ nav:
       - Start here: learning-path.md
       - Current architecture: architecture.md
       - Sanitized capability adapter: architecture/SANITIZED_CAPABILITY_ADAPTER.md
+      - Persistent MCP evidence adapter: architecture/PERSISTENT_MCP_EVIDENCE_ADAPTER.md
       - Governance / security model: governance.md
       - Long Demo v1: demo-v1.md
   - AgentCore Lab:
