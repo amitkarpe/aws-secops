@@ -37,11 +37,12 @@ harvested into `amitkarpe/awsops`:
   after a fresh preservation review. It retains the tested `s3_ssl`
   Reject-only / Playwright / receipt / Archive implementation while the
   repository remains frozen for new development.
-- PR #177 — closed without merge; retained as deferred persistent read-only MCP
-  adapter reference.
-- Issues #130, #140, #164, #170, #176, #190 and #195 — closed as
+- PR #177 — merged into main at `d631bb2b467041517e1fe6191e92132d58e4d3d7`
+  after a fresh preservation review. It retains the bounded, default-off,
+  read-only persistent MCP evidence adapter, schema, fixtures and tests.
+- Issues #130, #140, #164, #170, #190 and #195 — closed as
   superseded/deferred reference.
-- Issues #180, #182, #184 and #191 — closed as completed historical milestones.
+- Issues #176, #180, #182, #184 and #191 — closed as completed historical milestones.
 
 Closed Issues/PRs remain readable and may be mined later. **Do not delete or
 archive this repository.** Amit may reuse the repository for a different future
