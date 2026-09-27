@@ -50,15 +50,24 @@ The preserved implementation remains reference material for:
 This merge preserves completed engineering state; it does **not** reactivate
 aws-secops as the product-development target.
 
-### PR #177 — closed without merge
+### PR #177 — merged for preservation
 
-Reference only if a future `awsops` milestone needs:
+Merged into frozen main at
+`d631bb2b467041517e1fe6191e92132d58e4d3d7` after fresh CI and conflict
+review.
 
-- fixed read query contract;
-- account verification;
-- bounded pagination;
-- partial/unavailable semantics;
-- closed schema/fixtures.
+The preserved implementation remains reference material for:
+
+- fixed read query contracts;
+- per-page account verification;
+- bounded pagination/result caps;
+- explicit partial/unavailable semantics;
+- sensitive-material rejection;
+- closed normalized schema and synthetic fixtures;
+- default-off live integration.
+
+This merge preserves useful completed engineering while keeping the repository
+frozen for new product development.
 
 ## Final state
 
