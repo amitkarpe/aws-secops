@@ -30,16 +30,25 @@ readable as R&D/evidence.
 
 ## Retained reference areas
 
-### PR #192 — closed without merge
+### PR #192 — merged for preservation
 
-Reference only for:
+Merged into frozen main at
+`2fe201e719a3b842bde8c12189c3e602cf9f6e71` after fresh CI and exact-diff
+review.
 
-- native Reject card assertions;
-- UI timing/recovery;
+The preserved implementation remains reference material for:
+
+- bounded live `s3_ssl` read + prepare/freeze;
+- native Reject-only card assertions;
+- zero-dispatch / zero-write decision receipts;
+- unchanged provider readback;
+- UI timing/recovery and Playwright acceptance;
 - auth-safe diagnostics;
 - Archive cleanup;
-- durable receipt/readback assertions;
-- relevant failure cases.
+- relevant failure/replay/restart/readback cases.
+
+This merge preserves completed engineering state; it does **not** reactivate
+aws-secops as the product-development target.
 
 ### PR #177 — closed without merge
 
