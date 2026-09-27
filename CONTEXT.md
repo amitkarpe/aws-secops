@@ -2,7 +2,7 @@
 
 Repository: `amitkarpe/aws-secops`  
 Status: **FROZEN / REFERENCE**  
-Updated: 2026-09-25
+Updated: 2026-09-27
 
 > This repository is the **old implementation/reference repository**. New product engineering moved to `amitkarpe/awsops`.
 
@@ -26,38 +26,26 @@ Keep this repository as historical/reference evidence for:
 - browser/Playwright learning and recovery evidence;
 - historical deployment/runbook context.
 
-## Open legacy PRs
+## Legacy migration backlog — CLOSED / REFERENCE
 
-### PR #192 — s3_ssl Reject-only R&D
+As of 2026-09-27 there are **no open Issues or PRs** in this repository.
 
-Status: **REFERENCE / HARVEST SOURCE — DO NOT CONTINUE PRODUCT DEVELOPMENT HERE**
+The migration-era backlog was triaged after the useful browser/runtime learning was
+harvested into `amitkarpe/awsops`:
 
-Useful material may be selectively harvested into `awsops` PR #13:
+- PR #192 — closed without merge; retained as s3_ssl Reject-only / Playwright /
+  receipt / Archive R&D evidence;
+- PR #177 — closed without merge; retained as deferred persistent read-only MCP
+  adapter reference;
+- Issues #130, #140, #164, #170, #176, #190, #191 and #195 — closed as
+  superseded/deferred reference;
+- Issues #180, #182 and #184 — closed as completed historical milestones after
+  their implementation PRs had already merged.
 
-- native card exactness;
-- Reject-only Playwright behavior;
-- rendered-state timing/recovery;
-- auth-safe request observation;
-- durable decision/readback assertions;
-- native Archive cleanup;
-- race/replay/restart/source-drift/readback failure cases.
-
-Do not copy the old retained-host deployment/runtime architecture wholesale.
-
-### PR #177 — persistent read-only MCP adapter
-
-Status: **REFERENCE / DEFERRED HARVEST — DO NOT CONTINUE PRODUCT DEVELOPMENT HERE**
-
-Useful ideas may be selectively rewritten in `awsops` if a future milestone needs them:
-
-- fixed query surface;
-- per-page account verification;
-- bounded pagination/result caps;
-- explicit partial/unavailable evidence;
-- secret-shaped field rejection;
-- closed schema + fixtures.
-
-Do not port it merely for parity.
+Closed Issues/PRs remain readable and may be mined later. **Do not delete or
+archive this repository.** Amit may reuse the repository for a different future
+project; any such reuse must begin with a new explicit scope rather than
+silently reviving the old SecOps roadmap.
 
 ## Repository rule
 
