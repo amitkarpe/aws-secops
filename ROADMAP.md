@@ -24,13 +24,15 @@ From 2026-09-25:
 - no new deployment/runtime architecture here;
 - no parity work merely because old code exists.
 
-Open historical PRs may remain temporarily for migration review/evidence.
+The migration-era Issue/PR backlog was closed on 2026-09-27 after the useful
+generic browser patterns were harvested into `awsops`. Closed items remain fully
+readable as R&D/evidence.
 
-## Harvest before final archival
+## Retained reference areas
 
-### PR #192
+### PR #192 — closed without merge
 
-Harvest only proven browser/product behavior needed by `awsops`:
+Reference only for:
 
 - native Reject card assertions;
 - UI timing/recovery;
@@ -39,9 +41,9 @@ Harvest only proven browser/product behavior needed by `awsops`:
 - durable receipt/readback assertions;
 - relevant failure cases.
 
-### PR #177
+### PR #177 — closed without merge
 
-Harvest only if a future `awsops` milestone actually needs a persistent read-only evidence adapter:
+Reference only if a future `awsops` milestone needs:
 
 - fixed read query contract;
 - account verification;
@@ -51,4 +53,6 @@ Harvest only if a future `awsops` milestone actually needs a persistent read-onl
 
 ## Final state
 
-Final archive/closure decision belongs to `awsops` M5 after useful capability parity, cutover evidence and deferred-work decisions are complete.
+Keep this repository **preserved but frozen**. Do not archive or delete it by
+default: Amit may reuse it for a different future project. Any reuse must start
+with a new explicit scope and must not silently revive the old SecOps roadmap.
